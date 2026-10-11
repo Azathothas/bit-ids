@@ -1038,7 +1038,12 @@ if always clean-tree-controls; then
   control linux "Rust tests" "cargo test"
   control linux "Rust lints" "cargo clippy"
   control linux "Shell syntax and style" "shellcheck and shfmt"
+  control linux "Go formatting and vet" "gofmt and go vet"
   gate_control "the repository gate"
+  # ⚠ THE COSTLIEST CONTROL HERE AFTER THE GATE, about a minute, because it
+  # builds every harness's Rust subject cold. It is paid in every shard for the
+  # reason the block above gives: the plant below proves nothing without it.
+  control linux "Checking harnesses" "the checking harnesses"
 fi
 
 # -- 1. a Rust defect that does not compile -----------------------------------
@@ -1309,7 +1314,53 @@ YAML
   rm -f "$PLANT"
 fi
 
-# -- 9. the clean tree again --------------------------------------------------
+# -- 9. a Go file that is not formatted ---------------------------------------
+#
+# ⚠ It compiles, so the refusal is gofmt's and not the compiler's. The pattern
+# is the step's own line, which only the formatting branch prints.
+GOFILE="tools/check/project.go"
+
+if unit go-fmt; then
+  if keep "$GOFILE" && append_once "$TREE/$GOFILE" "func  workflowPlant( ) {}"; then
+    refuses linux "Go formatting and vet" "an unformatted Go file" "gofmt would rewrite"
+  else
+    fail "plant    could not plant the Go formatting defect"
+  fi
+  restore "$GOFILE" || exit 2
+fi
+
+# -- 10. a Go defect vet refuses ----------------------------------------------
+#
+# ⚠ Formatted and compiling on purpose, so the step reaches its last line: a
+# plant gofmt also refused would report vet working when vet never ran.
+if unit go-vet; then
+  if keep "$GOFILE" && append_once "$TREE/$GOFILE" 'func workflowPlant() { fmt.Printf("%d", "x") }'; then
+    refuses linux "Go formatting and vet" "a Go defect vet refuses" "wrong type"
+  else
+    fail "plant    could not plant the vet defect"
+  fi
+  restore "$GOFILE" || exit 2
+fi
+
+# -- 11. a checking rule weakened so it no longer refuses ---------------------
+#
+# ⛔ THE GATE PASSES THIS TREE. The rule is only ever run against a clean tree
+# there, and a rule that reports success where it should report a refusal still
+# answers 0 over a clean one. Only the harness cases plant the subject the rule
+# exists to catch, which is why the step this refutes exists.
+if unit harness-weakened; then
+  CACHEGO="tools/check/cache.go"
+  if keep "$CACHEGO" &&
+    replace_once "$TREE/$CACHEGO" 'h.bad("E-CAC-01  the refusal did not appear: "' \
+      'h.ok("E-CAC-01  the refusal did not appear: "'; then
+    refuses linux "Checking harnesses" "a checking rule that no longer refuses" "a guard did not refuse its defect"
+  else
+    fail "plant    could not plant the weakened rule"
+  fi
+  restore "$CACHEGO" || exit 2
+fi
+
+# -- 12. the clean tree again -------------------------------------------------
 #
 # ⛔ THE LAST CASE IS A CONTROL, NOT A REPEAT. Every plant above restores the
 # file it touched, and nothing so far has checked that any of them did. A

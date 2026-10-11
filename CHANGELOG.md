@@ -5,6 +5,18 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-11T02:15:39Z
+
+- ⭐ **THE GO MODULE IS FORMATTED AND VETTED IN CI, AND THE HARNESS CASES RUN.**
+  Two Linux-lane steps close `CI-10`'s two residuals: *Go formatting and vet*
+  over `tools/check`, and *Checking harnesses*, which runs
+  `check-bitcheck --harnesses` on every push for the first time.
+- ⛔ **A weakened checking rule passed every row CI ran.** With `check-cache`'s
+  `E-CAC-01` refusal turned into a pass, the gate stays green and only the
+  harness cases refuse it; `check-workflow` now plants exactly that, beside an
+  unformatted Go file and a `Printf` that vet refuses.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-10-11T01:33:53Z
 
 - ⛔ **THE RECORD IS REWRITTEN TO CURRENT TRUTH.** The 2026-09-29 session ended

@@ -330,7 +330,9 @@ from any working directory.
   leaves them out and says so on stderr. A harness's cases build its Rust subject
   out of the scratch tree, cold, which measured this row at 39 seconds against
   23 and the whole gate at 193 against 168 - and `check-workflow` runs the gate
-  about nine times per shard. `--compare` runs them too.
+  about nine times per shard. `--compare` runs them too, and so does the Linux
+  CI lane's *Checking harnesses* step, which is the only place they run on
+  every push.
 
 Shell is the default orchestration language and **Go is the checking layer**.
 Rust owns parsing, normalization, validation, indexing, and publishing. Python

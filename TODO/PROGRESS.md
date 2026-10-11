@@ -99,11 +99,12 @@ install step; do not diagnose it, instrument it, or add a fourteenth.
 
 ⛔ **Nothing here is blocked.** Take these in order.
 
-1. **`CI-10`'s residuals**, the entry in progress. The port is done: no twin file
-   pair is left, `check-twins` compares only the doctor's probe pair, and
-   `bit-check --rows` lists the ported rules. What is left, under the entry in
-   [`ci.md`](ci.md): nothing runs `check-bitcheck --harnesses` automatically, and
-   CI runs no `gofmt` and no `go vet` over [`../tools/check/`](../tools/check/).
+1. **`CI-10`**, the entry in progress. The port is done: no twin file pair is
+   left, and `bit-check --rows` lists the ported rules. ⭐ Both residuals are
+   written as of 2026-10-11: the Linux lane runs *Go formatting and vet* over
+   [`../tools/check/`](../tools/check/) and *Checking harnesses*, each with a
+   control and a plant in `check-workflow`. What closes the entry is a CI run
+   reading both steps back green, under the entry in [`ci.md`](ci.md).
 2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. ⛔ They do
    not wait on a dispatch any more: run 32 answered it, and *Install the client*
    wedges with no privilege in it. The work is a capture route that does not run
@@ -152,7 +153,7 @@ the second invocation carries the public rules.
 | the one skip | `check-remote-items` against the real open items, which needs an authenticated `gh`. ⚠ Installing `gh` does not fix it on a session host. Both CI lanes run it, and `check-bitcheck` runs its logic here against a stub `gh`. |
 | tools | ⭐ `sh scripts/doctor/provision.sh` installs `pwsh`, `shellcheck` and `shfmt`, each verified against a pinned digest. Run it before touching a script. |
 | `go` | a gate dependency. Without it the ported rows skip, and both CI lanes run `--strict`, so an absent toolchain turns a lane red. |
-| not in the gate | `cargo clippy`, `cargo fmt --check`, the test suite, `sh scripts/ci/check-workflow.sh`, and `check-bitcheck --harnesses`. |
+| not in the gate | `cargo clippy`, `cargo fmt --check`, the test suite, `gofmt` and `go vet`, `sh scripts/ci/check-workflow.sh`, and `check-bitcheck --harnesses`. Each is its own CI step. |
 | ⛔ while it runs | do not edit the tree: `tree-unchanged` compares before and after. |
 
 ⚠ The defect classes this repository has shipped and caught, which every review

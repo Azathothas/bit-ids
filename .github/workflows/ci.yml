@@ -92,8 +92,28 @@ jobs:
         run: cargo test --workspace --locked --all-targets
       - name: Rust lints
         run: cargo clippy --workspace --locked --all-targets -- -D warnings
+      # ⭐ THE GO MODULE GETS WHAT THE RUST WORKSPACE GETS, `CI-10`. Nothing ran
+      # either over `tools/check` before 2026-10-11, so the checking layer was
+      # the one language this lane neither formatted nor linted.
+      # ⚠ EVERY LINE ENDS IN ITS OWN VERDICT. GitHub runs this as `bash -e` and
+      # `check-workflow` runs it as `sh -c`, which stops at nothing, so a status
+      # left to the shell's options is a status one of the two never reads.
+      # ⚠ LINUX ONLY, ON PURPOSE. gofmt answers about bytes, and a checkout that
+      # converted line endings would make it list every file.
+      - name: Go formatting and vet
+        run: |
+          unformatted=$(gofmt -l tools/check) || exit 1
+          if [ -n "$unformatted" ]; then printf 'gofmt would rewrite:\n%s\n' "$unformatted"; exit 1; fi
+          cd tools/check && go vet ./...
       - name: Repository gate
         run: sh scripts/common/check-gate.sh --strict
+      # ⛔ THE HARNESS CASES ARE NOT IN THE GATE, AND WERE RUN BY NOTHING. Each
+      # builds its Rust subject cold, measured at 25 seconds of gate, which
+      # `check-workflow` would pay about nine times per shard; so a weakened
+      # `check-cache` rule passed every row CI ran. Measured on 2026-10-11 by
+      # planting exactly that. This step is where they run, once.
+      - name: Checking harnesses
+        run: sh scripts/common/check-bitcheck.sh --harnesses
 
   # ⭐ A JOB OF ITS OWN, BECAUSE IT WAS THE LANE. It plants a defect of each class
   # the gate exists to catch and runs the offending step against it, and several

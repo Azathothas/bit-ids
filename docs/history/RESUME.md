@@ -9,9 +9,9 @@ and why it is not the record. The work order is
 | --- | --- |
 | the task | Reconcile the record and the docs with the tree after the 2026-09-29 session ended without running its ending, then take the work order in sequence. |
 | started | 2026-10-11T01:24:45Z, on `5d54c5f`, which CI run 177 read back green through rule 8's route. |
-| the resume point | the docs reconciliation, then `CI-10`'s residuals. |
-| in flight | the reconciliation: `TODO/PROGRESS.md`, `TODO/SUMMARY.md`, `docs/history/`. |
-| the state of the tree | clean at the start. The gate was re-measured at the start; its result is in the record once read. |
+| the resume point | `CI-10`'s residuals: `gofmt` and `go vet` in CI, and `check-bitcheck --harnesses` run automatically. |
+| in flight | `CI-10`: `.github/workflows/ci.yml` and `TODO/ci.md`. The reconciliation landed as `ad5126a`. |
+| the state of the tree | gate 40 checks, 39 passed, 1 skipped, on `ad5126a` before its push. |
 
 ## Starting, on this host
 

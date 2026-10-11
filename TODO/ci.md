@@ -4240,10 +4240,15 @@ passing a row for it.
 - ⚠ **Nothing runs the harness cases automatically.** They cost too much for the
   gate and nothing else invokes `--harnesses`; a CI step of their own, the way
   `check-defaults` has one, would close it and is a workflow change.
+  ⭐ **Closed 2026-10-11** by the Linux lane's *Checking harnesses* step; see the
+  last section of this entry.
 - ⛔ **CI runs no `gofmt`, no `go vet` and no `go test` over `tools/check`**,
   found by the door sweep over this change. Earlier commits in this entry say
   *gofmt and go vet clean*, which was a session running them by hand: a rule a
   commit message says this repository has is not a rule it has.
+  ⭐ **Closed 2026-10-11** for `gofmt` and `go vet` by the Linux lane's *Go
+  formatting and vet* step. ⚠ `go test` has nothing to run: the module carries
+  no `_test.go`, and its cases are `check-bitcheck`'s.
 
 #### ⛔ And both halves are deleted, 2026-09-29, after the comparison
 
@@ -4600,3 +4605,50 @@ sentence omits as well as an index effort outside the four.
 
 ⚠ It is the first rule this check carries that no shell half ever held, so
 `--compare` has nothing to run it against; the planted case runs the port alone.
+
+### ⭐ Both residuals closed: the Go module is linted and the harnesses run. 2026-10-11
+
+Two steps on the Linux lane of `.github/workflows/ci.yml`, each with a control
+and a plant in `scripts/ci/check-workflow.sh`:
+
+| step | what it runs | its plant in `check-workflow` |
+| --- | --- | --- |
+| *Go formatting and vet* | `gofmt -l tools/check`, refused when it lists anything, then `go vet ./...` | `go-fmt`: a function with stray spaces; `go-vet`: a `Printf` whose verb disagrees with its argument |
+| *Checking harnesses* | `sh scripts/common/check-bitcheck.sh --harnesses` | `harness-weakened`: `check-cache`'s `E-CAC-01` refusal turned into a pass |
+
+⛔ **The third plant is the reason for the second step.** Measured here before the
+step existed: with `E-CAC-01`'s refusal turned into a pass, the gate stays green,
+because the rule is only run against a clean tree there, and
+`check-bitcheck --harnesses` exits 1 with two cases naming it.
+
+⚠ **Every line of the Go step ends in its own verdict.** GitHub runs a step as
+`bash -e` and `check-workflow` runs it as `sh -c`, which stops at nothing, so a
+step whose first command fails and whose last succeeds is red on the lane and
+green in the harness. ⚠ The *Shell syntax and style* step has that shape:
+`shellcheck` then `shfmt`, with nothing carrying the first one's status under
+`sh -c`. Its plant does not parse, so both tools refuse it and the case cannot
+tell that the first one's status is dropped; a control over a tree only
+`shellcheck` refuses would pass in the harness and fail on the lane. ⚠ The gate's
+`check-shell` row runs both tools with each status read, which is why this is a
+residual rather than a hole, and it is filed rather than widened into this
+change.
+
+⚠ **Linux only.** gofmt answers about bytes, and a Windows checkout that
+converted line endings would have it list every file.
+
+⚠ **The harness control is the dearest control after the gate**, about a minute,
+and every shard pays it. Run 177's shards took 11.7 to 14.1 minutes against a
+20-minute bound.
+
+| measured here, 2026-10-11 | result |
+| --- | --- |
+| `sh scripts/ci/check-workflow.sh`, unsharded | 102 cases, 102 passed, exit 0, 01:42:43Z to 02:12:29Z |
+| `sh scripts/ci/check-shards.sh` | 14 cases, 14 passed |
+| `sh scripts/common/check-bitcheck.sh --harnesses` | 259 cases, 259 passed, 63 seconds |
+| the same, `E-CAC-01`'s refusal turned into a pass | 257 passed, 2 failed, exit 1 |
+| `sh scripts/common/check-gate.sh` with that plant | not run: the plant changes no clean-tree verdict, which is the point the third row of the table above makes |
+| `sh scripts/common/check-gate.sh` | 40 checks, 39 passed, 1 skipped |
+
+⛔ **What closes the entry is a CI run on a runner** reading both steps back
+green, which this table cannot be.
+
