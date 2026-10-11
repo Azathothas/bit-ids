@@ -1,6 +1,6 @@
 // project.go - this repository's own invariants, as one check.
 //
-// ⛔ THE BIG ONE, AND IT IS TWENTY-NINE REFUSALS RATHER THAN ONE.
+// ⛔ THE BIG ONE, AND IT IS THIRTY REFUSALS RATHER THAN ONE.
 // `check-project` is 997 lines of `sh` with a hand-written PowerShell twin
 // beside it, and the twin is where `CI-10`'s remaining wall clock sits. Every
 // rule below is the rule its shell half stated, over the same inputs, with the
@@ -10,8 +10,9 @@
 // ⚠ THE COUNT IS THE ONE THAT CAN BE GREPPED. "Rules" is a judgement - the
 // TODO bookkeeping is one subject and eight separate refusals - and a count in
 // prose is a value in two places with nothing comparing them. `f.say(` here,
-// `say_fail "` in the shell half and `failures.Add(` in the twin each appear
-// twenty-nine times.
+// `say_fail "` in the shell half and `failures.Add(` in the twin each appeared
+// twenty-nine times when both halves were deleted. The thirtieth, the effort
+// inventory, was written here on 2026-10-11 and has no half to compare against.
 //
 // ⚠ THE PARSERS ARE TRANSCRIBED, NOT REDESIGNED. Several of them look wrong at
 // first reading - a prefix stripped by its literal rather than its length, an
@@ -256,6 +257,7 @@ func projectTodo(f *projectFails) (rows, open, inProgress, blocked, done int) {
 	totalByPrefix := map[string]int{}
 	byPriority := map[string]map[string]int{}
 	totalByPriority := map[string]int{}
+	byEffort := map[string]int{}
 	var invalid []string
 	ids := map[string]int{}
 
@@ -291,6 +293,7 @@ func projectTodo(f *projectFails) (rows, open, inProgress, blocked, done int) {
 		}
 		byPriority[priority][status]++
 		totalByPriority[priority]++
+		byEffort[effort]++
 	}
 
 	// ⛔ THE GLOB, NOT `git ls-files`. Both halves list the DIRECTORY, so a new
@@ -370,7 +373,49 @@ func projectTodo(f *projectFails) (rows, open, inProgress, blocked, done int) {
 	projectSummaryTotal(f, open, inProgress, blocked, done, rows)
 	projectSummaryRows(f, byPrefix, totalByPrefix)
 	projectPriorityTable(f, byPriority, totalByPriority)
+	projectEffortInventory(f, byEffort)
 	return rows, open, inProgress, blocked, done
+}
+
+// projectEffortInventory compares `TODO/SUMMARY.md`'s effort sentence against
+// the index.
+//
+// ⛔ IT DRIFTED WHILE IT WAS ONLY A SENTENCE. It said 49 L and 0 XL for as long
+// as the index carried 51 and 1, found by a reading on 2026-10-11 rather than by
+// any check. ⚠ The four sizes are named because the SENTENCE is the thing being
+// checked: a size it omits is the defect, so the expected set cannot be derived
+// from it. A size the index carries that is not one of the four is refused too,
+// or a fifth size would be counted nowhere and the sentence would still agree.
+var projEffortLineRe = regexp.MustCompile(`^Effort inventory: ([0-9]+) S, ([0-9]+) M, ([0-9]+) L, ([0-9]+) XL\.`)
+
+func projectEffortInventory(f *projectFails, byEffort map[string]int) {
+	var seen []string
+	for _, line := range readLines("TODO/SUMMARY.md") {
+		if m := projEffortLineRe.FindStringSubmatch(line); m != nil {
+			seen = append(seen, strings.Join(m[1:], " "))
+		}
+	}
+	sizes := []string{"S", "M", "L", "XL"}
+	want := make([]string, len(sizes))
+	known := 0
+	for i, size := range sizes {
+		want[i] = strconv.Itoa(byEffort[size])
+		known += byEffort[size]
+	}
+	var bad []string
+	if got := strings.Join(seen, "\n"); got != strings.Join(want, " ") {
+		bad = append(bad, fmt.Sprintf("declares %q, computed %q", got, strings.Join(want, " ")))
+	}
+	total := 0
+	for _, n := range byEffort {
+		total += n
+	}
+	if known != total {
+		bad = append(bad, fmt.Sprintf("%d index row(s) carry an effort outside S, M, L and XL", total-known))
+	}
+	if len(bad) > 0 {
+		f.say("TODO/SUMMARY.md effort inventory disagrees with the index: " + strings.Join(bad, "; "))
+	}
 }
 
 // projDeclared is `awk -F ': ' '$1 == key { print $2; exit }'`.

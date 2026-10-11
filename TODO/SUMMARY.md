@@ -20,7 +20,9 @@ mapping of its own and the two twins cannot hold different ones.
 | Documentation | `DOC` | 0 | 0 | 0 | 2 | 2 |
 | Total | | 21 | 1 | 0 | 44 | 66 |
 
-Effort inventory: 1 S, 13 M, 49 L, 0 XL. The observer-lab entry was the XL one and
-was split on 2026-09-04, because its acceptance named a client fixture and a
-Windows run that this repository cannot produce yet.
+Effort inventory: 1 S, 13 M, 51 L, 1 XL. `check-project` derives that line from
+the index and refuses it when they disagree. `CI-10` is the XL entry; the
+observer-lab entry was one too and was split on 2026-09-04, because its
+acceptance named a client fixture and a Windows run that this repository cannot
+produce yet.
 [`observer.md`](observer.md) carries what moved where.

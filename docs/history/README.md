@@ -73,3 +73,11 @@ measured that removing it does not end the hang, dissolved a recorded blocker by
 noticing that a bound need not be a wrapper, made the assembler ask whether the
 store it writes is a corpus at all, and deleted the last `common/` twin - whose
 pre-deletion comparison found three defects in the half that was about to go.
+
+[`SESSION-2026-09-29-PORT.md`](SESSION-2026-09-29-PORT.md) is the record of the
+session that ported the last four twin pairs into the Go binary and ended
+without running its ending. ⚠ It was reconstructed from the log and CI on
+2026-10-11, and it names what that session left stale.
+
+[`PROGRESS-2026-09-29.md`](PROGRESS-2026-09-29.md) is the work record as it
+stood before it was rewritten to current truth on 2026-10-11, kept verbatim.

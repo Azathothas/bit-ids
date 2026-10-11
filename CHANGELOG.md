@@ -5,6 +5,25 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-11T01:33:53Z
+
+- ⛔ **THE RECORD IS REWRITTEN TO CURRENT TRUTH.** The 2026-09-29 session ended
+  without running its ending, and `TODO/PROGRESS.md` and `docs/history/RESUME.md`
+  were 672 and 372 lines of narrative. The record's old text moved verbatim to
+  `docs/history/PROGRESS-2026-09-29.md`, the review lessons both carried moved to
+  `docs/lessons.md`, and that session has a record reconstructed from the log
+  and CI, `docs/history/SESSION-2026-09-29-PORT.md`.
+- ⛔ **The work order sent `CLIENT-01` and `CLIENT-06` to a dispatch run 32 had
+  already answered.** It says what is left now: a capture route that does not
+  run *Install the client* as it stands. `TODO/ci.md` carried the same stale
+  claim under `CI-08` and is corrected in place.
+- ⭐ **`check-project` derives `TODO/SUMMARY.md`'s effort inventory from the
+  index**, which said 49 L and 0 XL against 51 and 1, and a planted case in
+  `check-bitcheck` refuses the stale sentence.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`, and
+  [`docs/history/SESSION-2026-09-29-PORT.md`](docs/history/SESSION-2026-09-29-PORT.md).
+  No version bump and no deploy.
+
 ### 2026-09-29T04:23:35Z
 
 - ⛔ **BOTH HALVES OF `mine-repo` ARE DELETED, AND NO TWIN PAIR IS LEFT.**

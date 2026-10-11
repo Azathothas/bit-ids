@@ -275,8 +275,8 @@ from any working directory.
   default that changed in 7.5, and ten wrote to stderr directly while five did
   not. The last two were found by CI rather than by a reading.
   ⭐ **It was `common/check-project.sh` and a hand-written twin until 2026-09-17**,
-  the last `common/` pair and the biggest at 997 lines. Both halves are deleted;
-  the same twenty-nine refusals are one Go check on both lanes. `TODO/ci.md` under
+  the last `common/` pair and the biggest at 997 lines. Both halves are deleted,
+  and their refusals are one Go check on both lanes. `TODO/ci.md` under
   `CI-10` says what the pre-deletion comparison found.
   ⛔ **The last two also read the `pwsh` blocks of every workflow**, which they
   did not until `CI-06`'s first dispatch found `capture.yml` breaking both, one

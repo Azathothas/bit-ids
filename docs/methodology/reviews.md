@@ -7,6 +7,9 @@ sweep written up three times.** A single pass finds what you were already
 looking for. Every recurring defect class in this methodology was found by a
 *different* lens than the one that was looking.
 
+⭐ The classes this repository has already shipped are in
+[`../lessons.md`](../lessons.md). Read them before the first pass.
+
 ---
 
 ## The three lenses

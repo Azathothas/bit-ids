@@ -2113,7 +2113,7 @@ agree "docs clean tree again" check-docs common/check-docs 0
 # ============================================================================
 # check-project
 #
-# ⛔ TWENTY-NINE REFUSALS IN ONE CHECK, so one case per rule is the floor rather
+# ⛔ THIRTY REFUSALS IN ONE CHECK, so one case per rule is the floor rather
 # than thoroughness. The verdict this harness compares is the whole `--json`
 # line, `failures` included, so a plant that trips two rules is still a proof:
 # the case states the exit code and the three implementations must agree on the
@@ -2190,6 +2190,14 @@ restore_project
 awk -F'|' 'BEGIN { OFS = "|" } $2 == " Foundation " { $4 = " 99 " } { print }' \
   "$WORK/SUMMARY.md.projorig" >"$PSUM"
 agree "project a summary category row that disagrees is refused" check-project common/check-project 1
+restore_project
+
+# ⚠ THE EFFORT SENTENCE IS PROSE AND IT DRIFTED AS PROSE: it said 49 L and 0 XL
+# while the index carried 51 and 1. The plant rewrites the XL count whatever it
+# is, so it follows the file rather than a count typed here.
+awk '/^Effort inventory: / { sub(/, [0-9]+ XL\./, ", 7 XL.") } { print }' \
+  "$WORK/SUMMARY.md.projorig" >"$PSUM"
+agree "project a summary effort inventory that disagrees is refused" check-project common/check-project 1
 restore_project
 
 awk 'BEGIN { done = 0 }

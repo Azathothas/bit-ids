@@ -2800,9 +2800,9 @@ which is a diagnostic answering confidently and wrongly.
 
 ⚠ **`TODO/RULES.md` is why they go rather than stay.** A hang is a dead end, not
 a subject; keeping the instruments of the dead end in the file is keeping the
-subject open. ⛔ What is NOT claimed is that the hang is fixed: nothing has
-dispatched the rootless install, and `TODO/acquisition.md` says so under
-`ACQ-06`'s residuals.
+subject open. ⛔ What is NOT claimed is that the hang is fixed: run 32
+dispatched the rootless install and it wedged, which the section above records
+and `TODO/acquisition.md` carries under `ACQ-06`'s residuals.
 
 ### ⚠ Residual, filed 2026-09-09: `check-step-bodies` is a load-sensitive row
 
@@ -4581,3 +4581,22 @@ touched:
 
 ⚠ **`mine-repo` never was a gate row**, so no runner queued it and no row moved;
 the doors were prose and one pair list.
+
+### ⭐ A thirtieth refusal, written in Go with no half to compare. 2026-10-11
+
+⚠ **`TODO/SUMMARY.md`'s effort inventory said 49 L and 0 XL while the index
+carried 51 and 1**, found by the reconciliation reading of 2026-10-11 rather
+than by any check: the sentence was prose beside four checked tables.
+⭐ `check-project` derives it from the index now, and refuses a size the
+sentence omits as well as an index effort outside the four.
+
+| what | measured, 2026-10-11 |
+| --- | --- |
+| the clean tree | `bit-check check-project` exit 0 |
+| the stale sentence restored | exit 1, `declares "1 13 49 0", computed "1 13 51 1"` |
+| the sentence renamed away | exit 1, `declares ""` |
+| an index and body effort of `XS` | exit 1, naming one row outside S, M, L and XL |
+| `sh scripts/common/check-bitcheck.sh` | 238 cases, 238 passed, the new plant among them |
+
+⚠ It is the first rule this check carries that no shell half ever held, so
+`--compare` has nothing to run it against; the planted case runs the port alone.
