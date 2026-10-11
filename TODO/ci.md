@@ -2797,6 +2797,7 @@ the commit, from the job's first step onward.
 | `8a29cfb`, the install traced, 2-second posts | `install-client` exited 0 at 03:34:23, `aria2-next 2.8.6 through the release route (acquired=yes)`; posts stopped about three seconds later |
 | `16a146b`, a marker around each operation of `install-step.sh` | the watchdog `ps`, the loop's end, the `cat`, the descriptor read and `report-holders` all returned, the last at 03:40:22; posts stopped as the step ended and the next one, *Cut the route off this host*, ran |
 | `a4b6053`, the capture in a network namespace and no route cut | ⭐ the job completed in two minutes, every step reported, the job log exists and the install artifact uploaded |
+| `ca77cbb`, `main`'s workflow as committed in `3f3d773`, both routes | ⭐ both lanes completed: release in 1.5 minutes, source - which builds `aria2-next` - in 12.5; both logs and both install artifacts exist |
 
 ⭐ **So the mechanism is this.** *Cut the route* deletes the host's default
 routes, and the runner agent reaches GitHub over those routes. From that moment
@@ -2821,6 +2822,12 @@ calling user; the host's routes are never touched. Driven on the session host
 as uid 1001: inside, `lo` only, an empty route table, the guard passing, an
 outbound request failing to resolve, and the command's exit code carried out;
 outside, the default route intact.
+
+⚠ **What both contained runs then refused is a measurement, not a hang.** The
+observer recorded the announces and `cpython-stdlib` declined to read them:
+*two segments disagree about tracker_http/peer_id*, so `aria2-next` sent a
+different peer ID on two announces of one run. That is `OBS-04`'s per-connection
+identity reaching the connector, and `CI-09`'s to settle.
 
 ⚠ **`capture.yml` still cuts the route**, on both platforms. It installs
 nothing and its last runs were green; it is the same fragile shape and is the
