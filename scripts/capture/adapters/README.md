@@ -19,7 +19,7 @@ returns 0 for done, 1 for refused and 2 for could-not-run.
 | subcommand | when | must |
 | --- | --- | --- |
 | `describe` | any time | print `target=<slug>` and `kind=stock\|stub`, one per line, plus `binary=<path>` when one is installed and the release-route declarations below when it has one |
-| `install <route> <workdir>` | ⛔ **before the route is cut** | install the target through that route alone |
+| `install <route> <workdir>` | ⛔ **before containment**, with the network in reach | install the target through that route alone |
 | `version` | ⛔ **before the route runs, again after it, and again under containment** | ⛔ ask the **installed executable** and print exactly what it answered |
 | `start <torrent> <workdir> <peer-port>` | under containment | launch the build on that torrent and return; the build keeps running |
 | `stop <workdir>` | under containment | stop whatever `start` launched |

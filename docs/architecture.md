@@ -1177,26 +1177,23 @@ non-injective layout section 4 describes, in a second place.
 
 ## 10. Limits
 
-- There are no measured profiles yet. The observer layer is complete: all four
-  core surfaces have observers, the lab generates the torrent that makes a
-  client announce about anything at all, and a run's transcript becomes the
-  content-addressed evidence a manifest cites. There is now somewhere durable to
-  put a record as well, and a workflow that runs a capture on a host the
-  [`capture-host.md`](capture-host.md) guards permit, which `CI-06` has now
-  dispatched. ⭐ The client adapter layer is written as well: an observer that
-  hands a build the torrent naming its own tracker, an adapter contract with a
-  file per target, an install step that runs before the route is cut, and a
-  runner that refuses to attest to a build it did not observe announce. ⛔ **Nothing has been installed through any of it.** A session host
-  is not disposable, so every drive of that path so far used a stub adapter.
+- There are no measured profiles in the tree. The observer layer and the client
+  adapter layer are complete, and `capture-client` has installed `aria2-next` on
+  hosted runners through its `release` and `source` routes and put it on the
+  wire. ⭐ The capture runs inside a network namespace that holds loopback alone,
+  [`../scripts/capture/contained.sh`](../scripts/capture/contained.sh), rather
+  than by deleting the host's routes, which severed the runner agent; `CI-08`
+  carries the measurement. ⚠ A `Profile` has been assembled from a dispatch's
+  artifacts into a scratch store and none is published; `CI-09` owns the rest.
 - ⭐ Every path [`publishing.md`](publishing.md) promises is written as of
   `PUB-05`, whose SQLite rendering is the one place this workspace takes a
   vendored C library. ⚠ It is required rather than optional: `PUB-04` derives a
   consumer's caching contract from the set of published paths, so a build that
   could omit one would publish a manifest missing a documented file.
-- ⚠ Nothing assembles a store yet. `PUB-01` builds the publication tree and
-  `PUB-02` runs the append comparison over the fetched `data` branch; until both
-  exist, the store and corpus checks are pointed at directories by hand or at
-  one written by `build-store`.
+- ⚠ `assemble-capture` writes a store from a capture's artifacts and asks
+  `validate_corpus` about it, and two things are still missing between a capture
+  and a publication: the `RunManifest` beside each record, and an artifact named
+  `bundle`, which `publish-data.yml` downloads and no workflow uploads. `CI-09`.
 - ⭐ The HTTP tracker observer has been driven by stock `BitTorrent` clients, on
   2026-09-08: hosted runners installed Transmission 4.0.5 and qBittorrent 4.6.3,
   deleted their default routes, and each build announced to the lab. ⚠ Every
@@ -1241,8 +1238,8 @@ non-injective layout section 4 describes, in a second place.
 - Windows packet corroboration needs a route that works on hosted runners or a
   disposable self-hosted runner; `OBS-07` owns the independent-control
   decision. `CI-03` closed the runner question: a hosted runner is a fresh
-  virtual machine per job and its default routes are deleted before the
-  capture.
+  virtual machine per job. `capture.yml` deletes its default routes before a
+  fixture capture; `capture-client.yml` contains the capture in a namespace.
 - Proprietary clients may have only one legitimate acquisition route. Such a
   target remains open until a second independent route is verified; the rule
   is not weakened.

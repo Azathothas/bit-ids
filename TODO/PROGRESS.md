@@ -53,9 +53,9 @@ were written by hand from published BEPs.
 | has a stock client been put on the wire? | yes. Transmission 4.0.5 and qBittorrent 4.6.3 announced to the HTTP tracker observer on 2026-09-08, one observer, one platform, one route. `OBS-07`. |
 | has a `Profile` been assembled from a dispatch? | yes, from `capture-client` run 17's artifacts, on 2026-09-15, into a scratch store. Both records are `provisional`. `CI-09`. |
 | has a record been produced publishable? | only over a stub target written to announce twice and accept two connections, on 2026-09-15. That proves the path, not a product. `CI-09`. |
-| does a stock `aria2-next` cooperate? | not yet. Runs 18 and 19 opened two peer connections and it answered one; the store's comparable capture conflicts, so `E-PUB-03` refuses the pair. `OBS-04` carries the next hypothesis, the source address. |
+| does a stock `aria2-next` cooperate? | partly. Runs 18 and 19 opened two peer connections and it answered one, so `E-PUB-03` refused the pair. ⚠ The contained runs of 2026-10-11, on 2.8.6, announced with a different peer ID on two announces and the second connector refused to choose; the work order's first item. `OBS-04`, `CI-09`. |
 | whose identity does `aria2-next` present? | qBittorrent 5.2.3's: user agent `qBittorrent/5.2.3`, peer ID prefix `-qB5230-`, corroborated by the `cpython-stdlib` connector. `CLIENT-14`. |
-| does a client install finish on a runner? | ⭐ **yes, and it always did.** The "hang" of runs 3 to 34 was *Cut the route* severing the runner agent from GitHub, measured on 2026-10-11 by a flight recorder posting off the host. The capture now runs in a network namespace and a run completed in two minutes. `CI-08`. |
+| does a client install finish on a runner? | ⭐ **yes, and it always did.** The "hang" of runs 3 to 34 was *Cut the route* severing the runner agent from GitHub, measured on 2026-10-11 by a flight recorder posting off the host. The capture now runs in a network namespace; both `aria2-next` routes then completed, release in 1.5 minutes and source in 12.5. `CI-08`. |
 | how many connectors does the capture path declare? | two: the Rust observer and `scripts/capture/connectors/cpython-stdlib.py`. ⚠ The second is two readings of one capture's bytes, not a second observation of the wire. `OBS-07`. |
 | has the publisher run against this repository's remote? | no, and it must not until a measured record exists. It cannot run at all yet: `publish-data.yml` downloads an artifact named `bundle` and no workflow uploads one. |
 | has a published URL been fetched? | no. `docs/publishing.md` carries the forms and says they are unexercised. |
@@ -99,27 +99,32 @@ owns the rule and `docs/AGENTS.md` absolute 16 restates it.
 
 ⛔ **Nothing here is blocked.** Take these in order.
 
-1. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. ⭐ The
-   capture path works again: the route cut is gone and the capture runs in a
-   network namespace. ⚠ The first contained run reached the wire and was then
-   refused by the second connector, because two announces carried different
-   peer IDs; that is `OBS-04`'s per-connection identity and `CI-09`'s to settle,
-   not a hang. ⭐ `CLIENT-06` has a same-version pair for 4.1.3 that needs no new
-   route, under its entry in [`clients.md`](clients.md).
-2. **`CI-09`'s residuals**: the `RunManifest` a record needs beside it, and an
-   artifact named `bundle` for the publisher to download. The assembler already
-   asks `validate_corpus` about the store it writes.
-3. **`OBS-10`**, which needs a second platform, so it follows the captures.
-4. **`CI-07`**, whose premise the port changed. A declared Windows row now closes
-   by its harness joining `bit-check`, not by gaining a PowerShell half, so the
-   entry's Approach and Prove need rewriting to that route before any row is
-   worked.
-5. **`CI-08`**, runner-default drift, including the orphaned-subprocess residual
-   under it, and `check-workflow` running a step as `sh -c` where GitHub runs
-   `bash -e`, which `CI-10`'s closure names.
-6. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
+1. **The second connector's refusal**, which is what stops every capture now.
+   Both contained runs on 2026-10-11 put `aria2-next` on the wire and then
+   `cpython-stdlib` refused: *two segments disagree about
+   tracker_http/peer_id*. A peer ID that differs per announce is `OBS-04`'s
+   per-connection identity, and `SCHEMA-04` already models a varying field; the
+   connector has to report it as varying rather than refuse. `CI-09` owns the
+   path. [`ci.md`](ci.md) under `CI-08` carries the two runs.
+2. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
+   `CLIENT-06` has a same-version pair for Transmission 4.1.3 that needs no new
+   route, under its entry in [`clients.md`](clients.md); its source build needs
+   libcurl's headers, which the runner image lacks, and longer install bounds.
+3. **`CI-09`'s residuals**: the `RunManifest` a record needs beside it, and an
+   artifact named `bundle` for the publisher to download.
+4. **`CI-08`**: `capture.yml` still contains its fixture captures by cutting the
+   host's routes, the shape that severed the runner agent in `capture-client`.
+   Its Linux job can move to `contained.sh`; its Windows job needs a different
+   containment, such as a firewall rule scoped to the capture's processes. Then
+   the orphaned-subprocess residual, and `check-workflow` running a step as
+   `sh -c` where GitHub runs `bash -e`.
+5. **`OBS-10`**, which needs a second platform, so it follows the captures.
+6. **`CI-07`**, whose premise `CI-10` changed: a declared Windows row closes by
+   its harness joining `bit-check`, so the entry's Approach and Prove need
+   rewriting to that route first.
+7. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
-7. The remaining client and engine breadth, then refinements.
+8. The remaining client and engine breadth, then refinements.
 
 ## Settled decisions
 
@@ -139,20 +144,18 @@ machine per job, so `--claim` passes, and `--egress` passes once the default
 route is deleted. Measured on 2026-09-08 with the guard's own route-table
 argument.
 
-## The local gate
+## The local gate and CI
 
-⛔ **Run `sh scripts/common/check-gate.sh` after the last edit.** A subset chosen
-by hand is not the same gate twice; `check-no-secrets` runs twice in it and only
-the second invocation carries the public rules.
+⭐ **What to run before a push, by what changed, and how long each takes, is
+the table at the top of [`../scripts/README.md`](../scripts/README.md).** Each row
+mirrors the CI job that would refuse the change.
 
-| fact | detail |
+| fact | state |
 | --- | --- |
-| measured 2026-10-11 | 40 checks, 39 passed, 0 failed, 1 skipped, exit 0, cold, on `5d54c5f` |
-| the one skip | `check-remote-items` against the real open items, which needs an authenticated `gh`. ⚠ Installing `gh` does not fix it on a session host. Both CI lanes run it, and `check-bitcheck` runs its logic here against a stub `gh`. |
-| tools | ⭐ `sh scripts/doctor/provision.sh` installs `pwsh`, `shellcheck` and `shfmt`, each verified against a pinned digest. Run it before touching a script. |
-| `go` | a gate dependency. Without it the ported rows skip, and both CI lanes run `--strict`, so an absent toolchain turns a lane red. |
-| not in the gate | `cargo clippy`, `cargo fmt --check`, the test suite, `gofmt` and `go vet`, `sh scripts/ci/check-workflow.sh`, and `check-bitcheck --harnesses`. Each is its own CI step. |
-| ⛔ while it runs | do not edit the tree: `tree-unchanged` compares before and after. |
+| the gate, measured 2026-10-11 | 40 checks, 39 passed, 0 failed, 1 skipped, exit 0 |
+| the one expected skip | `check-remote-items` against the real open items, which needs an authenticated `gh`; installing `gh` does not fix it on a session host. Both CI lanes run it |
+| CI on `main` | read back through `AGENTS.md` rule 8's route for the tip commit before trusting any recorded green |
+| `go` | a gate dependency; without it the ported rows skip, which `--strict` turns red on CI |
 
 ⚠ The defect classes this repository has shipped and caught, which every review
 should know before it starts, are in [`../docs/lessons.md`](../docs/lessons.md).

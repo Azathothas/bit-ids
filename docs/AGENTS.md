@@ -112,7 +112,7 @@ Run these in order.
 | observer or connector | `docs/architecture.md`, `docs/capture-methodology.md`, `TODO/observer.md`, the bit-cli reference sweep |
 | client acquisition/capture | `docs/client-matrix.md`, `docs/capture-host.md`, `docs/contributing-captures.md`, `TODO/acquisition.md`, `TODO/clients.md`, `SECURITY.md` |
 | library-backed targets | `docs/client-matrix.md`, `TODO/engines.md`, `TODO/acquisition.md` |
-| publishing or CI | `docs/publishing.md`, `TODO/publishing.md`, `TODO/ci.md`, `docs/security/remote-ops.md` |
+| publishing or CI | `docs/publishing.md`, `TODO/publishing.md`, `TODO/ci.md`, `docs/security/remote-ops.md`, and the push table at the top of `scripts/README.md` |
 | reference research | `docs/methodology/references.md`, `docs/methodology/experiments.md`, existing `docs/reference-sweeps/` files |
 | documentation | `docs/conventions/docs.md`, `docs/conventions/prose.md`, `TODO/documentation.md`, `docs/consuming.md` |
 | shell or cross-platform work | `docs/conventions/shell.md`, `scripts/README.md`, `docs/agent-tooling.md` |
@@ -136,22 +136,17 @@ line count and last heading as the receipt described in
   metadata and digests only.
 - Shell is the default orchestration language. Core parsers, validators,
   capture tooling, publishing logic and the consumer library are Rust. ⭐ **The
-  checking layer is Go**, in [`../tools/check/`](../tools/check/), and `CI-10`
-  owns the port. Python is used only where a documented constraint makes the
+  checking layer is Go**, in [`../tools/check/`](../tools/check/); `CI-10`
+  ported it and closed on 2026-10-11. Python is used only where a documented constraint makes the
   others unsuitable. ⛔ That permission is now a declaration rather than a
   judgement: a `.py` file carries `bit-ids:python-exception=<ENTRY>`, the entry
   has to be one `TODO/INDEX.md` really carries, and **that entry's own section**
   has to mention the file. `check-project` refuses all three ways.
-- ⛔ **Go is here to DELETE the twin layer, not to add a fourth language for its
-  own sake.** Every rule used to be a `.sh` and a hand-written `.ps1`, with
-  `check-twins` comparing them because two hand-written halves drift. One binary
-  that runs on both platforms removes that class rather than checking for it.
-  ⚠ So a new checking rule goes into `tools/check/`, and a new `.ps1` twin of an
-  existing check is work being added to a layer that is being removed.
-  ⛔ **A ported check refuses exactly what its shell half refused**, over the same
-  plants, with the same 0/1/2 vocabulary, and
-  `sh scripts/common/check-bitcheck.sh --compare` is what establishes that while
-  both halves still exist.
+- ⛔ **A new checking rule goes into `tools/check/`, never into a `.sh` and
+  `.ps1` pair.** Go replaced the twin layer because two hand-written halves
+  drift; no twin pair is left. A rule's cases are planted in
+  `scripts/common/check-bitcheck.sh`, with the 0/1/2 vocabulary: held, refused,
+  could not run.
 - Main docs describe current truth. Amend stale text in place. Put superseded
   reasoning, corrections, reviews and narrative history under `docs/history/`.
   Never append diary or changelog material to reference pages.

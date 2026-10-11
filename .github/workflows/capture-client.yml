@@ -75,14 +75,11 @@ jobs:
   linux:
     name: Linux client capture (${{ matrix.adapter }}, ${{ matrix.route }})
     runs-on: ubuntu-24.04
-    # ⛔ 35, BECAUSE THE BOUNDS BELOW HAVE TO FIT UNDER IT AND AT 25 THEY DID NOT.
-    # A source lane can spend 1380s in *Install the client* before its own last
-    # resort fires, and the steps ahead of it - checkout, the toolchain, the
-    # cargo build, the resolve - are a further three minutes or so. ⚠ A job
-    # cancelled by THIS number uploads nothing at all, measured on runs 21, 22
-    # and 23, so it must be the bound that never fires rather than the one that
-    # catches a hang. ⭐ The bounds inside the step are what end a hang, and they
-    # end it with the evidence still on the runner.
+    # ⛔ 35, BECAUSE THE BOUNDS BELOW HAVE TO FIT UNDER IT. A source lane can
+    # spend 1380s in *Install the client* before its own last resort fires, and
+    # the steps ahead of it are a further three minutes or so; a source build of
+    # `aria2-next` took 12.5 minutes end to end on 2026-10-11. ⚠ A job cancelled
+    # by THIS number uploads nothing, so it is the bound that should never fire.
     timeout-minutes: 35
     # ⛔ READ ONLY. A capture produces an artifact and never a commit.
     # ⚠ `checks: write` IS THE FLIGHT RECORDER'S AND NOTHING ELSE'S: it posts
@@ -175,8 +172,8 @@ jobs:
       # ⚠ The `package` route is privileged by construction and is NOT on that
       # path: `E-ACQ-01` wants two independent routes and `release` plus `source`
       # already are.
-      # ⛔ AND THE ARTIFACT IS CHOSEN BEFORE THE ROUTE IS CUT, WHICH IS WHY THIS
-      # STEP EXISTS AT ALL. Every `release` route in this tree refuses without
+      # ⛔ AND THE ARTIFACT IS CHOSEN HERE, WHILE THE NETWORK IS IN REACH, WHICH IS
+      # WHY THIS STEP EXISTS AT ALL. Every `release` route in this tree refuses without
       # `BIT_IDS_RELEASE_URL`, and until now nothing produced one: `resolve-stable`
       # orders versions and does not select an artifact. `resolve-release` reads
       # the repository, the version scheme and the asset pattern out of the
@@ -222,10 +219,8 @@ jobs:
       # about the newest version are two resolvers, which is what `E-ACQ-07`
       # compares and what makes this pair two routes.
       #
-      # ⚠ IT RUNS BEFORE THE ROUTE IS CUT, for the reason every fetch here does:
-      # a host with no default route cannot reach a repository, and restoring
-      # egress to find out which tag to build would undo the containment on the
-      # machine that exists to have it.
+      # ⚠ IT RUNS OUTSIDE THE CAPTURE'S NAMESPACE, for the reason every fetch here
+      # does: the namespace has no route, by design.
       - name: Resolve the source tag
         if: matrix.route == 'source'
         env:
@@ -242,147 +237,36 @@ jobs:
             >"$RUNNER_TEMP/source/tag.txt"
           cat "$RUNNER_TEMP/source/resolution.txt"
 
-      # ⛔ TEN DIAGNOSTIC PROBE STEPS STOOD HERE AND THEY ARE DELETED. `ACQ-06`.
-      # They were `CI-08`'s instrument for the install hang: named steps whose
-      # only purpose was that the API reports WHICH one a wedged job stopped in.
-      # Run 29 spent the last of what they could buy - all seven passed in FOUR
-      # seconds while the step composing them ran for thirty minutes - so every
-      # component was excluded on its own and no further probe of a component
-      # could reach the composition.
+      # ⭐ THE INSTALL, UNPRIVILEGED AND BOUNDED, WITH ITS OUTPUT IN A FILE.
+      # `install-step.sh` runs `install-client.sh` for this lane's route and
+      # writes everything beneath it to `install-step.log`, which this shell prints
+      # afterwards; nothing the product spawns can hold this step's output pipe,
+      # which would keep a finished step open. `check-step-bodies` runs this body.
       #
-      # ⛔ AND FOUR OF THEM MEASURED A PATH THIS TREE NO LONGER TAKES. They
-      # probed `sudo`, a `sudo -n cp` into `/usr/local/bin`, the claim guard
-      # under `sudo`, and the `setsid sudo -E timeout` launch shape. The install
-      # is rootless now, so those four described operations nothing performs, and
-      # one of them would have printed root's marker path over a host claimed by
-      # this user - a diagnostic answering confidently and wrongly.
-      #
-      # ⚠ `TODO/RULES.md` is why they go rather than stay: a hang is a dead end,
-      # not a subject. The route that avoids it is this one, and keeping the
-      # instruments of the dead end in the file is keeping the subject open.
-
-      # ⛔ THE WORK IS IN A FILE SO THE STEP'S OWN PROCESS CAN BE BOUNDED. That is
-      # the one place a bound has not been tried here, and every other place has
-      # been measured failing: `install-step.sh` says which and why.
-      #
-      # ⛔ AND NOTHING THE ROUTE SPAWNS INHERITS THIS STEP'S OUTPUT. A runner ends
-      # a `run:` step when the command has exited AND the step's output pipe has
-      # reached end of file, so a single process the product leaves behind holding
-      # that pipe keeps the step open with an exit code of 0 sitting in it.
-      # `scripts/ci/check-step-bodies.sh` runs this step's body and measures both
-      # halves of that.
-      #
-      # ⛔ THAT CLAIM WAS NARROWER THAN THE TRUTH UNTIL 2026-09-16, AND RUN 24 IS
-      # THE MEASUREMENT. `install-step.sh` redirected everything IT started, and
-      # then inherited the step's own pipe itself - so the guarantee stopped one
-      # level above where it was written. Run 24's install step was still open
-      # **twenty minutes** in, having passed BOTH its bounds: the privileged 780s
-      # at 03:03:45 and the outer 900s at 03:05:45. A bound that fires cannot end
-      # a step whose pipe is still held, which is this file's own sentence used
-      # against it.
-      #
-      # ⭐ SO THE WHOLE SUBTREE GETS A FILE. `install-step.sh` and everything
-      # beneath it write to `install-step.log`; this shell cats it afterwards.
-      # The step's pipe is then held by THIS shell and nothing else, so the step
-      # ends when this shell does, whatever the route left running.
+      # ⚠ THE BOUNDS ARE FOR A ROUTE THAT REALLY RUNS LONG, NOT FOR A HANG. Runs 3
+      # to 34 were read as this step hanging and most of what surrounds it was
+      # built for that reading. It never hung: the next step cut the host's route
+      # and the runner agent with it, measured on 2026-10-11 and recorded in
+      # `TODO/ci.md` under `CI-08`. The capture is contained in a namespace now.
       - name: Install the client
         env:
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
           ROUTE: ${{ matrix.route }}
-          # ⭐ THE INNER BOUND IS RAISED FOR A SOURCE BUILD AND ONLY FOR ONE.
-          # `install-client` bounds the adapter call at 420 seconds by default,
-          # and `aria2-next`'s source route was measured at 366 - fifty-four
-          # seconds of margin, which a slower runner spends. ⚠ 500 keeps it UNDER
-          # the step's own 540, so a build that overruns is refused by
-          # `install-client` with a message naming the timeout rather than killed
-          # by the outer bound with nothing to read.
-          # ⛔ Every other route keeps 420 exactly: the aria2 lanes are what that
-          # number was measured against, and this must not quietly move it.
-          # ⛔ 900 FOR A SOURCE BUILD, AND 500 WAS MEASURED TOO TIGHT. The first
-          # two-route capture put that step at **496 seconds** against a bound of
-          # 500: four seconds of margin, which is not a margin. ⚠ The runner is
-          # about 1.35x slower than the host this was sized on, where the same
-          # build took 366 - so a number measured locally is a lower bound on
-          # what a runner needs, never an estimate of it.
+          # ⚠ The route's own bound: 900 seconds for a source build, which was
+          # measured at 496 on a runner, and 420 for everything else.
           BIT_IDS_INSTALL_TIMEOUT: ${{ matrix.route == 'source' && '900' || '420' }}
-          # ⛔ THE STEP'S OWN BOUND, AND THE ARITHMETIC IS STATED BECAUSE IT DID
-          # NOT ADD UP BEFORE. ⚠ It was the PRIVILEGED bound until `ACQ-06`: the
-          # install ran under `sudo` and the bound had to live inside it, because
-          # a uid-1001 `timeout` cannot signal a root tree. The install runs as
-          # this uid now, so the bound and its target are the same user and the
-          # number is all that is left of that paragraph.
-          # `install-client` can spend its install bound AND
-          # two version bounds (60 each) AND three describe bounds (30 each)
-          # before it is done, which is 630 on a release lane and 1110 on a
-          # source one. ⚠ The outer bound below was 1080 for both, so a source
-          # lane's own inner bounds could sum ABOVE the bound meant to outlast
-          # them - the killing would then happen outside, with nothing to read,
-          # which is the failure mode every number here exists to avoid.
-          #
-          # ⭐ Each bound must outlast the one inside it: inner sum < this <
-          # the step's `timeout` < the job's `timeout-minutes`.
+          # ⚠ Each bound outlasts the one inside it: install-client's own bounds
+          # sum to 630 seconds on a release lane and 1110 on a source one, under
+          # this, under OUTER_TIMEOUT, under the step's `timeout-minutes`, under
+          # the job's.
           BIT_IDS_STEP_TIMEOUT: ${{ matrix.route == 'source' && '1260' || '780' }}
-          # ⛔ THE OUTER BOUND IS AN ENVIRONMENT VALUE AND NOT AN EXPRESSION IN
-          # THE `run:` LINE, because `check-step-bodies` LIFTS that line and runs
-          # it as shell. A `${{ }}` left in the body is not shell, so the harness
-          # that exists to prove this exact step ends would fail on every case
-          # over an unexpanded expression - measured on 2026-09-16, five cases at
-          # once, with the plant reporting *did not apply*.
+          # ⛔ AN ENVIRONMENT VALUE, NOT AN EXPRESSION IN `run:`, because
+          # `check-step-bodies` lifts that body and runs it as shell.
           OUTER_TIMEOUT: ${{ matrix.route == 'source' && '1380' || '900' }}
-        # ⛔ A STEP-LEVEL BOUND, AND IT IS NOT A TWELFTH SHELL BOUND. Every bound
-        # this entry has spent acts on the step's own process from inside the
-        # step; this one is the RUNNER's, and it differs in the one way that
-        # matters here: exceeding it marks the step FAILED rather than cancelling
-        # the job. ⭐ A failed step still runs the `if: always()` steps after it,
-        # so the install logs - and the `ps` timeline in them - reach an upload.
-        # A cancelled job uploads nothing, measured on runs 21 to 29.
-        #
-        # ⚠ IT HAS BEEN TRIED ONCE AND THE MEASUREMENT DOES NOT COVER THIS CASE.
-        # `timeout-minutes: 5` was measured on run 6 not to fire - on *Upload the
-        # install logs*, which is a `uses:` step whose work happens inside an
-        # action. This is a `run:` step, which the runner supervises directly, and
-        # that difference is why it is worth one measurement rather than none.
-        #
-        # ⚠ THE RELATION, as everywhere here: each bound outlasts the one inside
-        # it. Inner sum < BIT_IDS_STEP_TIMEOUT < OUTER_TIMEOUT < this < the job's
-        # `timeout-minutes`, which is 35. For a release lane that is
-        # 630 < 780 < 900 < 1020 < 2100 seconds.
         timeout-minutes: ${{ matrix.route == 'source' && 25 || 17 }}
-        # ⛔ THE BOUND IS ON THE STEP'S OWN PROCESS, WHICH IS THE ONE PLACE IT HAS
-        # NOT BEEN TRIED. `timeout` inside `install-client` ends its own child and
-        # cannot end a shell blocked around it; `timeout-minutes` is the runner's
-        # and was measured on run 6 not to end the step; and a watchdog loop in
-        # the step's own shell was measured on run 9 not to fire, its deadline
-        # passing by three minutes. This one needs nothing inside the step to be
-        # reachable.
-        #
-        # ⚠ 1080 SECONDS, UNDER THE JOB'S 25 MINUTES WITH ROOM FOR THE CAPTURE
-        # AND THE UPLOADS. What it buys is not a faster failure: it is a job that
-        # reaches its uploads at all, because a runner that is killed leaves no
-        # log and no artifact - measured on runs 7, 8 and 9.
-        # ⛔ IT WAS 540 AND A SOURCE BUILD DOES NOT FIT UNDER THAT. The first
-        # two-route capture spent 496 seconds in this step, so the inner bound
-        # had to grow past 540 and this one with it. ⚠ The relation is what
-        # matters: the inner bound refuses with a message naming the timeout, and
-        # this outer one exists only so a job that blows through it still reaches
-        # its uploads - so this must stay the LARGER of the two.
-        # ⚠ A capture takes about 50 seconds and the uploads about 1, so 1080
-        # leaves the 25-minute job roughly five minutes of slack.
-        # ⛔ IT WAS A FLAT 1080 AND THAT WAS SMALLER THAN THE SOURCE LANE'S OWN
-        # INNER BOUNDS. Per route now, each 120s above `BIT_IDS_STEP_TIMEOUT`, so
-        # the privileged bound inside `install-step.sh` is always the one that
-        # fires first and this one stays what it was designed to be: the last
-        # resort that gets the job to its uploads.
-        # ⚠ `${OUTER_TIMEOUT:-1080}` keeps this line runnable OUTSIDE a dispatch,
-        # which is what `check-step-bodies` does with it.
-        #
-        # ⛔ THE REDIRECTION IS THE POINT AND ITS ORDER MATTERS. `>file 2>&1`
-        # hands the whole subtree a regular file, so no descendant can hold this
-        # step's pipe. ⚠ `</dev/null` too: a descendant inheriting the step's
-        # stdin is the same class through the door nobody watches.
-        # ⚠ AND THE EXIT CODE IS CARRIED BY HAND, because the last command here
-        # is the `cat` and a step that reported the cat's status would call a
-        # refused install green.
+        # ⚠ `>file 2>&1 </dev/null` hands the whole subtree a regular file, and
+        # the exit code is carried by hand because the last command is the `cat`.
+        # `${OUTER_TIMEOUT:-1080}` keeps the line runnable outside a dispatch.
         run: |
           set -u
           timeout -k 30 "${OUTER_TIMEOUT:-1080}" sh scripts/acquisition/install-step.sh \

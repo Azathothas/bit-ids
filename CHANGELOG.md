@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-11T04:47:32Z
+
+- ⭐ **THE DOCS ARE AMENDED TO WHAT THE ROOT FIX MADE TRUE.** `capture-client.yml`'s
+  comments no longer explain its bounds as the cure for a hang; section 10 of
+  `docs/architecture.md` no longer says nothing has been installed or that
+  nothing assembles a store; every *before the route is cut* in a page about
+  `capture-client` says what containment is now.
+- ⭐ **`scripts/README.md` opens with what to run before a push, by what
+  changed**, each row naming the CI job it mirrors and how long both take.
+- ⛔ The record's work order now leads with what stops a capture today: the
+  second connector refusing a peer ID that differs between announces.
+- Record: [`docs/history/SESSION-2026-10-11-CONTAINMENT.md`](docs/history/SESSION-2026-10-11-CONTAINMENT.md).
+  No version bump and no deploy.
+
 ### 2026-10-11T03:53:05Z
 
 - ⛔ **THE CAPTURE HANG IS FOUND AND REMOVED, AND IT WAS NEVER A HANG.** A

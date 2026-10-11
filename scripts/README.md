@@ -3,6 +3,30 @@
 Project scripts resolve the repository from their own location and may be run
 from any working directory.
 
+## ⭐ What to run before a push, by what changed
+
+Each row is what the CI job that would refuse the change runs, so a green local
+run is the same verdict CI will give. Durations were measured on 2026-10-11 on a
+four-processor session host, cold, and on run 179 for CI.
+
+| what changed | run locally | local time | the CI job that runs it |
+| --- | --- | --- | --- |
+| anything | `sh scripts/doctor/provision.sh` once per fresh host, then `sh scripts/common/check-gate.sh` | about 3 minutes | *Linux gate*, *Repository gate*, about 3 minutes of its 5.8 |
+| Rust | `cargo fmt --all -- --check`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `cargo test --workspace --locked --all-targets` | under a minute warm | *Linux gate* and *Windows gate* |
+| `tools/check/` | `gofmt -l tools/check`, `go vet ./...` from `tools/check`, `sh scripts/common/check-bitcheck.sh --harnesses` | about a minute | *Linux gate*: *Go formatting and vet*, *Checking harnesses* |
+| a shell script | `shellcheck` and `shfmt -d -i 2 -ci` over it, then the gate | seconds, then 3 minutes | *Shell syntax and style* |
+| `.github/workflows/` | `sh scripts/ci/check-workflow.sh`, unsharded, after the gate | about 30 minutes | *Workflow acceptance*, four shards of 12 to 16 minutes |
+
+⛔ **Do not edit the tree or `git add` while the gate or `check-workflow` runs.**
+Both copy and compare the working tree, and an edit mid-run fails a row with a
+message naming a check rather than the edit.
+
+⚠ **The one skip the gate prints on a session host is expected:**
+`check-remote-items` needs an authenticated `gh`, and both CI lanes run it.
+Any other skip is a missing tool, and `--strict` makes it a failure on CI.
+
+## The directories
+
 - [`doctor/`](doctor/README.md) reports host capabilities without changing the
   host. ⛔ One file there is the exception and says so:
   [`doctor/provision.sh`](doctor/provision.sh) installs the three tools the gate
@@ -16,7 +40,7 @@ from any working directory.
   second reading of the register. ⭐ It was `acquisition/check-cache.sh` and a
   PowerShell twin until 2026-09-29, the first HARNESS to leave the twin layer.
 - [`acquisition/resolve-release.sh`](acquisition/resolve-release.sh) decides
-  which artifact a `release` route will fetch, before the route is cut. ⛔ It
+  which artifact a `release` route will fetch, while the network is in reach. ⛔ It
   carries no per-target knowledge: the repository, the version scheme and the
   asset pattern come out of the adapter's own `describe`, so a workflow driving
   it needs no case over which product it is running.

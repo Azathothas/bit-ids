@@ -7,11 +7,10 @@ and why it is not the record. The work order is
 
 | | |
 | --- | --- |
-| the task | Reconcile the record and the docs with the tree after the 2026-09-29 session ended without running its ending, then take the work order in sequence. |
-| started | 2026-10-11T01:24:45Z, on `5d54c5f`, which CI run 177 read back green through rule 8's route. |
-| the resume point | land the namespace containment on `main` and prove it with a dispatch from there; then `capture.yml` the same way. |
-| in flight | the capture-hang root fix: `contained.sh`, `flight-recorder.sh`, `capture-client.yml`, `check-workflow.sh`, and the record. Diagnostic runs live on the `claude/` branch only. |
-| the state of the tree | gate 40 checks, 39 passed, 1 skipped, on `ad5126a` before its push. |
+| the task | Take the work order in `TODO/PROGRESS.md` in sequence. |
+| the resume point | the work order's first item: the second connector's refusal over a varying peer ID. |
+| in flight | nothing. The 2026-10-11 session ended at a clean state; [`SESSION-2026-10-11-CONTAINMENT.md`](SESSION-2026-10-11-CONTAINMENT.md) is its record. |
+| the state of the tree | clean, gate green, and both branches at one commit when this was written. Read CI back for the tip before trusting that. |
 
 ## Starting, on this host
 
@@ -20,8 +19,12 @@ and why it is not the record. The work order is
   7, the operator's identity per rule 11 read from
   `git log --format='%an <%ae>' | sort -u`, and `git fetch --unshallow`.
 - ⭐ `sh scripts/doctor/provision.sh` installs `pwsh`, `shellcheck` and `shfmt`.
-  `go` is a gate dependency; without it the ported rows skip.
-- ⛔ The session host is `root` and a runner is uid 1001. Drive anything that
+  `go` is a gate dependency.
+- ⭐ What to run before a push, by what changed, is the table at the top of
+  [`../../scripts/README.md`](../../scripts/README.md).
+- ⭐ A capture dispatch is debugged from off the host: the flight recorder's
+  check run on the commit shows the host's state while the job runs.
+- ⚠ The session host is `root` and a runner is uid 1001. Drive anything that
   uses `sudo` as an unprivileged user before believing a local pass.
 
 ## The paste
