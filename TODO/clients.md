@@ -954,6 +954,33 @@ upstream 4.1.3, so a `["package","release"]` dispatch of this adapter is two
 hosts that acquire two different versions - which `AGENTS.md` rule 5 forbids
 resolving by backfilling. The pair to attempt first is `CLIENT-05`'s.
 
+### ⭐ A same-version pair exists for 4.1.3, and it needs no new route. 2026-10-11
+
+⛔ **The package route cannot be one half.** Ubuntu 24.04 ships 4.0.5, so the
+pair has to come from somewhere that carries 4.1.3. Four were read, through the
+routes `AGENTS.md` rules 8 and 9 name:
+
+| candidate | what it carries for this target | why it is or is not a half |
+| --- | --- | --- |
+| the `release` asset, `transmission-4.1.3.tar.xz` | the source tarball, digest `ce7d2d8b…02617da` in the listing, matched by `sha256sum` here | ⭐ a half: it builds, see below |
+| the repository's `4.1.3` tag | the same source through `git` | ⭐ a half, on the model `aria2-next` already measured: a different resolver (refs, not the release listing) and a different delivery (a clone, not an asset) |
+| Homebrew, `transmission-cli` | 4.1.3, with an `x86_64_linux` bottle | ⚠ preinstalled on the runner image but not on `PATH`; a `package`-kind route that needs no root. Not taken first, because it would be a third packaging this project has not modelled |
+| Flathub, `com.transmissionbt.Transmission` | 4.1.3 | ⚠ the GTK client, and `flatpak` is not on the runner image |
+
+⭐ **The tarball builds with one dependency the runner image lacks.** Measured on
+the session host on 2026-10-11: `cmake -G Ninja` with GTK, Qt, tests and the CLI
+off and the daemon and utilities on refuses only for want of libcurl's headers;
+with `libcurl4-openssl-dev` added it built in **695 seconds** on four processors
+and the daemon answered `transmission-daemon 4.1.3 (838877323f)`. ⚠ The runner
+image's own package list names `libssl-dev` and `curl` and no libcurl
+development package, read from `actions/runner-images` on the same day, so a
+build lane installs that one package first. ⚠ 695 seconds here is a lower bound
+on a runner, which `CLIENT-14` measured at about 1.35 times slower, so the
+source lane's 900-second install bound would not hold it.
+
+⛔ **And none of it runs until a capture host finishes an install.** That is
+`capture-client`'s dead end, not this entry's, and the work order carries it.
+
 ## CLIENT-07: Deluge capture adapter
 
 Source: operator scope and upstream project

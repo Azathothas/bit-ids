@@ -5,6 +5,24 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-11T03:07:36Z
+
+- ⭐ **`CI-10` IS CLOSED.** CI run 179 read both new steps back green on a runner,
+  and its four acceptance shards took 12.3 to 15.9 minutes under the 20-minute
+  bound that was lowered from 45. No `IN_PROGRESS` entry is left.
+- ⛔ **`capture-client` run 33 wedged in *Install the client* on both lanes**,
+  twenty-five days after run 32 did, past its job's 35-minute bound with no
+  artifact. ⭐ `capture-client.yml` takes a `runner` input, a choice of
+  `ubuntu-24.04` or `ubuntu-22.04`, which is the route absolute 16 asks for
+  rather than another bound.
+- ⭐ **`CLIENT-06` has a same-version pair for Transmission 4.1.3**: its release
+  tarball, which built here in 695 seconds with libcurl's headers added, and its
+  tag, on the model `aria2-next` measured.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`;
+  [`TODO/acquisition.md`](TODO/acquisition.md), `ACQ-06`;
+  [`TODO/clients.md`](TODO/clients.md), `CLIENT-06`. No version bump and no
+  deploy.
+
 ### 2026-10-11T02:15:39Z
 
 - ⭐ **THE GO MODULE IS FORMATTED AND VETTED IN CI, AND THE HARNESS CASES RUN.**

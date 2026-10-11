@@ -56,6 +56,23 @@ on:
         required: true
         default: "51413"
         type: string
+      # ⛔ A SECOND HOST IMAGE, BECAUSE THE FIRST ONE IS A DEAD END. *Install the
+      # client* wedged on `ubuntu-24.04` in run 32 with no privilege left in it
+      # and again in run 33 on 2026-10-11, twenty-five days and several image
+      # updates later, on a release lane that takes seconds when it works.
+      # `TODO/RULES.md`: a hang is not diagnosed, it is routed around, and the
+      # host image is the one variable the recorded readings left standing that
+      # changing costs nothing.
+      # ⚠ A CHOICE AND NOT A STRING, so a dispatch can name only an image this
+      # file lists: `runs-on` takes the value verbatim.
+      runner:
+        description: The hosted image every lane runs on
+        required: true
+        default: ubuntu-24.04
+        type: choice
+        options:
+          - ubuntu-24.04
+          - ubuntu-22.04
 
 permissions:
   contents: read
@@ -75,8 +92,8 @@ env:
 
 jobs:
   linux:
-    name: Linux client capture (${{ matrix.adapter }}, ${{ matrix.route }})
-    runs-on: ubuntu-24.04
+    name: Linux client capture (${{ matrix.adapter }}, ${{ matrix.route }}, ${{ inputs.runner }})
+    runs-on: ${{ inputs.runner }}
     # ⛔ 35, BECAUSE THE BOUNDS BELOW HAVE TO FIT UNDER IT AND AT 25 THEY DID NOT.
     # A source lane can spend 1380s in *Install the client* before its own last
     # resort fires, and the steps ahead of it - checkout, the toolchain, the

@@ -2,16 +2,16 @@
 
 Total: 66
 Open: 21
-In progress: 1
+In progress: 0
 Blocked: 0
-Done: 44
+Done: 45
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 25 | 25 |
-| P1 | 21 | 1 | 0 | 18 | 40 |
+| P1 | 21 | 0 | 0 | 19 | 40 |
 | P2 | 0 | 0 | 0 | 1 | 1 |
-| Total | 21 | 1 | 0 | 44 | 66 |
+| Total | 21 | 0 | 0 | 45 | 66 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -78,7 +78,7 @@ Done: 44
 | CI-07 | P1 | L | OPEN | PowerShell halves for the declared gate rows |
 | CI-08 | P1 | L | OPEN | Runner-default drift, swept rather than waited for |
 | CI-09 | P1 | L | OPEN | The capture-to-publisher path, end to end |
-| CI-10 | P1 | XL | IN_PROGRESS | Every checking script in Go, and CI across multiple runners |
+| CI-10 | P1 | XL | DONE | Every checking script in Go, and CI across multiple runners |
 | DOC-01 | P1 | M | DONE | Public data and library documentation |
 | DOC-02 | P2 | M | DONE | Contributor capture-run handbook |
 

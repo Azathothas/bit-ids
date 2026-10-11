@@ -1021,6 +1021,12 @@ reading**: an ellipsis outside this project's five markers, a `A && B || C` that
   tally is far past it. Do not diagnose run 32, do not instrument it, and do not
   add another bound. What is recorded is the measurement and nothing inferred
   from it.
+  ⛔ **RUN 33 REPEATED IT ON 2026-10-11**, on `8d6ed5e`, twenty-five days and
+  several runner-image updates later, with the workflow's default inputs: both
+  `aria2-next` lanes entered *Install the client* at 02:17:58 and were still in
+  it at 02:30, where a release lane takes seconds. ⭐ The route taken in answer is
+  a host image rather than an instrument: `capture-client.yml` takes a `runner`
+  input, a choice of `ubuntu-24.04` or `ubuntu-22.04`.
 - ⚠ **`check-rootless` is a declared `n/a` on the Windows lane**, and its reason
   is a platform fact rather than a missing twin: Windows has no `sudo`, no uid to
   drop to and no `su`, so the comparison the harness rests on has nothing to

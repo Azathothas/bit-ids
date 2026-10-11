@@ -3,9 +3,9 @@
 State instant: 2026-10-11
 Total: 66
 Open: 21
-In progress: 1
+In progress: 0
 Blocked: 0
-Done: 44
+Done: 45
 
 ⚠ Those five counts are compared against [`INDEX.md`](INDEX.md) by
 `check-project` on every gate. Nothing else in this header is checked, so no
@@ -37,7 +37,7 @@ for all of it.
 | publishing | `bit-ids`, `scripts/publishing/` | the assembled bundle, the append-only push, the six renderings including SQLite, and the access contract |
 | consuming | `bit-ids` | reading a publication back, verified, with no way to reach a network |
 | maintenance | `bit-ids`, `scripts/ci/` | what a new stable release creates, and what it must not create twice |
-| checking | `tools/check/` | ⭐ one Go binary, `bit-check`, that both gate lanes run. `bit-check --rows` lists what it carries. |
+| checking | `tools/check/` | ⭐ one Go binary, `bit-check`, that both gate lanes run, formatted, vetted and harness-tested on the Linux lane. `bit-check --rows` lists what it carries. `CI-10`. |
 
 ### What has been measured, and what has not
 
@@ -99,29 +99,27 @@ install step; do not diagnose it, instrument it, or add a fourteenth.
 
 ⛔ **Nothing here is blocked.** Take these in order.
 
-1. **`CI-10`**, the entry in progress. The port is done: no twin file pair is
-   left, and `bit-check --rows` lists the ported rules. ⭐ Both residuals are
-   written as of 2026-10-11: the Linux lane runs *Go formatting and vet* over
-   [`../tools/check/`](../tools/check/) and *Checking harnesses*, each with a
-   control and a plant in `check-workflow`. What closes the entry is a CI run
-   reading both steps back green, under the entry in [`ci.md`](ci.md).
-2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. ⛔ They do
-   not wait on a dispatch any more: run 32 answered it, and *Install the client*
-   wedges with no privilege in it. The work is a capture route that does not run
-   that step as it stands, which absolute 16 asks for and nothing has tried.
-3. **`CI-09`'s residuals**: the `RunManifest` a record needs beside it, and an
+1. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. ⛔ *Install
+   the client* wedges on `ubuntu-24.04` with no privilege in it: run 32, and run
+   33 on 2026-10-11. ⭐ The first route around it is a second host image:
+   `capture-client.yml` takes a `runner` input, and a dispatch on `ubuntu-22.04`
+   is what says whether an install finishes there. ⭐ `CLIENT-06` has a
+   same-version pair for 4.1.3 that needs no new route, under its entry in
+   [`clients.md`](clients.md).
+2. **`CI-09`'s residuals**: the `RunManifest` a record needs beside it, and an
    artifact named `bundle` for the publisher to download. The assembler already
    asks `validate_corpus` about the store it writes.
-4. **`OBS-10`**, which needs a second platform, so it follows the captures.
-5. **`CI-07`**, whose premise the port changed. A declared Windows row now closes
+3. **`OBS-10`**, which needs a second platform, so it follows the captures.
+4. **`CI-07`**, whose premise the port changed. A declared Windows row now closes
    by its harness joining `bit-check`, not by gaining a PowerShell half, so the
    entry's Approach and Prove need rewriting to that route before any row is
    worked.
-6. **`CI-08`**, runner-default drift, including the orphaned-subprocess residual
-   under it.
-7. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
+5. **`CI-08`**, runner-default drift, including the orphaned-subprocess residual
+   under it, and `check-workflow` running a step as `sh -c` where GitHub runs
+   `bash -e`, which `CI-10`'s closure names.
+6. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
-8. The remaining client and engine breadth, then refinements.
+7. The remaining client and engine breadth, then refinements.
 
 ## Settled decisions
 

@@ -3469,7 +3469,7 @@ the class. ⚠ Two open entries still carry it in their `Prove`, `OBS-10` and
 
 Source: operator direction on 2026-09-10, after a job was cancelled at its bound
 three times in one session
-Priority: P1 | Effort: XL | Status: IN_PROGRESS
+Priority: P1 | Effort: XL | Status: DONE
 
 Problem: The checking layer is shell and PowerShell, and it is slow in a way no
 single row explains. `check-workflow.sh` is ONE job that runs the whole gate
@@ -4651,4 +4651,21 @@ and every shard pays it. Run 177's shards took 11.7 to 14.1 minutes against a
 
 ⛔ **What closes the entry is a CI run on a runner** reading both steps back
 green, which this table cannot be.
+
+### Closure evidence, 2026-10-11
+
+⭐ **CI run 179 on `8d6ed5e`, read back through rule 8's route: all six jobs
+`success`.** Each clause of the Prove, against what was measured:
+
+| Prove clause | measured |
+| --- | --- |
+| the Go harness refuses every defect its shell predecessor refused, case for case | every pair compared by `check-bitcheck --compare` against both halves before deletion; no twin file pair is left, the last two deleted on 2026-09-29 |
+| `--shard i/N` partitions the units exactly | `check-shards`, 14 cases, every N from 1 to 6, run in each of run 179's four shards |
+| the matrix completes inside a bound that was not raised | run 179's four shards took 12.3, 14.6, 14.8 and 15.9 minutes under 20, lowered from 45 |
+| the residuals | *Go formatting and vet* 2 seconds and *Checking harnesses* 50 seconds in run 179's Linux gate, which took 5.8 minutes |
+
+⚠ **What is left belongs to other entries.** The `sh -c` and `bash -e` split in
+*Shell syntax and style* is `CI-08`'s shape, a default inherited rather than
+stated. The class-A Windows rows are `CI-07`'s, whose route this entry changed:
+a row closes by its harness joining `bit-check`.
 
