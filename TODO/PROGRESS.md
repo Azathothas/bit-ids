@@ -55,7 +55,7 @@ were written by hand from published BEPs.
 | has a record been produced publishable? | only over a stub target written to announce twice and accept two connections, on 2026-09-15. That proves the path, not a product. `CI-09`. |
 | does a stock `aria2-next` cooperate? | not yet. Runs 18 and 19 opened two peer connections and it answered one; the store's comparable capture conflicts, so `E-PUB-03` refuses the pair. `OBS-04` carries the next hypothesis, the source address. |
 | whose identity does `aria2-next` present? | qBittorrent 5.2.3's: user agent `qBittorrent/5.2.3`, peer ID prefix `-qB5230-`, corroborated by the `cpython-stdlib` connector. `CLIENT-14`. |
-| does a client install finish on a runner? | ⛔ **not reliably, and it is a dead end.** *Install the client* wedged in run 32 after `ACQ-06` removed every privilege from it, and in nine runs before that on byte-identical code. `TODO/RULES.md`; `ACQ-06` and `CI-08` carry the measurements. |
+| does a client install finish on a runner? | ⭐ **yes, and it always did.** The "hang" of runs 3 to 34 was *Cut the route* severing the runner agent from GitHub, measured on 2026-10-11 by a flight recorder posting off the host. The capture now runs in a network namespace and a run completed in two minutes. `CI-08`. |
 | how many connectors does the capture path declare? | two: the Rust observer and `scripts/capture/connectors/cpython-stdlib.py`. ⚠ The second is two readings of one capture's bytes, not a second observation of the wire. `OBS-07`. |
 | has the publisher run against this repository's remote? | no, and it must not until a measured record exists. It cannot run at all yet: `publish-data.yml` downloads an artifact named `bundle` and no workflow uploads one. |
 | has a published URL been fetched? | no. `docs/publishing.md` carries the forms and says they are unexercised. |
@@ -91,21 +91,21 @@ measurement.
 ⛔ **Nothing in the `bit-ids` crate can reach a network.** Retrieval is a trait
 the caller implements.
 
-⛔ **A hang is a dead end, not a subject.** `TODO/RULES.md` owns the rule and
-`docs/AGENTS.md` absolute 16 restates it. Thirteen bounds failed on the capture
-install step; do not diagnose it, instrument it, or add a fourteenth.
+⛔ **A hang is measured from off the host before it is bounded.** `TODO/RULES.md`
+owns the rule and `docs/AGENTS.md` absolute 16 restates it.
+`scripts/ci/flight-recorder.sh` is the instrument.
 
 ## Work order
 
 ⛔ **Nothing here is blocked.** Take these in order.
 
-1. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. ⛔ *Install
-   the client* wedges on `ubuntu-24.04` with no privilege in it: run 32, and run
-   33 on 2026-10-11. ⭐ The first route around it is a second host image:
-   `capture-client.yml` takes a `runner` input, and a dispatch on `ubuntu-22.04`
-   is what says whether an install finishes there. ⭐ `CLIENT-06` has a
-   same-version pair for 4.1.3 that needs no new route, under its entry in
-   [`clients.md`](clients.md).
+1. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. ⭐ The
+   capture path works again: the route cut is gone and the capture runs in a
+   network namespace. ⚠ The first contained run reached the wire and was then
+   refused by the second connector, because two announces carried different
+   peer IDs; that is `OBS-04`'s per-connection identity and `CI-09`'s to settle,
+   not a hang. ⭐ `CLIENT-06` has a same-version pair for 4.1.3 that needs no new
+   route, under its entry in [`clients.md`](clients.md).
 2. **`CI-09`'s residuals**: the `RunManifest` a record needs beside it, and an
    artifact named `bundle` for the publisher to download. The assembler already
    asks `validate_corpus` about the store it writes.

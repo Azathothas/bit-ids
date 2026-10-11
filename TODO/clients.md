@@ -978,8 +978,8 @@ build lane installs that one package first. ⚠ 695 seconds here is a lower boun
 on a runner, which `CLIENT-14` measured at about 1.35 times slower, so the
 source lane's 900-second install bound would not hold it.
 
-⛔ **And none of it runs until a capture host finishes an install.** That is
-`capture-client`'s dead end, not this entry's, and the work order carries it.
+⭐ **And a capture host finishes an install.** The recorded hang was the route
+cut severing the runner agent, measured on 2026-10-11; `CI-08` carries it.
 
 ## CLIENT-07: Deluge capture adapter
 

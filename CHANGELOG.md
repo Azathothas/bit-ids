@@ -5,6 +5,29 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-11T03:53:05Z
+
+- ⛔ **THE CAPTURE HANG IS FOUND AND REMOVED, AND IT WAS NEVER A HANG.** A
+  flight recorder posting the host's state off the runner showed *Install the
+  client* finishing in seconds and the host losing contact the moment the next
+  step cut its default route, which the runner agent talks to GitHub over.
+  Runs 3 to 34, thirteen bounds, and every reading recorded under `CI-08` were
+  aimed at a step that had already ended.
+- ⭐ `scripts/capture/contained.sh` runs the egress guard and the capture in a
+  network namespace holding loopback alone; `capture-client.yml` no longer
+  touches the host's routes, and a run completed in two minutes with its log
+  and its install artifact. `check-workflow` refuses a capture job that neither
+  cuts a route nor runs through the wrapper.
+- ⭐ `scripts/ci/flight-recorder.sh` posts blocked tasks with their kernel
+  stacks, memory, disk, the kernel ring buffer and the newest logs to a check
+  run from the job's first step.
+- ⛔ **The rule that forbade looking is rewritten**: `TODO/RULES.md` and
+  `docs/AGENTS.md` absolute 16 now say a hang is measured from off the host
+  before it is bounded. The old wording is in
+  `docs/history/HANG-2026-10-11.md`. The `runner` input added earlier today on
+  the wrong premise is removed.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-08`. No version bump and no deploy.
+
 ### 2026-10-11T03:07:36Z
 
 - ⭐ **`CI-10` IS CLOSED.** CI run 179 read both new steps back green on a runner,

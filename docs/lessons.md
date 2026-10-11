@@ -13,6 +13,16 @@ in [`conventions/forbidden-patterns.md`](conventions/forbidden-patterns.md).
 
 ## Before a review starts
 
+⛔ **A step that never ends may have ended.** GitHub shows the last step a runner
+reported, and a host that loses contact reports nothing more. Runs 3 to 34 of
+`capture-client` were read as *Install the client* hanging; it had finished in
+seconds, and the next step had cut the route the runner agent talks over. ⭐ Get
+the host's state off the machine while the job runs before believing which step
+is stuck: `scripts/ci/flight-recorder.sh`.
+
+⛔ **A bound that never fires is evidence about the bound's target.** Thirteen
+bounds on one step all failed the same way because the step was not running.
+
 ⛔ **A guard whose SCOPE is wider or narrower than the thing it guards.** Three
 instances in one day, all in the capture path. Ask what actually ships.
 

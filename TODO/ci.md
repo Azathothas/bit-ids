@@ -2782,6 +2782,52 @@ and the resolver are all exonerated on that machine by its own step timings.
 `AGENTS.md` makes it absolute 16. ⚠ This paragraph is the record and not the
 start of a fifteenth attempt.
 
+#### ⭐ THE ROOT CAUSE, MEASURED 2026-10-11: THE ROUTE CUT, NOT THE INSTALL
+
+⛔ **Nothing in *Install the client* ever hung.** The operator directed the hang
+be fixed at its root, and the instrument that found it was the one this entry
+had never built: evidence that leaves the host while the job runs.
+`scripts/ci/flight-recorder.sh` posts blocked tasks with their kernel stacks,
+memory, disk, the kernel ring buffer and the newest log tails to a check run on
+the commit, from the job's first step onward.
+
+| run, on the diagnostic branch | what left the host |
+| --- | --- |
+| `1ec75f7`, 15-second posts | a healthy host at 03:30:50: 14 GB available, load 1.7, no blocked task, the API answering in 0.1 s. The install began at 03:30:54 and no post arrived after it |
+| `8a29cfb`, the install traced, 2-second posts | `install-client` exited 0 at 03:34:23, `aria2-next 2.8.6 through the release route (acquired=yes)`; posts stopped about three seconds later |
+| `16a146b`, a marker around each operation of `install-step.sh` | the watchdog `ps`, the loop's end, the `cat`, the descriptor read and `report-holders` all returned, the last at 03:40:22; posts stopped as the step ended and the next one, *Cut the route off this host*, ran |
+| `a4b6053`, the capture in a network namespace and no route cut | ⭐ the job completed in two minutes, every step reported, the job log exists and the install artifact uploaded |
+
+⭐ **So the mechanism is this.** *Cut the route* deletes the host's default
+routes, and the runner agent reaches GitHub over those routes. From that moment
+the job cannot report, GitHub keeps showing the last step it heard about - which
+was *Install the client*, because a step's completion is sent a moment after it
+ends - and on the images of 2026-09 onward the host never regained contact after
+*Restore the route*. A job that never reports again leaves no log blob, which is
+why the log endpoint answered `BlobNotFound`. ⛔ Every bound was aimed at a step
+that had already finished, so none could fire on anything.
+
+⚠ **It also explains every reading this entry refuted.** It is not the package,
+not privilege, not the image (run 34 on `ubuntu-22.04` behaved the same), not
+the vendor's endpoint, and it moved between steps on runs 6 and 7 because what
+GitHub displays is the last step reported before the cut, not the step running.
+⚠ What it does NOT yet explain is why runs 11 to 20 came back after their
+restore; the restore was never instrumented, and with the namespace there is
+nothing left to restore.
+
+⭐ **The fix is structural.** `scripts/capture/contained.sh` runs the egress
+guard and the capture in a network namespace that holds loopback alone, as the
+calling user; the host's routes are never touched. Driven on the session host
+as uid 1001: inside, `lo` only, an empty route table, the guard passing, an
+outbound request failing to resolve, and the command's exit code carried out;
+outside, the default route intact.
+
+⚠ **`capture.yml` still cuts the route**, on both platforms. It installs
+nothing and its last runs were green; it is the same fragile shape and is the
+next thing this entry should move. Windows has no network namespace, so its job
+needs a different containment, such as a firewall rule scoped to the capture's
+processes.
+
 #### ⛔ AND THE PROBES ARE DELETED, 2026-09-17, BECAUSE `ACQ-06` LANDED
 
 ⭐ **Ten diagnostic steps stood in `capture-client.yml` and they are gone.** Their

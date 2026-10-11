@@ -217,18 +217,24 @@ what happened without reading an expression.
 | build the observer | while the network still exists, and it is every binary the job runs rather than only the observer |
 | resolve the release artifact | ⛔ before the install, which needs its answer, and therefore before the route is cut. Only on the `release` lane: a package index needs no artifact chosen |
 | install the client | ⛔ also while the network still exists. `capture-client` refuses to install anything, and a package index is unreachable from a host with no default route. ⛔ The route's output goes to a **file** and is printed afterwards, so nothing the product spawns inherits the step's own output pipe: a runner ends a step when the command has gone *and* that pipe has reached end of file, and one process left holding it keeps the step open with a zero exit code in it |
-| cut the route off this host | both address families, routes saved first |
-| assert containment | the guard reads the kernel, not the step above |
-| capture | the build is handed the torrent and reads the tracker's address out of it |
-| restore the route | only to upload, after the measurement is on disk |
+| start the flight recorder | second, so every later step is visible from off the host: blocked tasks, memory, disk, the kernel ring buffer and the newest logs, posted to a check run on the commit. Its posts stopping is the moment the host lost contact |
+| assert containment | ⛔ inside a network namespace that holds loopback alone, through [`../scripts/capture/contained.sh`](../scripts/capture/contained.sh); the guard reads the namespace's own route table |
+| capture | in that same kind of namespace, so the observer and the build reach each other over loopback and nothing else |
 | upload the evidence bundle | the bundle and the install record together, `if-no-files-found: error` |
-| upload the install logs | ⛔ last, and `if: always()`. It sat between the install and the route cut for four dispatches on the reasoning that a job which never reached the capture would upload nothing - and an `always()` step at the end runs after a failed step too, which run 7 measured: a lane whose install refused still uploaded its logs from here. ⚠ What the early position cost was every aria2 capture, to a hang `CI-08` owns |
+| upload the install logs | last, and `if: always()`, so a lane whose install refused still uploads its logs |
 
-⛔ **Every upload is after the restore, and that is a rule rather than a
-habit.** Between *Cut the route* and *Restore the route* the host has no way off
-itself, so an upload placed there cannot reach GitHub at all.
-[`../scripts/ci/check-workflow.sh`](../scripts/ci/check-workflow.sh) asserts it
-for both uploads, because the install logs have already moved once.
+⛔ **The capture is contained, not the host, and the reason is measured.** This
+workflow used to delete the host's default routes before the capture and put
+them back after. The runner agent reaches GitHub over those routes, so from the
+cut onward the job could not report, and on the runner images of 2026-09 onward
+it never regained contact: runs 21 to 34 each showed *Install the client*
+running until cancelled, with no log and no artifact, over a step that had
+finished in seconds. `TODO/ci.md` under `CI-08` carries the runs that showed it.
+[`../scripts/ci/check-workflow.sh`](../scripts/ci/check-workflow.sh) refuses a
+job that neither cuts a route nor runs its guard and capture through
+`contained.sh`. ⚠ [`../.github/workflows/capture.yml`](../.github/workflows/capture.yml)
+still cuts the route, and the same rule holds it to building before the cut and
+uploading after the restore.
 
 ⛔ **The evidence upload is fatal and the install-logs upload is not, and the
 asymmetry is enforced.** A capture that measured a build and uploaded nothing

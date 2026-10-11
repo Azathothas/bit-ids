@@ -56,33 +56,14 @@ on:
         required: true
         default: "51413"
         type: string
-      # ⛔ A SECOND HOST IMAGE, BECAUSE THE FIRST ONE IS A DEAD END. *Install the
-      # client* wedged on `ubuntu-24.04` in run 32 with no privilege left in it
-      # and again in run 33 on 2026-10-11, twenty-five days and several image
-      # updates later, on a release lane that takes seconds when it works.
-      # `TODO/RULES.md`: a hang is not diagnosed, it is routed around, and the
-      # host image is the one variable the recorded readings left standing that
-      # changing costs nothing.
-      # ⚠ A CHOICE AND NOT A STRING, so a dispatch can name only an image this
-      # file lists: `runs-on` takes the value verbatim.
-      runner:
-        description: The hosted image every lane runs on
-        required: true
-        default: ubuntu-24.04
-        type: choice
-        options:
-          - ubuntu-24.04
-          - ubuntu-22.04
 
 permissions:
   contents: read
 
-# ⛔ NEVER CANCELLED IN FLIGHT. Between *Cut the route* and *Restore the route*
-# these hosts have no way off themselves, and a cancellation in that window
-# leaves the runner unable to report, the evidence unuploaded and the marker
-# written. ⚠ A separate group from capture.yml's, because these are different
-# hosts running a different experiment and queueing one behind the other would
-# serialise two things that never share a machine.
+# ⛔ NEVER CANCELLED IN FLIGHT. A capture cancelled mid-run leaves the evidence
+# unuploaded and the claim marker written. ⚠ A separate group from capture.yml's,
+# because these are different hosts running a different experiment and queueing
+# one behind the other would serialise two things that never share a machine.
 concurrency:
   group: capture-client
   cancel-in-progress: false
@@ -92,8 +73,8 @@ env:
 
 jobs:
   linux:
-    name: Linux client capture (${{ matrix.adapter }}, ${{ matrix.route }}, ${{ inputs.runner }})
-    runs-on: ${{ inputs.runner }}
+    name: Linux client capture (${{ matrix.adapter }}, ${{ matrix.route }})
+    runs-on: ubuntu-24.04
     # ⛔ 35, BECAUSE THE BOUNDS BELOW HAVE TO FIT UNDER IT AND AT 25 THEY DID NOT.
     # A source lane can spend 1380s in *Install the client* before its own last
     # resort fires, and the steps ahead of it - checkout, the toolchain, the
@@ -104,8 +85,13 @@ jobs:
     # end it with the evidence still on the runner.
     timeout-minutes: 35
     # ⛔ READ ONLY. A capture produces an artifact and never a commit.
+    # ⚠ `checks: write` IS THE FLIGHT RECORDER'S AND NOTHING ELSE'S: it posts
+    # this host's state as a check run's output while the job runs, which is the
+    # only channel that leaves a host that never reaches its uploads. A token
+    # that can annotate a commit cannot change one.
     permissions:
       contents: read
+      checks: write
     strategy:
       # ⛔ ONE ADAPTER'S FAILURE MUST NOT CANCEL THE OTHERS. Each job is a
       # separate host running a separate product, and a matrix that stopped at
@@ -125,6 +111,24 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # ⛔ EVIDENCE THAT LEAVES THE HOST AS IT IS TAKEN. Runs 3 to 34 wedged in
+      # *Install the client* and left no artifact and no job log at all, so every
+      # instrument that wrote to this disk measured nothing. The recorder posts a
+      # snapshot - blocked tasks and their kernel stacks, memory, disk, the
+      # kernel ring buffer, the install logs' tails - to a check run every few
+      # seconds; if the posts stop, the host lost contact at that moment.
+      # ⚠ IT HOLDS NO PIPE OF THIS STEP. Every descriptor goes to a file, which
+      # is the defect class this workflow has already paid for.
+      - name: Start the flight recorder
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LABEL: ${{ matrix.adapter }}-${{ matrix.route }}
+        run: |
+          setsid sh scripts/ci/flight-recorder.sh "$LABEL" "$RUNNER_TEMP" \
+            >"$RUNNER_TEMP/flight-recorder.log" 2>&1 </dev/null &
+          sleep 5
+          cat "$RUNNER_TEMP/flight-recorder.log"
 
       # ⛔ FIRST, BEFORE ANYTHING ELSE WRITES TO THE HOST, and before anything is
       # installed. The claim refuses a host that already ran a capture, and a
@@ -388,22 +392,19 @@ jobs:
           exit "$rc"
         # ⚠ The body this replaced is in that file, unchanged in what it does.
 
-      # ⛔ BOTH ADDRESS FAMILIES. A host with IPv4 unplugged and IPv6 up still
-      # reaches the internet.
-      - name: Cut the route off this host
-        run: |
-          set -eu
-          ip route show default >"$RUNNER_TEMP/routes-v4"
-          ip -6 route show default >"$RUNNER_TEMP/routes-v6" 2>/dev/null || : >"$RUNNER_TEMP/routes-v6"
-          while ip route show default | grep -q .; do sudo ip route del default; done
-          while ip -6 route show default 2>/dev/null | grep -q .; do sudo ip -6 route del default; done
-          printf 'saved %s v4 and %s v6 default route(s)\n' \
-            "$(wc -l <"$RUNNER_TEMP/routes-v4")" "$(wc -l <"$RUNNER_TEMP/routes-v6")"
-
-      # ⛔ THE GUARD READS THE KERNEL RATHER THAN THE STEP ABOVE. The deletion is
-      # a command that was run; this is the routing table as it now stands.
+      # ⛔ THE CAPTURE IS CONTAINED, NOT THE HOST. This workflow used to delete
+      # the host's default routes here and put them back after the capture. The
+      # runner agent reaches GitHub over those same routes, so from the cut on the
+      # job could not report: on the images of 2026-09 onward it never came back,
+      # and runs 21 to 34 each showed *Install the client* running forever with
+      # no log and no artifact over a step that had finished in seconds. Measured
+      # on 2026-10-11 by `scripts/ci/flight-recorder.sh`, whose posts stopped the
+      # instant the route was cut and never resumed. ⭐ `contained.sh` runs the
+      # guard and the capture in a network namespace that holds loopback alone,
+      # so the guard reads the namespace's own empty route table and the agent
+      # never loses its link.
       - name: Assert containment
-        run: sh scripts/acquisition/assert-disposable.sh --egress
+        run: sh scripts/capture/contained.sh -- sh scripts/acquisition/assert-disposable.sh --egress
 
       # ⭐ AND HERE A PRODUCT THIS PROJECT DID NOT WRITE IS HANDED THE TORRENT.
       # It learns the tracker's address by reading the file, which is what a
@@ -416,7 +417,7 @@ jobs:
           PEER_PORT: ${{ inputs.peer_port }}
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
         run: |
-          sh scripts/capture/capture-client.sh \
+          sh scripts/capture/contained.sh -- sh scripts/capture/capture-client.sh \
             --run-id "$RUN_ID" \
             --out "$RUNNER_TEMP/capture" \
             --observer "$GITHUB_WORKSPACE/target/debug/examples/client-capture" \
@@ -425,46 +426,8 @@ jobs:
             --peer-port "$PEER_PORT" \
             --seconds "$SECONDS_TO_SERVE"
 
-      # ⚠ ONLY TO UPLOAD, AND ONLY AFTER THE MEASUREMENT IS FINISHED.
-      #
-      # ⭐ THE RESTORE IS VERIFIED BY THE SAME GUARD, INVERTED: a host that can
-      # reach the network again is one the egress guard REFUSES.
-      - name: Restore the route
-        run: |
-          set -eu
-          # ⛔ AN ADD THAT FAILS IS REPORTED AND DOES NOT END THE STEP. Under
-          # set -e the first refused `ip route add` would end this step, the
-          # upload would be skipped as a consequence, and a finished capture
-          # would be thrown away over a route.
-          while IFS= read -r route; do
-            [ -n "$route" ] || continue
-            # shellcheck disable=SC2086
-            sudo ip route add $route || echo "could not restore: $route" >&2
-          done <"$RUNNER_TEMP/routes-v4"
-          while IFS= read -r route; do
-            [ -n "$route" ] || continue
-            # shellcheck disable=SC2086
-            sudo ip -6 route add $route || echo "could not restore: $route" >&2
-          done <"$RUNNER_TEMP/routes-v6"
-          # ⛔ THE GUARD HAS THREE CODES AND THIS READS ALL THREE. ⚠ An `if`
-          # would fold 1 and 2 together and upload from a host nothing
-          # established was reachable.
-          sh scripts/acquisition/assert-disposable.sh --egress && egress=0 || egress=$?
-          if [ "$egress" = 0 ]; then
-            echo 'the default route was not restored; the upload cannot work' >&2
-            exit 1
-          fi
-          if [ "$egress" != 1 ]; then
-            echo "the egress guard could not run (exit $egress)" >&2
-            exit 1
-          fi
-          exit 0
-
-      # ⛔ if-no-files-found IS `error`. An upload that found nothing and exited
-      # 0 would leave a green capture run with no evidence anywhere.
-      #
-      # ⚠ The install record goes up beside the bundle, because `ACQ-03` compares
-      # what each route's installed build REPORTED and that answer lives there.
+      # ⚠ ONLY AFTER THE MEASUREMENT IS FINISHED. The host never lost its route,
+      # so nothing has to be restored first.
       - name: Upload the evidence bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -483,21 +446,9 @@ jobs:
       # of the job runs after a failed step too, so the early position bought
       # nothing that this one does not.
       #
-      # ⛔ WHAT IT COST WAS EVERY aria2 CAPTURE. That step has hung on every aria2
-      # job since run 3, *after* completing its upload: on run 6 the package
-      # lane's artifact was written one second in and the step had not returned
-      # seventeen minutes later. From here a hang costs the job's tail rather than
-      # the measurement, because the capture and the evidence upload have already
-      # happened.
-      #
-      # ⚠ A BOUND WAS TRIED AND IT DOES NOT FIRE. `timeout-minutes: 5` on this
-      # step was measured on run 6 against a step that ran seventeen minutes, so
-      # it is not kept: a bound that has been seen not to bound the one failure it
-      # was added for is decoration. `CI-08` owns the cause.
-      #
-      # ⛔ AND IT MUST COME AFTER *Restore the route*, like every other upload:
-      # between the cut and the restore this host has no way off itself, so an
-      # upload there could not reach GitHub at all.
+      # ⚠ The step that "hung" here on run 6 was the route cut reaching the
+      # runner agent, not this upload; the comment on *Assert containment* says
+      # what was measured.
       #
       # ⚠ if-no-files-found is `warn` rather than `error`: a job that failed
       # before the workdir existed has nothing to upload, and failing this step

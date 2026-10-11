@@ -79,5 +79,9 @@ session that ported the last four twin pairs into the Go binary and ended
 without running its ending. ⚠ It was reconstructed from the log and CI on
 2026-10-11, and it names what that session left stale.
 
+[`HANG-2026-10-11.md`](HANG-2026-10-11.md) is the capture hang of runs 3 to
+34, what was measured when it was finally looked at from off the host, and the
+rule that had forbidden looking, kept verbatim.
+
 [`PROGRESS-2026-09-29.md`](PROGRESS-2026-09-29.md) is the work record as it
 stood before it was rewritten to current truth on 2026-10-11, kept verbatim.

@@ -1016,7 +1016,7 @@ reading**: an ellipsis outside this project's five markers, a `A && B || C` that
   on the same machine, minutes before the install wedged. The rootless claim
   guard and the digest resolution are proved on a runner; the install is not.
 
-  ⛔ **AND THIS IS WHERE IT STOPS.** `TODO/RULES.md` and `AGENTS.md` absolute 16:
+  ⛔ **AND THIS IS WHERE IT STOPPED, under a rule rewritten on 2026-10-11**:
   a hang is a dead end, not a subject. Two bounds is the limit and this entry's
   tally is far past it. Do not diagnose run 32, do not instrument it, and do not
   add another bound. What is recorded is the measurement and nothing inferred
@@ -1024,9 +1024,13 @@ reading**: an ellipsis outside this project's five markers, a `A && B || C` that
   ⛔ **RUN 33 REPEATED IT ON 2026-10-11**, on `8d6ed5e`, twenty-five days and
   several runner-image updates later, with the workflow's default inputs: both
   `aria2-next` lanes entered *Install the client* at 02:17:58 and were still in
-  it at 02:30, where a release lane takes seconds. ⭐ The route taken in answer is
-  a host image rather than an instrument: `capture-client.yml` takes a `runner`
-  input, a choice of `ubuntu-24.04` or `ubuntu-22.04`.
+  it until GitHub cancelled the run at 02:57:25 with **zero artifacts**, where a
+  release lane takes seconds.
+  ⭐ **AND THE CAUSE WAS FOUND THE SAME DAY, AND IT WAS NOT THE INSTALL.** A
+  flight recorder posting off the host showed the install finishing in seconds
+  and the host losing contact when the next step cut its route. `TODO/ci.md`
+  under `CI-08` carries the runs; the capture now runs in a network namespace,
+  and the rule that forbade looking is rewritten.
 - ⚠ **`check-rootless` is a declared `n/a` on the Windows lane**, and its reason
   is a platform fact rather than a missing twin: Windows has no `sudo`, no uid to
   drop to and no `su`, so the comparison the harness rests on has nothing to

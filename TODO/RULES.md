@@ -10,30 +10,24 @@ evidence is recorded in that entry in place.
 A blocker does not close work. Record what was tried, the exact external fact
 that prevents progress, and the event that would unblock it.
 
-## ⛔ A hang is a dead end, not a subject
+## ⛔ A hang is measured from off the host before it is bounded
 
-⛔ **When something hangs, it is a DEAD END. Take a different route.** Do not
-diagnose it, do not instrument it, and above all do not add a bound: record the
-hang with its evidence, pick the alternative that does not depend on the hanging
-thing, and go.
+⛔ **When a step looks hung, get evidence OFF the machine while it is running,
+before adding any bound.** A host that stops reporting leaves no log and no
+artifact, so an instrument that writes to its own disk measures nothing.
+`scripts/ci/flight-recorder.sh` posts the host's state to a check run as it
+goes, and its silence is itself a measurement: the moment the posts stop is the
+moment the host lost contact.
 
-⚠ **This is a rule because it has been broken expensively.** `capture-client`
-runs 3 to 31 spent **thirteen bounds** and more than a dozen dispatches on one
-step that could not be ended - by `timeout` inside the script, by `timeout`
-around it, by a privileged `timeout`, by a watchdog, by the job's own
-`timeout-minutes`, and finally by GitHub's own step supervisor. Every one of them
-failed the same way, and a cancelled job uploads nothing, so most of those
-dispatches measured nothing at all.
+⚠ **This replaced a rule that said the opposite, and the cost is the reason.**
+`capture-client` runs 3 to 34 were read as a step that could not be ended,
+thirteen bounds were added, and diagnosing it was forbidden. Measured on
+2026-10-11: nothing was hung. The next step cut the host's default route, which
+severed the runner agent from GitHub. The old rule and the measurement are in
+[`../docs/history/HANG-2026-10-11.md`](../docs/history/HANG-2026-10-11.md).
 
-⛔ **Two bounds is the limit.** If a second bound does not end it, the thing is
-unboundable from where you are standing and no further bound will help. ⭐ The
-question then is never *why does it hang* but **what path avoids it entirely** -
-`ACQ-06` is what that question produced here, and it removes the privilege the
-hang needed rather than measuring it.
-
-⚠ **A hang that costs a dispatch costs more than it looks.** A run that is
-cancelled leaves no log and no artifact, so the next reading is built on the
-absence of evidence, which is where wrong causes get recorded as located ones.
+⛔ **Two bounds is still the limit.** A second bound that does not end a step is
+evidence that the step is not where the problem is.
 
 ⚠ **`Closure evidence` is a dated measurement of the tree at closure, not a
 claim about the tree now.** Counts in it go stale the moment the next entry

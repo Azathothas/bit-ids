@@ -734,12 +734,34 @@ if unit capture-fork; then
     }
 
     for job in $CAPJOBS; do
+      # ⛔ TWO SHAPES OF CONTAINMENT, AND A JOB IS HELD TO THE ONE IT USES. A job
+      # that cuts the host's route must build before the cut and upload after the
+      # restore. A job that contains the capture in a network namespace never
+      # cuts anything, so what must hold is that the guard and the capture both
+      # RUN inside it - a capture step that dropped `contained.sh` would measure a
+      # host with a route off it, and every ordering rule would still pass.
+      # ⚠ `capture-client.yml` is the second shape since 2026-10-11, because the
+      # first one severed the runner agent from GitHub: `TODO/ci.md`, `CI-08`.
       order_case "$job" "Claim the host" "Build the observer"
-      order_case "$job" "Build the observer" "Cut the route off this host"
-      order_case "$job" "Cut the route off this host" "Assert containment"
-      order_case "$job" "Assert containment" "Capture"
-      order_case "$job" "Capture" "Restore the route"
-      order_case "$job" "Restore the route" "Upload the evidence bundle"
+      if [ -n "$(step_index "$CAPWF" "$job" "Cut the route off this host")" ]; then
+        CAPCUT=1
+        order_case "$job" "Build the observer" "Cut the route off this host"
+        order_case "$job" "Cut the route off this host" "Assert containment"
+        order_case "$job" "Assert containment" "Capture"
+        order_case "$job" "Capture" "Restore the route"
+        order_case "$job" "Restore the route" "Upload the evidence bundle"
+      else
+        CAPCUT=0
+        order_case "$job" "Build the observer" "Assert containment"
+        order_case "$job" "Assert containment" "Capture"
+        order_case "$job" "Capture" "Upload the evidence bundle"
+        for _contained in "Assert containment" Capture; do
+          case "$(step_command "$CAPWF" "$job" "$_contained")" in
+            *"scripts/capture/contained.sh -- "*) pass "workflow  $CAPNAME $job: [$_contained] runs in its own network namespace" ;;
+            *) fail "workflow  $CAPNAME $job: [$_contained] cuts no route and does not run through contained.sh" ;;
+          esac
+        done
+      fi
 
       # ⛔ AN INSTALL IS TWO MORE ORDERING CONSTRAINTS AND BOTH ARE NEW. It must
       # come AFTER the claim, because a product installed on a host nothing
@@ -750,7 +772,11 @@ if unit capture-fork; then
       # here: capture.yml installs nothing and its own Prove says so.
       if [ -n "$(step_index "$CAPWF" "$job" "Install the client")" ]; then
         order_case "$job" "Claim the host" "Install the client"
-        order_case "$job" "Install the client" "Cut the route off this host"
+        if [ "$CAPCUT" = 1 ]; then
+          order_case "$job" "Install the client" "Cut the route off this host"
+        else
+          order_case "$job" "Install the client" "Assert containment"
+        fi
       fi
 
       # ⛔ AND CHOOSING THE ARTIFACT IS A THIRD. A `release` route refuses without
@@ -768,7 +794,7 @@ if unit capture-fork; then
       # logs sat BEFORE the cut for four dispatches, which worked because that is
       # also before the cut - and the rule a reader would infer from it, that the
       # step may go anywhere, is the one that breaks the day it moves.
-      if [ -n "$(step_index "$CAPWF" "$job" "Upload the install logs")" ]; then
+      if [ "$CAPCUT" = 1 ] && [ -n "$(step_index "$CAPWF" "$job" "Upload the install logs")" ]; then
         order_case "$job" "Restore the route" "Upload the install logs"
       fi
 
@@ -923,11 +949,24 @@ if unit static-readers; then
 
     swap_steps "Install the client" "Assert containment" "$MUTWF"
     _a=$(step_index "$MUTWF" linux "Install the client")
-    _b=$(step_index "$MUTWF" linux "Cut the route off this host")
+    _b=$(step_index "$MUTWF" linux "Assert containment")
     if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
-      pass "probe    the order reader sees an install moved after the route is cut"
+      pass "probe    the order reader sees an install moved after containment"
     else
-      fail "probe    the order reader missed an install moved after the route is cut"
+      fail "probe    the order reader missed an install moved after containment"
+    fi
+
+    # ⛔ AND THE NAMESPACE RULE IS REFUTED BY TAKING THE WRAPPER AWAY, which is
+    # the one edit that leaves every ordering rule above green.
+    sed 's|sh scripts/capture/contained.sh -- sh scripts/capture/capture-client.sh|sh scripts/capture/capture-client.sh|' \
+      "$CLIENTWF" >"$MUTWF"
+    if cmp -s "$CLIENTWF" "$MUTWF"; then
+      fail "probe    the namespace mutation did not change the workflow"
+    else
+      case "$(step_command "$MUTWF" linux Capture)" in
+        *"scripts/capture/contained.sh -- "*) fail "probe    the namespace reader still sees contained.sh after it was removed" ;;
+        *) pass "probe    the namespace reader sees a capture step that left its namespace" ;;
+      esac
     fi
 
     swap_steps "Claim the host" "Install the client" "$MUTWF"
@@ -957,19 +996,6 @@ if unit static-readers; then
       fail "probe    the resolve-order rule found a resolve step in the fixture workflow"
     else
       pass "probe    the resolve-order rule is silent on a workflow that resolves nothing"
-    fi
-
-    # ⚠ AND THE UPLOAD-AFTER-RESTORE RULE IS REFUTED ON ITS OWN. It was added
-    # because that step MOVED - it sat before the route was cut for four dispatches
-    # - so a reader that could not see it move is a rule that would not have caught
-    # the position it was written for.
-    swap_steps "Restore the route" "Upload the install logs" "$MUTWF"
-    _a=$(step_index "$MUTWF" linux "Restore the route")
-    _b=$(step_index "$MUTWF" linux "Upload the install logs")
-    if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
-      pass "probe    the order reader sees an install-logs upload moved before the restore"
-    else
-      fail "probe    the order reader missed an install-logs upload moved before the restore"
     fi
 
     if [ -n "$(step_index "$ROOT/.github/workflows/capture.yml" linux "Upload the install logs")" ]; then

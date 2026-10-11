@@ -73,12 +73,12 @@ The current state and work order live in
     spent minutes per query while rule 8's route answers the same question in
     one `curl`. The rule was read at the start of that session and not applied,
     which is what makes this an absolute rather than a preference.
-16. ⛔ **A hang is a dead end, not a subject.** Record it with its evidence and
-    take a route that does not depend on the hanging thing. Never add a third
-    bound: if two have not ended it, it is unboundable from where you stand.
-    Measured across `capture-client` runs 3 to 31 - thirteen bounds, a dozen
-    dispatches, and a cancelled job leaves no log and no artifact, so most of
-    them measured nothing. [`../TODO/RULES.md`](../TODO/RULES.md) carries it.
+16. ⛔ **A hang is measured from off the host before it is bounded.** Ship the
+    host's state off the machine while the step runs, then decide. Never add a
+    third bound: if two have not ended it, the problem is not where the bounds
+    are. Measured on 2026-10-11: the capture "hang" of runs 3 to 34 was the
+    route cut severing the runner agent, not a step that would not end.
+    [`../TODO/RULES.md`](../TODO/RULES.md) carries it.
 17. Do not run the session-end protocol until the operator says to wrap up or
     the current work order is genuinely exhausted. Genuinely exhausted means
     at least five L-sized entries, or equivalent effort, have been completed or
