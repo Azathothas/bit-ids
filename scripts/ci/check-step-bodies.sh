@@ -517,6 +517,30 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   run_body "$WORK/install.sh" default "$TREE"
   ended "sh       the install block ends over a product that leaks one process" 0
 
+  # ⛔ AND WHAT IT LEAKED IS ENDED. The leak is an inner `timeout` with a group
+  # of its own, which is the shape measured on 2026-09-16: a bound reaches its
+  # own group and never the one beneath. `install-step.sh` sweeps the install's
+  # session, which every group in it shares. `CI-08`.
+  stub_adapter "timeout 600 sleep 7123 >/dev/null 2>&1 &"
+  rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
+  run_body "$WORK/install.sh" default "$TREE"
+  ended "sh       the install block ends over a product that leaves a group behind" 0
+  # ⛔ MATCHED ON THE WHOLE ARGUMENT VECTOR, never `pgrep -f`, which matches any
+  # command line that merely CONTAINS the text - a shell whose script quotes it
+  # included - and whose `pkill` twin then kills that shell. Measured on the
+  # session host on 2026-10-14, where it ended the shell running this harness.
+  _left=$(ps -eo pid=,args= 2>/dev/null |
+    awk '{ $1 = $1 } / sleep 7123$/ && ($2 " " $3 == "sleep 7123" || $2 " " $3 " " $4 " " $5 == "timeout 600 sleep 7123") { print $1 }')
+  if [ -n "$_left" ]; then
+    fail "sh       the leaked group is still running after the step"
+    # shellcheck disable=SC2086
+    kill $_left 2>/dev/null
+  elif grep -q 'sleep 7123' "$TREE/temp/install-package/orphans.log" 2>/dev/null; then
+    pass "sh       the leaked group is ended, and orphans.log names it"
+  else
+    fail "sh       the leaked group is gone and orphans.log does not name it"
+  fi
+
   # ⛔ AND THE CONTROL THAT SAYS THE REDIRECTION IS WHAT DOES IT. Without this
   # the case above passes equally over a block that never had the problem. The
   # plant hands the route one extra descriptor onto the step's own output -
@@ -552,7 +576,13 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   if replace_once "$WORK/install-leaky.sh" \
     '>"$RUNNER_TEMP/install-step.log" 2>&1 </dev/null' \
     '3>&1 >"$RUNNER_TEMP/install-step.log" 2>&1 </dev/null'; then
-    stub_adapter "sleep $LEAK_SECONDS &"
+    # ⚠ THE LEAK OPENS A SESSION OF ITS OWN, and has since 2026-10-14.
+    # `install-step.sh` now ends whatever the install leaves in its session,
+    # so a leaked `sleep` there no longer holds anything open, and this control
+    # went red over a step that had stopped being able to hang. A process that
+    # left the session is the one no sweep can find, and the redirection is
+    # still the only thing between it and the step's pipe.
+    stub_adapter "setsid sleep $LEAK_SECONDS &"
     rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
     run_body "$WORK/install-leaky.sh" default "$TREE"
     hangs "sh       one leaked descriptor onto the step's output brings it back" 0

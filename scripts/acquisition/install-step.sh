@@ -218,6 +218,34 @@ if kill -0 "$INSTALL_PID" 2>/dev/null; then
 else
   wait "$INSTALL_PID" && RC=0 || RC=$?
 fi
+# ⛔ AND WHAT THE INSTALL LEFT IN ITS SESSION IS NAMED AND ENDED. Nested
+# `timeout`s each start a process group of their own, so a bound reaches the
+# group it started and not the one beneath it: measured on 2026-09-16, a
+# `sleep 600` outlived every bound with PPID 1. `CI-08`. ⭐ Every one of them
+# is still in the SESSION `setsid` opened, because a process group cannot leave
+# its session, so the session is the whole population. Its id is the `setsid`
+# child's own pid: a background job here is not a process-group leader, so
+# `setsid` does not fork. ⚠ If it ever did, no session would carry that id and
+# the sweep would find nothing, which is the safe failure. It cannot reach this
+# shell's own session: that id belongs to an ancestor of this shell, and
+# `INSTALL_PID` is a child of it.
+SWEPT=0
+timeout 20 ps -eo pid=,sid=,args= 2>/dev/null |
+  awk -v s="$INSTALL_PID" '$2 == s' >"$WORKDIR/orphans.log"
+if [ -s "$WORKDIR/orphans.log" ]; then
+  SWEPT=$(wc -l <"$WORKDIR/orphans.log" | tr -d ' ')
+  # shellcheck disable=SC2046
+  kill -TERM $(awk '{ print $1 }' "$WORKDIR/orphans.log") 2>/dev/null
+  sleep 2
+  # ⚠ The session is listed again rather than the first list reused, so a pid
+  # that exited and was handed to something else in those two seconds is not
+  # the one that gets KILL.
+  # shellcheck disable=SC2046
+  kill -KILL $(timeout 20 ps -eo pid=,sid= 2>/dev/null |
+    awk -v s="$INSTALL_PID" '$2 == s { print $1 }') 2>/dev/null
+  printf 'install-step: ended %s process(es) the install left in its session; orphans.log names them\n' \
+    "$SWEPT" >&2
+fi
 cat "$WORKDIR/step.log"
 
 # ⭐ AND WHATEVER STILL HOLDS THAT FILE IS NAMED. ⚠ Bounded, because it walks

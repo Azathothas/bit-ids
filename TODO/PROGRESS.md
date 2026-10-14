@@ -114,8 +114,8 @@ still open is a host that never reached it.
 2. **`CI-08`**: `capture.yml`'s Linux job runs in `contained.sh`, proved on
    `capture` run 38612214714. Its Windows job still cuts the host's route and
    needs a different containment, such as a firewall rule scoped to the
-   capture's processes. Then the orphaned-subprocess residual; the `sh -c`
-   and `bash -e` split is closed.
+   capture's processes. The orphaned-subprocess residual and the `sh -c` and
+   `bash -e` split are closed.
 3. **`OBS-10`**, which needs a second platform, so it follows the captures.
 4. **`CI-07`**, whose premise `CI-10` changed: a declared Windows row closes by
    its harness joining `bit-check`, so the entry's Approach and Prove need

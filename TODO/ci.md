@@ -3098,7 +3098,18 @@ the Windows job, which still cuts.
 
 ⛔ **Still open:** the Windows job's containment, which needs something other
 than a namespace, such as a firewall rule scoped to the capture's processes.
-So is the orphaned-subprocess residual.
+
+⭐ **The orphaned-subprocess residual is closed.** Nested `timeout`s each start
+their own process group, so a bound reaches only the group it started. That was
+the `sleep 600` of 2026-09-16, left with PPID 1. Every group stays in the
+session `install-step.sh` opens with `setsid`, so after its wait the step lists
+that session, writes it to `orphans.log`, sends TERM, then KILL to a fresh
+listing. `check-step-bodies` plants a product that leaves `timeout 600 sleep
+7123` behind: the step ends, nothing runs it afterwards, and `orphans.log` names
+it, 38 of 38. Two plants were each refused: the sweep turned off, and the sweep
+listing the wrong session. ⚠ The leaked-descriptor control now leaks from a
+session of its own. A process that left the session is the one the sweep cannot
+find, and the step's own redirection is still what keeps it off the pipe.
 
 ⭐ **Proved on a runner: `capture` run 38612214714 on `038e12c`, both jobs
 `success`.** The Linux job's guard and fixture capture ran in the namespace

@@ -217,3 +217,10 @@ to one invocation and warns when checked alone, because it cannot follow a sourc
 it was not given. CI passes every script at once and a contributor checking one
 file does not, so the directives belong in each file rather than in the
 invocation.
+
+⛔ **`pgrep -f` and `pkill -f` match any command line that merely contains the
+text.** A harness case looked for a leaked `sleep 7123` with `pgrep -f` and
+cleaned up with `pkill -f`. On 2026-10-14 that killed the session shell running
+the harness, because the shell's own command line quoted the text. Match the
+whole argument vector, as `ps -eo pid=,args=` read by `awk` lets you, and never
+signal a process found by substring.

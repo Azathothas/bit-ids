@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T19:14:26Z
+
+- ⛔ **The install step ends what an install leaves in its session.** Nested
+  `timeout`s each start their own process group, so a bound never reached the
+  group beneath it, and a `sleep 600` outlived every bound. The step now lists
+  its session after the wait, names what is left in `orphans.log`, and ends it.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-08`. No version bump and no deploy.
+
 ### 2026-10-14T18:19:57Z
 
 - ⛔ **`check-workflow` runs a step as GitHub does, under `bash -e`.** Under
