@@ -8,9 +8,9 @@ and why it is not the record. The work order is
 | | |
 | --- | --- |
 | the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
-| the resume point | `CLIENT-06`: dispatch `capture-client` with `["transmission"]` over `["release","source"]`, then assemble. ⛔ Waiting on the operator: appending run 38's bundle to `data`, by dispatching `publish-data.yml` on `assemble-bundle` run 38574255232 with `dry_run` false. |
+| the resume point | `CI-07`: `check-assemble`, the last portable row, whose dispatch rows need a decision first (`TODO/ci.md`). ⛔ Waiting on the operator: Transmission's source-route resolution (`CLIENT-06`), qBittorrent's second Linux route (`CLIENT-01`), and the first append to `data` (`CI-09`). |
 | in flight | nothing. |
-| the state of the tree | `check-assemble` 64 of 64; `check-bundle` 13 of 13; `check-publish` 19 of 19. |
+| the state of the tree | six `CI-07` rows ported into `bit-check` and passing on the Windows lane; `check-bitcheck --harnesses` green. |
 
 ## Starting, on this host
 

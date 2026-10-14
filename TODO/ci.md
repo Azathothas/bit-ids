@@ -1425,6 +1425,19 @@ output; that was the plant's defect, and the halves agree over the corrected
 one. ⚠ The port's first run failed its own default-report row: it looked for
 the report before running the connector that writes it.
 
+⭐ **CI on `628b88a` read `check-staleness` back on the Windows lane:** 22 passed,
+0 failed, 0 skipped, 20 declared.
+
+⚠ **`check-assemble` is the one portable row left, and it is not a straight
+port.** Most of its 64 rows drive `assemble-capture`, a Rust example, over
+lanes the harness writes, and those port as the six above did. ⛔ Its six
+dispatch rows, added on 2026-10-14 under `CI-09`, run
+`scripts/capture/assemble-dispatch.sh`, which is an `sh` script. A Go port would
+have to run `sh` on the Windows lane, where a non-bash step's path may not carry
+one. The other way is to move those six rows to a harness of their own, declared
+class C like `check-bundle`, whose subject they share. ⚠ Undecided, and the
+port waits on it rather than choosing by accident.
+
 Prove: ⛔ **Rewritten with the Approach.** Every portable-subject row is a
 `bit-check` row on the Windows lane, each port compared against its `sh` half
 before that half is deleted. `check-store` runs on Windows with a plant set
