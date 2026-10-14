@@ -399,7 +399,7 @@ fn push_varying(runs: &mut Vec<PatternRun>, length: usize) {
 /// ⚠ The rule is the evidence a run of `length` bytes shared by `distinct`
 /// values carries: two values match at one offset about one time in
 /// sixty-four if a byte draws from that many symbols, so a run is kept once
-/// `length × (distinct − 1)` reaches two, about one chance in four thousand.
+/// `length * (distinct - 1)` reaches two, about one chance in four thousand.
 /// A leading or trailing run is never absorbed, because nothing on its outer
 /// side varies; a coincidence at the edge of a varying span is not caught here.
 const fn established(length: usize, distinct: u32) -> bool {
