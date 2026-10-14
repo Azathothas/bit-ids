@@ -262,6 +262,12 @@ FINGERPRINT=$(sh "$GUARD" --fingerprint) || cannot "the host fingerprint could n
 
 mkdir -p "$OUT" || cannot "cannot create $OUT"
 OUT=$(CDPATH='' cd -- "$OUT" && pwd)
+
+# ⭐ THE CLAIM ITSELF GOES WITH THE EVIDENCE. It carries when the host was
+# claimed and the host facts a run manifest needs, taken in the job's own
+# environment; `assemble-capture` reads them from here. `CI-09`.
+cp "$MARKER" "$OUT/host-claim.txt" ||
+  cannot "cannot keep the host claim beside the attestation"
 BUNDLE="$OUT/bundle"
 LOG="$OUT/observer.log"
 SUMS="$OUT/SHA256SUMS"
@@ -714,6 +720,9 @@ PEER_DIALLED=$(awk '$1 == "peer-dialled" { $1 = ""; sub(/^ /, ""); print; exit }
   printf 'finished_at=%s\n' "$FINISHED"
   printf 'host_fingerprint=%s\n' "$FINGERPRINT"
   printf 'claim_marker=%s\n' "$MARKER"
+  # ⭐ The other end of the monotonic span the claim started. `/proc/uptime` is
+  # the host's, and the namespace this runs in does not virtualise it.
+  printf 'uptime_at_finish=%s\n' "$(cut -d' ' -f1 /proc/uptime 2>/dev/null)"
   printf 'claimed_run=%s\n' "$CLAIMED_RUN"
   printf 'egress=closed\n'
   printf 'egress_source=%s\n' "$EGRESS_SOURCE"

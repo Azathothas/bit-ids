@@ -239,6 +239,15 @@ case "${1:-}" in
         printf 'run=%s\n' "$RUN_ID"
         printf 'claimed_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         printf 'fingerprint=%s\n' "$PRINT"
+        # ⭐ THE HOST FACTS A RUN MANIFEST NEEDS, TAKEN AT THE CLAIM. `CI-09`:
+        # the image, the operating system and whether the host is GitHub's own
+        # exist only in this job's environment, which the capture's namespace
+        # does not inherit, and the uptime starts the monotonic span. ⚠ Each is
+        # written as read, empty where the host does not say, never filled in.
+        printf 'image=%s\n' "${ImageOS:-}${ImageVersion:+/$ImageVersion}"
+        printf 'os=%s\n' "$(sed -n 's/^PRETTY_NAME="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' /etc/os-release 2>/dev/null | head -1)"
+        printf 'runner_environment=%s\n' "${RUNNER_ENVIRONMENT:-}"
+        printf 'uptime_at_claim=%s\n' "$(cut -d' ' -f1 /proc/uptime 2>/dev/null)"
       } >"$MARKER"
     ) || {
       printf 'assert-disposable: another capture claimed this host first\n' >&2

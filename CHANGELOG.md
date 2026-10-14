@@ -5,6 +5,15 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T11:19:01Z
+
+- ⭐ **A CAPTURE KEEPS THE HOST FACTS A RUN MANIFEST NEEDS.** The claim marker
+  records the runner image, the operating system, whether the host is GitHub's
+  own and the uptime at the claim, and goes with the evidence; the attestation
+  records the uptime at finish. The install record carries the installed size,
+  a retrieval time and the signature status.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-09`. No version bump and no deploy.
+
 ### 2026-10-14T10:53:52Z
 
 - ⛔ **A RECORD'S CONNECTOR VERSIONS ARE MEASURED.** Both were `0.0.0`, written

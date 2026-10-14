@@ -609,6 +609,18 @@ else
   fail "the attestation carries the observer's and the connector's own versions"
 fi
 
+# ⛔ AND THE CLAIM GOES WITH IT, carrying the host facts and the uptime a run
+# manifest needs; the attestation carries the uptime at the other end.
+if [ -f "$CONTROL_OUT/host-claim.txt" ] &&
+  grep -q '^claimed_at=' "$CONTROL_OUT/host-claim.txt" &&
+  grep -q -E '^uptime_at_claim=[0-9]+(\.[0-9]+)?$' "$CONTROL_OUT/host-claim.txt" &&
+  grep -q '^runner_environment=' "$CONTROL_OUT/host-claim.txt" &&
+  grep -q -E '^uptime_at_finish=[0-9]+(\.[0-9]+)?$' "$CONTROL_OUT/attestation.txt"; then
+  pass "the capture keeps the host claim and both ends of the monotonic span"
+else
+  fail "the capture keeps the host claim and both ends of the monotonic span"
+fi
+
 # ⛔ AND THE REPORT IS COVERED BY THE DOCUMENT THAT COVERS THE BUNDLE. Exactly
 # one published file may be covered by neither of a publication's two documents;
 # a capture bundle carrying a second uncovered file is a downloader verifying
@@ -1244,6 +1256,21 @@ else
       fail "an install onto a bare host records $want"
     fi
   done
+  # ⭐ AND WHAT A RUN MANIFEST'S ROUTE NEEDS, `CI-09`: the installed size, which
+  # must be the size of the file the digest names, a retrieval time and the
+  # signature status.
+  _bin=$(sed -n 's/^installed_binary=//p' "$WORK/inst-a.txt")
+  _bytes=$(sed -n 's/^installed_binary_bytes=//p' "$WORK/inst-a.txt")
+  # ⚠ This stub installs no executable, so the size is empty with the path; a
+  # size with no file, or a file with no size, is the defect.
+  if [ -z "$_bin" ]; then _size=""; else _size=$(wc -c <"$_bin" | tr -d ' '); fi
+  if grep -q '^installed_binary_bytes=' "$WORK/inst-a.txt" && [ "$_bytes" = "$_size" ] &&
+    grep -q -E '^retrieved_at=[0-9]{4}-[0-9]{2}-[0-9]{2}T' "$WORK/inst-a.txt" &&
+    grep -q -x 'signature=not_checked' "$WORK/inst-a.txt"; then
+    pass "an install records the installed size, a retrieval time and the signature status"
+  else
+    fail "an install records the installed size, a retrieval time and the signature status"
+  fi
 
   # ⛔ THE ARIA2 SHAPE, REPRODUCED. The host already answers the version the
   # route would have installed, so the route installs nothing and the record must

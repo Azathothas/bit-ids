@@ -506,6 +506,15 @@ if [ -n "$RECORD" ]; then
     printf 'preexisting_binary_sha256=%s\n' "$PRE_DIGEST"
     printf 'installed_binary=%s\n' "$POST_BINARY"
     printf 'installed_binary_sha256=%s\n' "$POST_DIGEST"
+    # ⭐ WHAT A RUN MANIFEST'S ROUTE NEEDS BESIDE THE DIGEST. `CI-09`. The size
+    # is of the same executable the digest names; the retrieval time is when
+    # the route had finished, the moment its bytes are known to be in hand; and
+    # the signature is `not_checked` because no route here checks one - the
+    # release route verifies the vendor's digest document, which is not a
+    # signature.
+    printf 'installed_binary_bytes=%s\n' "$([ -f "$POST_BINARY" ] && wc -c <"$POST_BINARY" | tr -d ' ')"
+    printf 'retrieved_at=%s\n' "$FINISHED"
+    printf 'signature=not_checked\n'
     printf 'acquired=%s\n' "$ACQUIRED"
     # ⛔ THE IMMUTABLE IDENTITY OF A SOURCE ROUTE, AND EMPTY FOR EVERY OTHER.
     # `E-ACQ-06` refuses a source identity without a full object name, and

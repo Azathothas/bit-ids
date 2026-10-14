@@ -8,9 +8,9 @@ and why it is not the record. The work order is
 | | |
 | --- | --- |
 | the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
-| the resume point | `CI-09`'s run manifest, step 2 of the plan in that entry: host facts at claim time, a monotonic span, and the install record's bytes, retrieval time and signature status. Then the workflow barrier, then the assembler writing the manifest. |
-| in flight | nothing dispatched. Step 1, measured connector versions, is in the commit after `f08061e`. |
-| the state of the tree | `check-assemble` 54 of 54, `check-capture-client` 131 of 131. CI on `f08061e` green on all six jobs. |
+| the resume point | `CI-09`'s run manifest: the workflow barrier, so every lane's capture follows every route's install, then the assembler writing `manifest.json` and the corpus check reading it back. |
+| in flight | nothing dispatched; steps 1 to 3 of `CI-09`'s plan are pushed. |
+| the state of the tree | `check-capture-client` 133 of 133, `check-rootless` 26 of 26, `check-step-bodies` 35 of 35. |
 
 ## Starting, on this host
 

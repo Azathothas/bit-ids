@@ -3898,6 +3898,16 @@ three cases, and one dropping the attestation key by one. ⚠ Run 37's artifacts
 predate the keys, so they assemble no longer: that is the refusal working, and
 the next dispatch carries them.
 
+⭐ **Steps 2 and 3, the producers, are done.** The claim marker carries the
+runner image, the operating system's `PRETTY_NAME`, `RUNNER_ENVIRONMENT` and
+`/proc/uptime` at the claim, each written as read and empty where the host says
+nothing; `capture-client.sh` uploads it as `host-claim.txt` and writes the
+uptime at finish into the attestation. The install record carries
+`installed_binary_bytes`, the size of the file its digest names, a
+`retrieved_at`, and `signature=not_checked`, because no route checks a
+signature. ⚠ `check-capture-client`'s install stub has no executable, so only the
+empty half of the size rule is driven here; the next dispatch drives the other.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05
