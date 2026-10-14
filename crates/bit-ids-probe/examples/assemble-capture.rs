@@ -66,7 +66,7 @@ use bit_ids::record::{
 };
 use bit_ids::sampling::{Sample, SamplingPlan, field_state};
 use bit_ids::store::StoreKey;
-use bit_ids::{PROFILE_SCHEMA, ReleaseChannel};
+use bit_ids::{PROFILE_SCHEMA, ReleaseChannel, RunManifest};
 
 /// A key-value record of the shape every `bit-ids/*/1` text document uses.
 ///
@@ -121,6 +121,12 @@ struct Lane {
     version_output: PathBuf,
     /// Where the resolution document was looked for, so a refusal can name it.
     resolution_path: PathBuf,
+    /// The host claim the capture kept beside its attestation, when it did.
+    host_claim: Option<Record>,
+    /// What the observer printed while it ran.
+    observer_log: PathBuf,
+    /// What the install barrier concluded, when the lane waited at one.
+    barrier: Option<Record>,
 }
 
 impl Lane {
@@ -196,6 +202,13 @@ impl Lane {
                 version_output.display()
             ));
         }
+        let optional = |path: PathBuf| -> Result<Option<Record>, String> {
+            if path.is_file() {
+                read_record(&path).map(Some)
+            } else {
+                Ok(None)
+            }
+        };
         Ok(Self {
             route,
             install,
@@ -204,6 +217,9 @@ impl Lane {
             bundle: capture_dir.join("capture/bundle"),
             version_output,
             resolution_path,
+            host_claim: optional(capture_dir.join("capture/host-claim.txt"))?,
+            observer_log: capture_dir.join("capture/observer.log"),
+            barrier: optional(install_dir.join("install-barrier.txt"))?,
         })
     }
 
@@ -594,13 +610,40 @@ fn evidence_of(lane: &Lane) -> Result<Vec<(EvidenceRef, PathBuf)>, String> {
 /// sampled segment. ⚠ With one segment it answers `constant` with one sample,
 /// which is what this wrote by hand before - so a capture that connects once is
 /// unchanged rather than newly refused.
-fn observations_of(lane: &Lane) -> Result<(Vec<ObservedField>, Readings), String> {
+fn observations_of(lane: &Lane) -> Result<(Vec<ObservedField>, Readings, SamplingPlan), String> {
     let mut out = Vec::new();
-    let mut readings = Readings::new();
-    tracker_observations(lane, &mut out, &mut readings)?;
-    peer_observations(lane, &mut out, &mut readings)?;
+    let mut gathered = Gathered::default();
+    tracker_observations(lane, &mut out, &mut gathered)?;
+    peer_observations(lane, &mut out, &mut gathered)?;
     out.sort_by_key(|entry| entry.path.to_string());
-    Ok((out, readings))
+    let plan = gathered.plan()?;
+    Ok((out, gathered.readings, plan))
+}
+
+/// What the gathering of every field leaves: the values each carried, and the
+/// widest plan any of them rests on.
+///
+/// ⭐ **The run's plan is the widest a field shows**, each dimension separately,
+/// because a run manifest states one plan and `E-BND-21` holds every field to
+/// it; it is still counted off the transcripts, never the attestation's request.
+#[derive(Default)]
+struct Gathered {
+    readings: Readings,
+    sessions: u32,
+    connections: u32,
+}
+
+impl Gathered {
+    fn plan(&self) -> Result<SamplingPlan, String> {
+        let nonzero = |value: u32, what: &str| {
+            core::num::NonZeroU32::new(value).ok_or_else(|| format!("the run shows 0 {what}"))
+        };
+        Ok(SamplingPlan {
+            sessions: nonzero(self.sessions, "sessions")?,
+            torrents: core::num::NonZeroU32::new(1).expect("one is not zero"),
+            connections: nonzero(self.connections, "connections")?,
+        })
+    }
 }
 
 /// The announce surface, whose samples are attributed to sessions.
@@ -611,7 +654,7 @@ fn observations_of(lane: &Lane) -> Result<(Vec<ObservedField>, Readings), String
 fn tracker_observations(
     lane: &Lane,
     out: &mut Vec<ObservedField>,
-    readings: &mut Readings,
+    gathered: &mut Gathered,
 ) -> Result<(), String> {
     use bit_ids_lab::evidence::parse_transcript_document;
     use bit_ids_wire::tracker_http::HttpRequest;
@@ -674,7 +717,7 @@ fn tracker_observations(
     }
     push_sampled(
         out,
-        readings,
+        gathered,
         "tracker_http/peer_id",
         &peer_ids,
         lane,
@@ -682,7 +725,7 @@ fn tracker_observations(
     )?;
     push_sampled(
         out,
-        readings,
+        gathered,
         "tracker_http/user_agent",
         &agents,
         lane,
@@ -695,7 +738,7 @@ fn tracker_observations(
 fn peer_observations(
     lane: &Lane,
     out: &mut Vec<ObservedField>,
-    readings: &mut Readings,
+    gathered: &mut Gathered,
 ) -> Result<(), String> {
     use bit_ids_lab::evidence::parse_transcript_document;
     use bit_ids_wire::peer_wire::Handshake;
@@ -744,13 +787,13 @@ fn peer_observations(
     }
     push_sampled(
         out,
-        readings,
+        gathered,
         "peer_wire/peer_id",
         &handshake_ids,
         lane,
         "peer",
     )?;
-    push_sampled(out, readings, "peer_wire/reserved", &reserved, lane, "peer")?;
+    push_sampled(out, gathered, "peer_wire/reserved", &reserved, lane, "peer")?;
     Ok(())
 }
 
@@ -1055,14 +1098,16 @@ impl Sessions {
 /// Builds one sampled field and keeps the observations corroboration compares.
 fn push_sampled(
     out: &mut Vec<ObservedField>,
-    readings: &mut Readings,
+    gathered: &mut Gathered,
     path: &str,
     values: &[Observation],
     lane: &Lane,
     evidence: &str,
 ) -> Result<(), String> {
-    let (field, samples) = sampled(path, values, lane, evidence)?;
-    readings.insert(path.to_owned(), samples);
+    let (field, samples, plan) = sampled(path, values, lane, evidence)?;
+    gathered.readings.insert(path.to_owned(), samples);
+    gathered.sessions = gathered.sessions.max(plan.sessions.get());
+    gathered.connections = gathered.connections.max(plan.connections.get());
     out.push(field);
     Ok(())
 }
@@ -1088,7 +1133,7 @@ fn sampled(
     values: &[Observation],
     lane: &Lane,
     evidence: &str,
-) -> Result<(ObservedField, Vec<HexBytes>), String> {
+) -> Result<(ObservedField, Vec<HexBytes>, SamplingPlan), String> {
     if values.is_empty() {
         return Err(format!("{path}: 0 observation(s)"));
     }
@@ -1144,6 +1189,7 @@ fn sampled(
             evidence: vec![lane.evidence_id(evidence)],
         },
         kept,
+        plan,
     ))
 }
 
@@ -1200,7 +1246,11 @@ fn identity_of(lane: &Lane) -> Result<(Slug, Slug, Slug), String> {
     Ok((platform, arch, package))
 }
 
-fn profile_of(lanes: &[Lane], watched: usize, version: &Version) -> Result<Profile, String> {
+fn profile_of(
+    lanes: &[Lane],
+    watched: usize,
+    version: &Version,
+) -> Result<(Profile, SamplingPlan), String> {
     let lane = &lanes[watched];
     let attestation = Path::new("capture/attestation.txt");
     let (platform, arch, package) = identity_of(lane)?;
@@ -1300,7 +1350,7 @@ fn profile_of(lanes: &[Lane], watched: usize, version: &Version) -> Result<Profi
         supersedes: None,
         adjudication: None,
     };
-    let (observations, readings) = observations_of(lane)?;
+    let (observations, readings, plan) = observations_of(lane)?;
     profile.observations = observations;
     profile.corroboration = corroboration_of(
         lane,
@@ -1309,7 +1359,415 @@ fn profile_of(lanes: &[Lane], watched: usize, version: &Version) -> Result<Profi
         &profile.capture.connectors,
     )?;
     profile.evidence.sort_by_key(|entry| entry.id.to_string());
-    Ok(profile)
+    Ok((profile, plan))
+}
+
+// -- the run manifest ---------------------------------------------------------
+
+/// Seconds since the epoch for a canonical instant, and back.
+///
+/// ⚠ [`Instant`] orders as text and carries no arithmetic; the one sum a manifest
+/// needs is the observer's serving window added to the capture's start.
+fn epoch_of(instant: &Instant) -> Result<i64, String> {
+    let text = instant.to_string();
+    let field = |range: core::ops::Range<usize>| -> Result<i64, String> {
+        text.get(range)
+            .and_then(|part| part.parse::<i64>().ok())
+            .ok_or_else(|| format!("{text}: not a canonical instant"))
+    };
+    let (year, month, day) = (field(0..4)?, field(5..7)?, field(8..10)?);
+    let (hour, minute, second) = (field(11..13)?, field(14..16)?, field(17..19)?);
+    // Days from the civil date, Howard Hinnant's algorithm.
+    let y = if month <= 2 { year - 1 } else { year };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let mp = (month + 9) % 12;
+    let doy = (153 * mp + 2) / 5 + day - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + doe - 719_468;
+    Ok(days * 86_400 + hour * 3_600 + minute * 60 + second)
+}
+
+fn instant_at(seconds: i64) -> Result<Instant, String> {
+    let days = seconds.div_euclid(86_400);
+    let rest = seconds.rem_euclid(86_400);
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    Instant::parse(&format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}Z",
+        rest / 3_600,
+        rest % 3_600 / 60,
+        rest % 60
+    ))
+    .map_err(|error| error.to_string())
+}
+
+fn instant_in(record: &Record, key: &str, source: &str) -> Result<Instant, String> {
+    let text = record
+        .get(key)
+        .filter(|text| !text.is_empty())
+        .ok_or_else(|| format!("{source} records no `{key}`"))?;
+    Instant::parse(text).map_err(|error| format!("{source} {key}: {error}"))
+}
+
+/// Seconds, as `/proc/uptime` prints them, in nanoseconds.
+fn uptime_ns(text: &str, what: &str) -> Result<u64, String> {
+    let (whole, fraction) = text.split_once('.').unwrap_or((text, ""));
+    let seconds: u64 = whole
+        .parse()
+        .map_err(|_| format!("{what} {text:?} is not an uptime"))?;
+    let mut digits = fraction.to_owned();
+    digits.truncate(9);
+    while digits.len() < 9 {
+        digits.push('0');
+    }
+    let nanos: u64 = digits
+        .parse()
+        .map_err(|_| format!("{what} {text:?} is not an uptime"))?;
+    seconds
+        .checked_mul(1_000_000_000)
+        .and_then(|ns| ns.checked_add(nanos))
+        .ok_or_else(|| format!("{what} {text:?} overflows"))
+}
+
+/// The run manifest one record needs beside it, from the run's own artifacts.
+///
+/// ⛔ **Every field is read off an artifact, as the record's are.** `CI-09`
+/// carries the survey that found each one and the producer that now writes it.
+/// ⭐ Settled by the operator on 2026-10-14: the manifest describes the WATCHED
+/// host, and the other route contributes its acquisition and its evidence from
+/// its own artifacts.
+///
+/// ⛔ **The phases are milestones, and the barrier is what makes them true.**
+/// `resolved` ends when the last route resolved and `acquired_twice` when the
+/// last route installed, across both runners; `observed` starts at this
+/// capture. A capture that began before every route had installed overlaps,
+/// and `validate_manifest` refuses it rather than this function bending it.
+///
+/// ⚠ **`validated` is not a phase of the run.** It happens here, after the run
+/// ended, and every phase lies inside the run's wall clock; a manifest stops at
+/// `corroborated`.
+fn manifest_of(
+    lanes: &[Lane],
+    watched: usize,
+    profile: &Profile,
+    plan: SamplingPlan,
+) -> Result<RunManifest, String> {
+    let lane = &lanes[watched];
+    let claim = lane.host_claim.as_ref().ok_or(
+        "the capture kept no host-claim.txt, so nothing says when or where the host was claimed",
+    )?;
+    let (host, isolation) = host_of(lane, claim, profile)?;
+    let clocks = clocks_of(lane, claim, &isolation)?;
+    let phases = phases_of(lanes, watched, profile, &clocks)?;
+    Ok(RunManifest {
+        schema: bit_ids::manifest::ManifestSchema::current(),
+        capture: profile.capture.id.clone(),
+        target: profile.target.id.clone(),
+        version: profile.build.version.clone(),
+        platform: profile.build.platform.clone(),
+        arch: profile.build.arch.clone(),
+        package: profile.build.package.clone(),
+        host,
+        isolation,
+        clocks,
+        sampling: plan,
+        tools: tools_of(profile)?,
+        acquisition: routes_of(lanes, profile)?,
+        phases,
+        evidence: manifest_evidence_of(lane, profile)?,
+        redactions: Vec::new(),
+    })
+}
+
+/// A value a record carries, refused by name when it is absent or empty.
+fn text_in(record: &Record, key: &str, source: &str) -> Result<String, String> {
+    record
+        .get(key)
+        .filter(|text| !text.is_empty())
+        .cloned()
+        .ok_or_else(|| format!("{source} records no `{key}`"))
+}
+
+/// The watched host and its isolation, from the claim it kept and its attestation.
+fn host_of(
+    lane: &Lane,
+    claim: &Record,
+    profile: &Profile,
+) -> Result<(bit_ids::manifest::Host, bit_ids::manifest::Isolation), String> {
+    use bit_ids::manifest::{Host, HostClaim, Isolation, IsolationKind, NetworkMode};
+    let claim_name = "host-claim.txt";
+    let att = "capture/attestation.txt";
+    let environment = text_in(claim, "runner_environment", claim_name)?;
+    // ⛔ ONLY A HOST GITHUB DESTROYS IS DISPOSABLE HERE. A self-hosted runner
+    // says nothing a manifest can rest `disposable` on.
+    if environment != "github-hosted" {
+        return Err(format!(
+            "{claim_name} says runner_environment={environment}, and only a github-hosted \
+             runner is one this project knows is destroyed after the job"
+        ));
+    }
+    let platform = text_in(&lane.attestation, "platform", att)?;
+    let kernel = platform
+        .split_whitespace()
+        .nth(1)
+        .ok_or_else(|| format!("{att} platform {platform:?} names no kernel"))?;
+    let host = Host {
+        image: label(&text_in(claim, "image", claim_name)?)?,
+        kernel: label(kernel)?,
+        os: label(&text_in(claim, "os", claim_name)?)?,
+        arch: profile.build.arch.clone(),
+        disposable: true,
+    };
+    let fingerprint = text_in(claim, "fingerprint", claim_name)?;
+    let isolation = Isolation {
+        claim: HostClaim {
+            fingerprint: Sha256Digest::parse(&format!("sha256:{fingerprint}"))
+                .map_err(|error| format!("{claim_name} fingerprint: {error}"))?,
+            claimed_at: instant_in(claim, "claimed_at", claim_name)?,
+        },
+        host: IsolationKind::EphemeralRunner,
+        network: match text_in(&lane.attestation, "egress", att)?.as_str() {
+            "closed" => NetworkMode::LoopbackOnly,
+            other => {
+                return Err(format!(
+                    "{att} says egress={other}, which is not loopback only"
+                ));
+            }
+        },
+        external_reason: None,
+    };
+    Ok((host, isolation))
+}
+
+/// Both clocks: the wall from the claim to the finish, and the host's uptime across them.
+fn clocks_of(
+    lane: &Lane,
+    claim: &Record,
+    isolation: &bit_ids::manifest::Isolation,
+) -> Result<bit_ids::manifest::Clocks, String> {
+    let att = "capture/attestation.txt";
+    let from = uptime_ns(
+        &text_in(claim, "uptime_at_claim", "host-claim.txt")?,
+        "uptime_at_claim",
+    )?;
+    let to = uptime_ns(
+        &text_in(&lane.attestation, "uptime_at_finish", att)?,
+        "uptime_at_finish",
+    )?;
+    Ok(bit_ids::manifest::Clocks {
+        wall_start: isolation.claim.claimed_at.clone(),
+        wall_end: instant_in(&lane.attestation, "finished_at", att)?,
+        monotonic_elapsed_ns: to
+            .checked_sub(from)
+            .ok_or("the uptime at finish is before the uptime at the claim")?,
+    })
+}
+
+/// Every tool that took part.
+///
+/// ⚠ This repository's own tools carry its version, as the observer reports it;
+/// their digests in the attestation say which build. The connector carries the
+/// version it described.
+fn tools_of(profile: &Profile) -> Result<Vec<bit_ids::manifest::Tool>, String> {
+    use bit_ids::manifest::{Tool, ToolRole};
+    let ours = profile
+        .capture
+        .connectors
+        .iter()
+        .find(|connector| connector.id == profile.capture.observer)
+        .map(|connector| connector.version.clone())
+        .ok_or("the record names no observer among its connectors")?;
+    let mut tools = vec![
+        Tool {
+            id: slug("bit-ids-probe"),
+            version: ours.clone(),
+            role: ToolRole::Observer,
+        },
+        Tool {
+            id: slug("install-client"),
+            version: ours,
+            role: ToolRole::Acquisition,
+        },
+    ];
+    for connector in &profile.capture.connectors {
+        if connector.id != profile.capture.observer {
+            tools.push(Tool {
+                id: connector.id.clone(),
+                version: connector.version.clone(),
+                role: ToolRole::Connector,
+            });
+        }
+    }
+    tools.sort_by_key(|tool| tool.id.to_string());
+    Ok(tools)
+}
+
+/// Every route's identity, each from its own lane's install record.
+fn routes_of(
+    lanes: &[Lane],
+    profile: &Profile,
+) -> Result<Vec<bit_ids::manifest::AcquisitionIdentity>, String> {
+    let mut acquisition = Vec::new();
+    for other in lanes {
+        let ins = format!("install-{}.txt", other.route);
+        let route = route_of(other, &profile.build.version)?;
+        let bytes: u64 = text_in(&other.install, "installed_binary_bytes", &ins)?
+            .parse()
+            .map_err(|_| format!("{ins} installed_binary_bytes is not a size"))?;
+        acquisition.push(bit_ids::manifest::AcquisitionIdentity {
+            route: route.id,
+            source: route.origin,
+            retrieved_at: instant_in(&other.install, "retrieved_at", &ins)?,
+            artifact: route.artifact,
+            bytes,
+            signature: match text_in(&other.install, "signature", &ins)?.as_str() {
+                "not_checked" => SignatureStatus::NotChecked,
+                "verified" => SignatureStatus::Verified,
+                "unsigned" => SignatureStatus::Unsigned,
+                other => return Err(format!("{ins} signature={other} is not a status")),
+            },
+            installed_version: Version::parse(&text_in(&other.install, "reported_version", &ins)?)
+                .map_err(|error| format!("{ins} reported_version: {error}"))?,
+        });
+    }
+    acquisition.sort_by_key(|entry| entry.route.to_string());
+    Ok(acquisition)
+}
+
+/// The phases, as milestones across both runners.
+fn phases_of(
+    lanes: &[Lane],
+    watched: usize,
+    profile: &Profile,
+    clocks: &bit_ids::manifest::Clocks,
+) -> Result<Vec<bit_ids::manifest::Phase>, String> {
+    use bit_ids::manifest::{Phase, PhaseName};
+    let lane = &lanes[watched];
+    let resolution_of = |other: &Lane, key: &str| -> Result<Instant, String> {
+        let record = other
+            .resolution
+            .as_ref()
+            .ok_or_else(|| format!("route {} uploaded no resolution document", other.route))?;
+        instant_in(record, key, &other.resolution_path.display().to_string())
+    };
+    let mut resolved = Vec::new();
+    let mut installed = Vec::new();
+    for other in lanes {
+        resolved.push(resolution_of(other, "finished_at")?);
+        installed.push(instant_in(
+            &other.install,
+            "finished_at",
+            &format!("install-{}.txt", other.route),
+        )?);
+    }
+    let resolved = resolved.into_iter().max().ok_or("no route")?;
+    let installed = installed.into_iter().max().ok_or("no route")?;
+    let resolve_start = resolution_of(lane, "started_at")?;
+    let observe_start = profile.capture.captured_at.clone();
+    let serving = std::fs::read_to_string(&lane.observer_log)
+        .map_err(|error| format!("{}: {error}", lane.observer_log.display()))?
+        .lines()
+        .find_map(|line| {
+            line.strip_prefix("serving for ")
+                .and_then(|rest| rest.strip_suffix('s'))
+        })
+        .and_then(|seconds| seconds.parse::<i64>().ok())
+        .ok_or("the observer's log says for how long it served nowhere")?;
+    let observe_end = instant_at(epoch_of(&observe_start)? + serving)?;
+    let span = |name: PhaseName, started_at: &Instant, ended_at: &Instant, detail: &str| {
+        Ok::<_, String>(Phase {
+            name,
+            started_at: started_at.clone(),
+            ended_at: ended_at.clone(),
+            detail: label(detail)?,
+        })
+    };
+    Ok(vec![
+        span(
+            PhaseName::Planned,
+            &clocks.wall_start,
+            &resolve_start,
+            "the host was claimed and the routes chosen",
+        )?,
+        span(
+            PhaseName::Resolved,
+            &resolve_start,
+            &resolved,
+            "every route resolved its version",
+        )?,
+        span(
+            PhaseName::AcquiredTwice,
+            &resolved,
+            &installed,
+            "every route installed, the last at this instant",
+        )?,
+        span(
+            PhaseName::Installed,
+            &installed,
+            &installed,
+            "every installed build reported its version",
+        )?,
+        span(
+            PhaseName::Observed,
+            &observe_start,
+            &observe_end,
+            "the observer served the build for its window",
+        )?,
+        span(
+            PhaseName::Corroborated,
+            &observe_end,
+            &clocks.wall_end,
+            "the connector read the bundle and the readings were compared",
+        )?,
+    ])
+}
+
+/// The record's evidence, as the manifest declares it.
+///
+/// ⚠ Nothing on this path scrubs: the observer prints `false` for every row it
+/// writes, and the metainfo and the version output pass no scrubber.
+fn manifest_evidence_of(
+    lane: &Lane,
+    profile: &Profile,
+) -> Result<Vec<bit_ids::manifest::EvidenceRecord>, String> {
+    use bit_ids::manifest::{EvidenceRecord, PhaseName};
+    let log = std::fs::read_to_string(&lane.observer_log)
+        .map_err(|error| format!("{}: {error}", lane.observer_log.display()))?;
+    if log
+        .lines()
+        .any(|line| line.starts_with("evidence ") && line.split_whitespace().nth(5) == Some("true"))
+    {
+        return Err(
+            "the observer redacted a transcript, and its declarations are not uploaded".to_owned(),
+        );
+    }
+    let mut evidence = Vec::new();
+    for entry in &profile.evidence {
+        let (produced_by, phase) = match entry.kind {
+            EvidenceKind::ProcessOutput => (slug("install-client"), PhaseName::Installed),
+            _ => (slug("bit-ids-probe"), PhaseName::Observed),
+        };
+        evidence.push(EvidenceRecord {
+            id: entry.id.clone(),
+            kind: entry.kind,
+            path: entry.path.clone(),
+            bytes: entry.bytes,
+            sha256: entry.sha256,
+            produced_by,
+            phase,
+            redacted: false,
+        });
+    }
+    evidence.sort_by_key(|record| record.id.to_string());
+    Ok(evidence)
 }
 
 /// Everything one lane's artifacts cannot supply, probed independently.
@@ -1442,7 +1900,12 @@ fn independence(lanes: &[Lane]) -> Result<Vec<String>, String> {
 ///
 /// Asked from its own function rather than inline because `run` is at clippy's
 /// line limit.
-fn report_corpus(report: &mut String, written: &[Profile], out: &Path) -> Result<(), String> {
+fn report_corpus(
+    report: &mut String,
+    written: &[Profile],
+    manifests: &[(RelPath, RunManifest)],
+    out: &Path,
+) -> Result<(), String> {
     let mut tree = bit_ids::store::StoreTree::new();
     let mut filed = Vec::new();
     let mut absent = Vec::new();
@@ -1462,6 +1925,13 @@ fn report_corpus(report: &mut String, written: &[Profile], out: &Path) -> Result
         }
         filed.push((path, profile.clone()));
     }
+    // ⛔ The manifests are read back off the disk as the records' evidence is,
+    // so the tree holds what was written rather than what was meant.
+    for (path, _) in manifests {
+        if !measure_into(&mut tree, out, path)? {
+            absent.push(path.to_string());
+        }
+    }
     // ⛔ SAID HERE BECAUSE NO RULE CAN SAY IT. `E-CRP-03` is the refusal for an
     // artifact a store does not carry and it is checked per run manifest, so
     // with none in the store a record may cite bytes that are not there and
@@ -1473,6 +1943,9 @@ fn report_corpus(report: &mut String, written: &[Profile], out: &Path) -> Result
     let mut corpus = bit_ids::corpus::Corpus::new(tree);
     for (path, profile) in filed {
         corpus.insert_profile(path, profile);
+    }
+    for (path, manifest) in manifests {
+        corpus.insert_manifest(path.clone(), manifest.clone());
     }
     match bit_ids::corpus::validate_corpus(&corpus) {
         Ok(()) => {
@@ -1543,12 +2016,103 @@ fn measure_into(
     Ok(true)
 }
 
+/// Writes the run manifest beside one record, and says whether it could.
+///
+/// ⭐ Written only when it validates and binds to the record it describes;
+/// anything else is a refusal naming why, because a store with a record and no
+/// run is not a corpus. `CI-09`.
+#[allow(clippy::too_many_arguments)]
+fn write_manifest(
+    report: &mut String,
+    lanes: &[Lane],
+    index: usize,
+    profile: &Profile,
+    plan: SamplingPlan,
+    key: &StoreKey,
+    out: &Path,
+    manifests: &mut Vec<(RelPath, RunManifest)>,
+) -> Result<bool, String> {
+    if let Some(barrier) = &lanes[index].barrier {
+        let verdict = barrier.get("verdict").map_or("unrecorded", String::as_str);
+        if verdict != "passed" {
+            writeln!(
+                report,
+                "  ⚠ lane {}: the install barrier says {verdict}",
+                lanes[index].route
+            )
+            .expect("a String cannot fail");
+        }
+    }
+    let made = manifest_of(lanes, index, profile, plan).and_then(|manifest| {
+        let document = manifest.to_json().map_err(|error| error.to_string())?;
+        bit_ids::bind(&manifest, profile).map_err(|error| error.to_string())?;
+        Ok((manifest, document))
+    });
+    match made {
+        Ok((manifest, document)) => {
+            let rel = key.manifest_path().map_err(|error| error.to_string())?;
+            let target = out.join(rel.as_str());
+            std::fs::write(&target, document.as_bytes())
+                .map_err(|error| format!("{}: {error}", target.display()))?;
+            writeln!(report, "  ⭐ lane {}: {}", lanes[index].route, rel)
+                .expect("a String cannot fail");
+            manifests.push((rel, manifest));
+            Ok(true)
+        }
+        Err(error) => {
+            writeln!(report, "  ⛔ lane {}: no run manifest", lanes[index].route)
+                .expect("a String cannot fail");
+            for line in error.lines() {
+                writeln!(report, "       {line}").expect("a String cannot fail");
+            }
+            Ok(false)
+        }
+    }
+}
+
+/// Whether each written record publishes among the others, and how the pair
+/// classifies.
+fn report_publishable(report: &mut String, written: &[Profile]) {
+    for (index, profile) in written.iter().enumerate() {
+        let others: Vec<&Profile> = written
+            .iter()
+            .enumerate()
+            .filter(|(other, _)| *other != index)
+            .map(|(_, other)| other)
+            .collect();
+        writeln!(report, "  lane {}:", profile.capture.observed_route)
+            .expect("a String cannot fail");
+        match bit_ids::agreement::publishable_among(profile, &others) {
+            Ok(()) => writeln!(report, "       publishable").expect("a String cannot fail"),
+            Err(blockers) => {
+                writeln!(report, "       provisional, not publishable")
+                    .expect("a String cannot fail");
+                for line in blockers.to_string().lines() {
+                    writeln!(report, "       {line}").expect("a String cannot fail");
+                }
+            }
+        }
+    }
+
+    if written.len() == 2 {
+        // ⭐ The pair is what `ACQ-03` exists to classify, and this is the first
+        // input that can reach `BuildEquivalent` rather than `Unresolved`.
+        let comparison = bit_ids::classify_across(&[&written[0], &written[1]]);
+        writeln!(report, "  classify_across: {}", comparison.outcome)
+            .expect("a String cannot fail");
+        for reason in &comparison.reasons {
+            writeln!(report, "       {reason}").expect("a String cannot fail");
+        }
+    }
+}
+
 fn run(lanes: &[Lane], out: &Path) -> Result<String, String> {
     let version = one_version(lanes)?;
 
     let mut report = String::new();
     let mut refusals = 0_usize;
     let mut written = Vec::new();
+    let mut manifests = Vec::new();
     for line in independence(lanes)? {
         refusals += 1;
         writeln!(report, "{line}").expect("a String cannot fail");
@@ -1570,8 +2134,8 @@ fn run(lanes: &[Lane], out: &Path) -> Result<String, String> {
             }
             continue;
         }
-        let profile = match profile_of(lanes, index, &version) {
-            Ok(profile) => profile,
+        let (profile, plan) = match profile_of(lanes, index, &version) {
+            Ok(found) => found,
             Err(error) => {
                 refusals += 1;
                 writeln!(report, "  ⛔ lane {}: {error}", lanes[index].route)
@@ -1623,6 +2187,19 @@ fn run(lanes: &[Lane], out: &Path) -> Result<String, String> {
                 }
                 writeln!(report, "  ⭐ lane {}: {}", lanes[index].route, path)
                     .expect("a String cannot fail");
+                // ⭐ AND THE RUN MANIFEST BESIDE IT, `CI-09`.
+                if !write_manifest(
+                    &mut report,
+                    lanes,
+                    index,
+                    &profile,
+                    plan,
+                    &key,
+                    out,
+                    &mut manifests,
+                )? {
+                    refusals += 1;
+                }
                 written.push(profile);
             }
             Err(error) => {
@@ -1650,38 +2227,8 @@ fn run(lanes: &[Lane], out: &Path) -> Result<String, String> {
     // it is not a property of one document: `E-PUB-04` is settled by the OTHER
     // route's capture. Asked per lane it reported every record of a
     // byte-different pair provisional while holding the record that settles it.
-    for (index, profile) in written.iter().enumerate() {
-        let others: Vec<&Profile> = written
-            .iter()
-            .enumerate()
-            .filter(|(other, _)| *other != index)
-            .map(|(_, other)| other)
-            .collect();
-        writeln!(report, "  lane {}:", profile.capture.observed_route)
-            .expect("a String cannot fail");
-        match bit_ids::agreement::publishable_among(profile, &others) {
-            Ok(()) => writeln!(report, "       publishable").expect("a String cannot fail"),
-            Err(blockers) => {
-                writeln!(report, "       provisional, not publishable")
-                    .expect("a String cannot fail");
-                for line in blockers.to_string().lines() {
-                    writeln!(report, "       {line}").expect("a String cannot fail");
-                }
-            }
-        }
-    }
-
-    if written.len() == 2 {
-        // ⭐ The pair is what `ACQ-03` exists to classify, and this is the first
-        // input that can reach `BuildEquivalent` rather than `Unresolved`.
-        let comparison = bit_ids::classify_across(&[&written[0], &written[1]]);
-        writeln!(report, "  classify_across: {}", comparison.outcome)
-            .expect("a String cannot fail");
-        for reason in &comparison.reasons {
-            writeln!(report, "       {reason}").expect("a String cannot fail");
-        }
-    }
-    report_corpus(&mut report, &written, out)?;
+    report_publishable(&mut report, &written);
+    report_corpus(&mut report, &written, &manifests, out)?;
     if refusals > 0 {
         return Err(report);
     }

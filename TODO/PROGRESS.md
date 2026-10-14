@@ -52,7 +52,7 @@ were written by hand from published BEPs.
 | --- | --- |
 | has a stock client been put on the wire? | yes. Transmission 4.0.5 and qBittorrent 4.6.3 announced to the HTTP tracker observer on 2026-09-08, one observer, one platform, one route. `OBS-07`. |
 | has a `Profile` been assembled from a dispatch? | yes, from `capture-client` run 17's artifacts on 2026-09-15 and run 36's on 2026-10-14, each pair into a scratch store. Every record is `provisional`. `CI-09`. |
-| has a record been produced publishable? | ⭐ yes, from a stock client: `capture-client` run 37's `aria2-next` 3.0.3 pair, re-assembled on 2026-10-14 once `SCHEMA-04` stopped calling a shared random byte fixed, is `publishable` on both routes and `build_equivalent` across them. ⚠ Neither is a corpus yet: no `manifest.json` is written beside them. `CI-09`. |
+| has a record been produced publishable? | ⭐ yes, from a stock client: `capture-client` run 37's `aria2-next` 3.0.3 pair, re-assembled on 2026-10-14 once `SCHEMA-04` stopped calling a shared random byte fixed, is `publishable` on both routes and `build_equivalent` across them. ⭐ Run 38's 3.0.3 pair, assembled with a `manifest.json` beside each record, is a valid corpus: `validate-corpus` lets 2 of 2 records into a published view. ⚠ No dispatch yet uploads it as the `bundle` the publisher downloads. `CI-09`. |
 | does a stock `aria2-next` cooperate? | yes, since run 37 on 2026-10-14: 3.0.3 on both routes answered both peer connections once the second came from `127.0.0.2`, and every sample was corroborated exactly. ⛔ The pair is refused over a byte two random announce tails happened to share, which the classifier calls fixed; `SCHEMA-04` owns that. `OBS-04`, `CLIENT-14`, `CI-09`. |
 | whose identity does `aria2-next` present? | qBittorrent 5.2.3's: user agent `qBittorrent/5.2.3`, peer ID prefix `-qB5230-`, corroborated by the `cpython-stdlib` connector. `CLIENT-14`. |
 | does a client install finish on a runner? | ⭐ **yes, and it always did.** The "hang" of runs 3 to 34 was *Cut the route* severing the runner agent from GitHub, measured on 2026-10-11 by a flight recorder posting off the host. The capture now runs in a network namespace; both `aria2-next` routes then completed, release in 1.5 minutes and source in 12.5, and 3.0.2's source build installed in 694 seconds on 2026-10-14. `CI-08`, `CI-09`. |
@@ -104,11 +104,9 @@ still open is a host that never reached it.
 
 ⛔ **Nothing here is blocked.** Take these in order.
 
-1. **`CI-09`'s residuals, which are now all that stands between a capture and
-   a publication**: the `RunManifest` a record needs beside it, so a pair is a
-   corpus rather than `E-CRP-01`, and an artifact named `bundle` for
-   `publish-data.yml` to download. Run 37's pair is `publishable` and
-   `build_equivalent` and refused only by those. Then dispatch, assemble, and
+1. **`CI-09`'s last residual, which is now all that stands between a capture
+   and a publication**: an artifact named `bundle` for `publish-data.yml` to
+   download. Run 38's corpus is valid, with a manifest beside each record. Then
    take the publisher through its own checks. `CI-09`.
 2. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
    `CLIENT-06` has a same-version pair for Transmission 4.1.3 that needs no new

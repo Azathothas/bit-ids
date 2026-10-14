@@ -5,6 +5,16 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T12:30:39Z
+
+- ⭐ **A CAPTURE PAIR IS A CORPUS.** `assemble-capture` writes a run manifest
+  beside each record. The manifest describes the watched host, carries both
+  routes' acquisitions and evidence, and gets its phases from the run's own
+  timestamps. It is bound to its profile before it is written. Run 38's
+  `aria2-next` 3.0.3 pair forms a valid store, and both records may enter a
+  published view.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-09`. No version bump and no deploy.
+
 ### 2026-10-14T12:13:51Z
 
 - ⭐ **EVERY LANE'S CAPTURE NOW FOLLOWS EVERY ROUTE'S INSTALL.** The lanes of a

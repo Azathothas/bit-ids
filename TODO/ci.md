@@ -3922,6 +3922,33 @@ refused: the attempt left out of the name, a failure read as missing, and a
 missing route read as arrived. `check-workflow` puts the wait after the install
 and before the capture.
 
+⭐ **Step 4 proved on a runner: run 38, id 38562743496.** The release lane
+waited 415 seconds at the barrier for the source route, and both lanes'
+`install-barrier.txt` record `verdict=passed`. Both records are `publishable`
+and `build_equivalent` on `aria2-next` 3.0.3.
+
+⭐ **Step 5, the assembler writes the manifest, is done.** `assemble-capture`
+builds one `RunManifest` beside each record at `raw/v1/<package>/<version>/
+<os>/<arch>/<artifact>/cap-<route>/manifest.json`. It describes the watched
+host from that lane's claim marker. Both routes' acquisitions and evidence are
+in it. Its tools are the observer, `install-client` and the connector, at their
+measured versions. Its phases come from the timestamps the run wrote. Before it
+writes, it validates the manifest and binds it to its profile with
+`bit_ids::bind`. A barrier verdict other than `passed` is a warning, because
+the timestamps decide the order. The corpus line now counts manifests as well
+as records.
+
+Run 38 assembled into a store that `validate-corpus` reads as `valid store: 2
+record(s), 2 run(s), 20 object(s); 2 of 2 record(s) may enter a published
+view`, and `validate-run` binds both manifests. `check-assemble` 58 of 58: its
+lanes carry the new keys, the corpus cases bind 2 manifests found anywhere in
+the store, and five cases each refuse a defect by name: no host claim, no
+uptime at finish, no installed byte count, a self-hosted runner, and an install
+that finished after the observation (`E-MAN-06`). Two plants were each refused
+with clean controls on both sides: accepting any runner environment, and
+reading the install's end as the capture's start. ⛔ What is left of this
+entry's residuals is the `bundle` artifact `publish-data.yml` downloads.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05

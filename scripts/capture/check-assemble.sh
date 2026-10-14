@@ -62,6 +62,7 @@ ME=check-assemble
 
 store_require cargo sha256sum od
 ASSEMBLE=$(store_build "$ROOT" assemble-capture bit-ids-probe) || exit 2
+VALIDATE_RUN=$(store_build "$ROOT" validate-run bit-ids) || exit 2
 
 WORK=$(store_workdir checkassemble) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
@@ -198,7 +199,22 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
     [ "${ASSEMBLE_DROP:-}" = observer_version ] || printf 'observer_version=0.0.0\n'
     [ -z "${8:-}" ] || [ "${ASSEMBLE_DROP:-}" = connector_version ] ||
       printf 'connector_version=9.8.7\n'
+    [ "${ASSEMBLE_DROP:-}" = uptime_at_finish ] || printf 'uptime_at_finish=164.50\n'
   } >"$_cap/capture/attestation.txt"
+
+  # ⭐ WHAT A RUN MANIFEST IS READ FROM, `CI-09`: the host claim the capture keeps,
+  # and the observer's own log for its serving window. ⚠ The times put every
+  # install before the capture, which is what the barrier makes true on a runner.
+  if [ "${ASSEMBLE_DROP:-}" != host-claim ]; then
+    {
+      printf 'bit-ids/host-claim/1\nrun=cap-%s\nclaimed_at=2026-09-09T15:08:10Z\n' "$1"
+      printf 'fingerprint=%s\n' "$(printf 'host-%s' "$1" | sha256sum | cut -d' ' -f1)"
+      printf 'image=fixture-image/1\nos=Fixture OS 1\n'
+      printf 'runner_environment=%s\n' "${ASSEMBLE_RUNNER:-github-hosted}"
+      printf 'uptime_at_claim=100.25\n'
+    } >"$_cap/capture/host-claim.txt"
+  fi
+  printf 'serving for 30s\n' >"$_cap/capture/observer.log"
 
   # The second connector's own report, which is the contract `OBS-07` fills.
   # ⛔ EVERY SAMPLE, IN THE TRANSCRIPT'S ORDER, which is what the contract asks
@@ -232,7 +248,9 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
     printf 'installed_binary_sha256=%s\n' "$5"
     printf 'acquired=%s\nsource_commit=%s\npackage=elf-binary\n' "${ACQUIRED:-yes}" "$4"
     printf 'adapter=scripts/capture/adapters/fixture.sh\n'
-    printf 'started_at=2026-09-09T15:08:17Z\nfinished_at=2026-09-09T15:08:18Z\n'
+    printf 'started_at=2026-09-09T15:08:17Z\nfinished_at=%s\n' "${ASSEMBLE_INSTALLED:-2026-09-09T15:08:18Z}"
+    [ "${ASSEMBLE_DROP:-}" = installed_binary_bytes ] || printf 'installed_binary_bytes=4096\n'
+    printf 'retrieved_at=2026-09-09T15:08:18Z\nsignature=not_checked\n'
   } >"$_cap/install-$2.txt"
 
   # ⛔ A SOURCE LANE'S RESOLUTION IS A DIFFERENT DOCUMENT IN A DIFFERENT PLACE,
@@ -255,6 +273,7 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
       printf 'source_url=%s\n' "$3"
       printf 'refs_sha256=%s\n' "$(printf 'refs-%s' "$6" | sha256sum | cut -d' ' -f1)"
       printf 'selected_version=%s\nselected_tag=v%s\n' "$6" "$6"
+      printf 'started_at=2026-09-09T15:08:12Z\nfinished_at=2026-09-09T15:08:13Z\n'
     } >"$_ins/source/resolution.txt"
   else
     {
@@ -264,6 +283,7 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
       printf 'selected_version=%s\nselected_tag=v%s\n' "$6" "$6"
       printf 'asset=fixture-client-%s-linux-x86-64\n' "$6"
       printf 'asset_url=https://example.invalid/fixture-client-%s\n' "$6"
+      printf 'started_at=2026-09-09T15:08:12Z\nfinished_at=2026-09-09T15:08:13Z\n'
     } >"$_ins/release/resolution.txt"
   fi
 
@@ -391,61 +411,68 @@ for _drop in observer_version connector_version; do
     "drop-$_drop" drop-release drop-source
 done
 
-# -- ⛔ AND WHAT IT WROTE IS NOT A VALID CORPUS, WHICH NOTHING USED TO SAY -----
+# -- ⭐ AND WHAT IT WROTE IS A CORPUS, WITH A RUN BESIDE EVERY RECORD ----------
 #
-# ⚠ `CI-09` carried this as *a store of records with no runs, which check-store
-# accepts and a publication would not*. Half of that was never checked:
-# `validate_corpus` refuses it TODAY with `E-CRP-01` per record - a record
-# without its run cannot be replayed - so the gate existed and the assembler
-# simply never asked it. A reader of a green run saw two stars and a path.
-if said good "NOT a valid corpus" && said good "E-CRP-01"; then
-  pass "corpus    the assembler says the store it wrote is not a corpus yet"
+# ⛔ `E-CRP-01` refused every store this assembler wrote until 2026-10-14,
+# because no step of the capture path wrote a run manifest. `CI-09` carries the
+# producers that now record what one is read from, and the barrier that makes
+# its phases true.
+if said good "corpus: valid, 2 record(s)"; then
+  pass "corpus    a two-lane assembly is a valid corpus, with a run beside each record"
 else
-  fail "corpus    a green assembly reported nothing about the corpus it wrote"
+  fail "corpus    a two-lane assembly is a valid corpus, with a run beside each record"
   [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/good.out" | tail -8
 fi
 
-# ⭐ THE CONTROL: THE LINE IS DERIVED, NOT PRINTED. Without this the case above
-# passes over an assembler that prints one fixed sentence whatever it wrote. A
-# violation names the record it found no run for, so a two-lane assembly names
-# BOTH records - and one fixed line names neither.
-#
-# ⚠ THE PATHS COME OUT OF THE ASSEMBLER'S OWN WRITE LINES rather than being
-# retyped here. A harness that spelled `cap-release` itself would be stating this
-# project's naming a second time, and would still pass over a fixed sentence that
-# happened to carry both names; taken from the write lines, the assertion is that
-# the corpus block followed what this run wrote.
-awk '/ lane / && $NF ~ /\.json$/ { print $NF }' "$WORK/good.out" >"$WORK/good.written"
-_wrote=0
-_named=0
-# ⚠ Redirected rather than piped: a `while read` on the right of a pipe runs in a
-# subshell, and both counters would be discarded with it.
-while IFS= read -r _path; do
-  _wrote=$((_wrote + 1))
-  said good "E-CRP-01 at $_path" && _named=$((_named + 1))
-done <"$WORK/good.written"
-if [ "$_wrote" -ge 2 ] && [ "$_named" = "$_wrote" ]; then
-  pass "corpus    the refusal names every record it found no run for ($_named)"
+# ⭐ THE CONTROL: AN INDEPENDENT READER. `validate-run` reads each manifest and
+# its record off the disk and binds them, so a manifest the assembler judged by
+# its own lights is judged again by the one tool `SCHEMA-02` names for it.
+_pairs=0
+_bound=0
+find "$WORK/store-good" -name 'manifest.json' -type f >"$WORK/good.manifests"
+# ⚠ Redirected rather than piped, so the counters survive the loop.
+while IFS= read -r _manifest; do
+  _pairs=$((_pairs + 1))
+  _cap=$(sed -n 's/.*"capture": *"\([^"]*\)".*/\1/p' "$_manifest" | head -1)
+  _profile=$(find "$WORK/store-good/profiles" -name "$_cap.json" -type f | head -1)
+  [ -n "$_profile" ] && "$VALIDATE_RUN" "$_manifest" "$_profile" >/dev/null 2>&1 &&
+    _bound=$((_bound + 1))
+done <"$WORK/good.manifests"
+if [ "$_pairs" = 2 ] && [ "$_bound" = 2 ]; then
+  pass "corpus    validate-run binds each manifest to its record, read off the disk ($_bound)"
 else
-  fail "corpus    $_named of $_wrote written record(s) named; a derived line names each"
-  [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/good.out" | tail -8
+  fail "corpus    validate-run binds each manifest to its record, read off the disk ($_bound of $_pairs)"
 fi
 
-# ⭐ AND THE SECOND CONTROL: THE TREE IS READ OFF THE DISK, NOT LEFT EMPTY. The
-# first version of this check handed `validate_corpus` an empty `StoreTree`,
-# which narrowed the question without saying so: `E-CRP-06` is checked over the
-# TREE, so a store whose evidence no run declares answered clean because the
-# validator was given no evidence to look at. ⚠ With no manifest in the store,
-# NOTHING accounts for a raw-root file, so the count of files the store carries
-# there and the count of lines naming one are the same number - and an empty
-# tree makes the second zero.
-_objects=$(find "$WORK/store-good/raw" -type f | grep -c .)
-_unaccounted=$(grep -c 'E-CRP-06 at raw/' "$WORK/good.out")
-if [ "$_objects" -ge 1 ] && [ "$_unaccounted" = "$_objects" ]; then
-  pass "corpus    every artifact in the store is named, over a tree read off the disk ($_objects)"
-else
-  fail "corpus    $_unaccounted of $_objects stored artifact(s) named; an empty tree names none"
-fi
+# ⛔ AND A MANIFEST NO ARTIFACT SUPPORTS IS NOT WRITTEN. One case per producer
+# the manifest reads, each naming what was missing; the record is still written,
+# and the run is refused.
+for _drop in host-claim uptime_at_finish installed_binary_bytes; do
+  ASSEMBLE_DROP=$_drop
+  write_lane gap-release release "$GH" "" "$DIGEST_A" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+  ASSEMBLE_DROP=""
+  write_lane gap-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+  case_is 1 "$_drop" "a lane with no $_drop gets no run manifest, and the run says why" \
+    "gap-$_drop" gap-release gap-source
+done
+ASSEMBLE_RUNNER=self-hosted
+write_lane gap-release release "$GH" "" "$DIGEST_A" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+ASSEMBLE_RUNNER=""
+write_lane gap-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+case_is 1 "runner_environment=self-hosted" \
+  "a host nothing says is destroyed after the job gets no run manifest" \
+  gap-runner gap-release gap-source
+
+# ⛔ RUN 37'S ORDER, AS DATA: the source route finished installing after the
+# release lane's capture began. The barrier stops that on a runner; here the
+# manifest is what must refuse it, because its phases would overlap.
+write_lane late-release release "$GH" "" "$DIGEST_A" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+ASSEMBLE_INSTALLED=2026-09-09T15:08:40Z
+write_lane late-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+ASSEMBLE_INSTALLED=""
+case_is 1 "E-MAN-06" "a capture that began before every route had installed gets no run manifest" \
+  late late-release late-source
+
 # ⛔ AND THE PAIR PUBLISHES, WHICH IT DID NOT UNTIL 2026-09-15. These two lanes
 # install DIFFERENT BYTES - `DIGEST_A` and `DIGEST_B` - which is every
 # release-against-source pair there is, and a capture puts one of them on the
