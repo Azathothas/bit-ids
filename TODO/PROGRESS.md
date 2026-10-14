@@ -51,11 +51,11 @@ were written by hand from published BEPs.
 | question | answer, with where the evidence is |
 | --- | --- |
 | has a stock client been put on the wire? | yes. Transmission 4.0.5 and qBittorrent 4.6.3 announced to the HTTP tracker observer on 2026-09-08, one observer, one platform, one route. `OBS-07`. |
-| has a `Profile` been assembled from a dispatch? | yes, from `capture-client` run 17's artifacts, on 2026-09-15, into a scratch store. Both records are `provisional`. `CI-09`. |
+| has a `Profile` been assembled from a dispatch? | yes, from `capture-client` run 17's artifacts on 2026-09-15 and run 36's on 2026-10-14, each pair into a scratch store. Every record is `provisional`. `CI-09`. |
 | has a record been produced publishable? | only over a stub target written to announce twice and accept two connections, on 2026-09-15. That proves the path, not a product. `CI-09`. |
-| does a stock `aria2-next` cooperate? | partly. Runs 18 and 19 opened two peer connections and it answered one, so `E-PUB-03` refused the pair. ⚠ The contained runs of 2026-10-11, on 2.8.6, announced with a different peer ID on two announces and the second connector refused them; it reports every sample since 2026-10-14. ⛔ Run 35 on 2026-10-14 put 3.0.2 on both lanes and neither reached the wire: the adapter refused it over a discovery switch the build stopped reporting beside one it added, and the tag does not compile on the runner's GCC 13. Both are fixed since, and no dispatch has taken them yet. `OBS-04`, `CLIENT-14`, `CI-09`. |
+| does a stock `aria2-next` cooperate? | partly. ⭐ Run 36 on 2026-10-14 put 3.0.2 on the wire on both routes, and the second connector corroborated every sample exactly. ⛔ The build answered one of the lab's two peer connections, as in runs 18 and 19, so `peer_wire/peer_id` has one sample per capture and `E-PUB-03` refuses the pair. Both connections come from `127.0.0.1`; `OBS-04` carries that reading and the test of it. `CLIENT-14`, `CI-09`. |
 | whose identity does `aria2-next` present? | qBittorrent 5.2.3's: user agent `qBittorrent/5.2.3`, peer ID prefix `-qB5230-`, corroborated by the `cpython-stdlib` connector. `CLIENT-14`. |
-| does a client install finish on a runner? | ⭐ **yes, and it always did.** The "hang" of runs 3 to 34 was *Cut the route* severing the runner agent from GitHub, measured on 2026-10-11 by a flight recorder posting off the host. The capture now runs in a network namespace; both `aria2-next` routes then completed, release in 1.5 minutes and source in 12.5. `CI-08`. |
+| does a client install finish on a runner? | ⭐ **yes, and it always did.** The "hang" of runs 3 to 34 was *Cut the route* severing the runner agent from GitHub, measured on 2026-10-11 by a flight recorder posting off the host. The capture now runs in a network namespace; both `aria2-next` routes then completed, release in 1.5 minutes and source in 12.5, and 3.0.2's source build installed in 694 seconds on 2026-10-14. `CI-08`, `CI-09`. |
 | how many connectors does the capture path declare? | two: the Rust observer and `scripts/capture/connectors/cpython-stdlib.py`. ⚠ The second is two readings of one capture's bytes, not a second observation of the wire. ⭐ Every sample of a field is corroborated, not the first, since 2026-10-14. `OBS-07`, `CI-09`. |
 | has the publisher run against this repository's remote? | no, and it must not until a measured record exists. It cannot run at all yet: `publish-data.yml` downloads an artifact named `bundle` and no workflow uploads one. |
 | has a published URL been fetched? | no. `docs/publishing.md` carries the forms and says they are unexercised. |
@@ -104,16 +104,15 @@ still open is a host that never reached it.
 
 ⛔ **Nothing here is blocked.** Take these in order.
 
-1. **Dispatch `capture-client` and assemble what it uploads.** Since
-   2026-10-14 the second connector reports every sample, so a peer ID that
-   moves between sessions no longer refuses the capture; a capture that does
-   refuse uploads its bundle once `scan-bundle.sh` has passed over it; and the
-   flight recorder closes its check run at the job's end, so a run left open is
-   a host that lost contact. Debug the dispatch from that check run. `CI-09`
-   owns the path, `CI-08` the recorder. ⚠ Run 35 stopped both lanes on
-   `aria2-next` 3.0.2, and both stops are fixed; the source lane's bounds rose
-   with a build measured at 870 seconds, and the next dispatch measures it on a
-   runner. `CI-09`.
+1. **`OBS-04`'s residual: dial the second peer connection from another
+   loopback address.** `capture-client` run 36 assembled a two-route pair of
+   `aria2-next` 3.0.2 that is one sample short: the build answered one of two
+   connections, both from `127.0.0.1`, so `peer_wire/peer_id` has one sample
+   per capture and `E-PUB-03` refuses the pair. libtorrent's
+   `allow_multiple_connections_per_ip` defaults to `false`, which is the reading
+   and not the measurement. The lab's second connection goes through `bind.rs`
+   from another loopback address, then a dispatch says whether both are
+   answered. Debug it from the recorder's check run. `OBS-04`, `CI-09`.
 2. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
    `CLIENT-06` has a same-version pair for Transmission 4.1.3 that needs no new
    route, under its entry in [`clients.md`](clients.md); its builds need

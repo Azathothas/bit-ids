@@ -8,9 +8,9 @@ and why it is not the record. The work order is
 | | |
 | --- | --- |
 | the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
-| the resume point | re-dispatch `capture-client` (`aria2-next`, release and source), read it from its recorder check runs, and assemble both lanes with the uploaded artifacts. `CI-09`. |
-| in flight | run 35 is read and recorded, and everything it stopped on is fixed in the change after `a39d933`: 3.0.2's discovery switches, the source tag that does not compile on GCC 13, the recorder's empty closed runs and the install log the job log never printed. `CLIENT-14`, `CI-08`, `CI-09`. |
-| the state of the tree | the source lane's bounds rose to 1500 seconds for the install and 45 minutes for the job, from a local build of 870 seconds; the runner's number is the next dispatch's to measure. |
+| the resume point | `OBS-04`'s residual: the lab's second peer connection dials from another loopback address, then a `capture-client` dispatch says whether `aria2-next` 3.0.2 answers both. Work order item 1. |
+| in flight | nothing. Run 36, id 38525418038, on `8870eed`, is green on both lanes, assembled and recorded in `CI-09`: two `provisional` records, refused by `E-PUB-03` over one `peer_wire` sample each. |
+| the state of the tree | clean once the record of run 36 is pushed. CI run 186 on `8870eed` is green on all six jobs, the four `check-workflow` shards among them. |
 
 ## Starting, on this host
 

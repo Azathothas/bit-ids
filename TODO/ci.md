@@ -3753,6 +3753,47 @@ source lane's install bound is 1500 seconds now, the step's 1860, the outer
 1980, the step's timeout 35 minutes and the job's 45; the release lane's are
 unchanged. The next dispatch measures the real number.
 
+### ⭐ Run 36: both lanes put 3.0.2 on the wire, and the pair is one sample short. 2026-10-14
+
+`capture-client` run 36, id 38525418038, dispatched on `8870eed`, green on both
+lanes, read from its recorder runs and assembled from its four artifacts into
+two records in a scratch store.
+
+| | release | source |
+| --- | --- | --- |
+| *Install the client* | 6 seconds | **694 seconds**, under the 1500 this lane now allows and the 900 it had |
+| installed executable | `09e34467…afb0d4`, the vendor's asset | `6cdfcdd5…db5c10`, built on the runner |
+| `--version` | 544 bytes | the same 544 bytes, byte for byte |
+| *Capture* | 45 seconds | 45 seconds |
+| announces | four, in two sessions; each session's pair carries one peer ID, and the second session draws a new tail | the same shape |
+| peer connections | the lab dialled two and the build answered the first only | the same |
+| `tracker_http/user_agent` | `qBittorrent/5.2.3`, constant over four samples | the same |
+| `peer_wire/peer_id` | `-qB5230-` and a tail matching neither session's announces, one sample | the same, another tail |
+
+⭐ **The second connector corroborated every sample**: all four fields `exact`
+in both records, four samples of `tracker_http/peer_id` among them. That is the
+every-sample fix of 2026-10-14 on a real dispatch for the first time, over the
+build that varies its tail between sessions.
+
+⭐ **Both recorder runs closed with their last snapshot**, 19,112 and 20,923
+characters, each through its `route to the API` section. `CI-08`.
+
+⛔ **The pair is `provisional` and not publishable, and the reason is one
+sample.** `E-PUB-03` refuses it because `peer_wire/peer_id` is `constant` in each
+capture with a different value, and `classify_across` answers `divergent`. One
+answered connection per lane gives one handshake, so nothing in either record
+can show the tail varies; the announces show it does. ⚠ `OBS-04` carries the
+hypothesis this run strengthens and does not test: both connections reach the
+build from `127.0.0.1`. libtorrent's `allow_multiple_connections_per_ip` is
+`false` by default in the vendored `settings_pack.cpp`, and nothing in
+`aria2-next`'s own source sets it. That is source, which sets priority and
+populates nothing; a lab dialling its second connection from another loopback
+address is what measures it.
+
+⚠ **And the corpus refusals are this entry's own residual**: nothing on the
+capture path writes a `manifest.json`, so both records fail `E-CRP-01` and their
+evidence `E-CRP-06`.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05

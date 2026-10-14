@@ -1085,6 +1085,16 @@ unmeasured.** What is established is that the two connections are now offered
 two peers; whether `aria2-next` handshakes on both is what a dispatch says, and
 until one runs, the reading in the section above stays a reading.
 
+⛔ **Measured since, and still one.** `capture-client` run 36, on 2026-10-14,
+put `aria2-next` 3.0.2 on both lanes: the lab dialled two connections, each
+offering its own peer, and the build answered the first only, as runs 18 and
+19 measured on 2026-09-15. ⚠ The address reading gains a source: libtorrent's
+`allow_multiple_connections_per_ip` defaults to `false` in the copy 3.0.2
+vendors, and `aria2-next`'s own source never sets it. That sets priority and
+proves nothing. ⭐ **The next unit is the test**: the lab's second connection
+dials from another loopback address through `bind.rs`, and a dispatch says
+whether the build then answers both. `CI-09` carries the pair this blocks.
+
 ## OBS-05: BEP 10 and early-message observer
 
 Source: bit-cli T-234 extended-handshake and message-order inventory

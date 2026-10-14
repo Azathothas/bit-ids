@@ -1640,3 +1640,10 @@ runner's GCC 13, because `src/disk/File.cc` calls `std::exchange` without
 `<utility>`. The route now configures with `CXXFLAGS='-include utility'` and
 changes no file the vendor wrote; `CI-09` carries the measurement and the
 bounds that moved with it.
+
+⭐ **Run 36 put both builds on the wire the same day.** Through every guard
+above, each announced as `qBittorrent/5.2.3` with `-qB5230-` peer IDs, over
+two sessions whose tails differ, and answered one of the lab's two peer
+connections. ⚠ The two builds' `--version` answers are byte-identical now, so
+the compiler that told 2.7.5's pair apart is no longer in what they report.
+`CI-09` carries the records.

@@ -5,6 +5,21 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T07:15:39Z
+
+- ⭐ **`aria2-next` 3.0.2 IS ON THE WIRE THROUGH BOTH ROUTES.** `capture-client`
+  run 36 is green on release and source, its source build installed in 694
+  seconds, and both lanes assembled. The second connector corroborated every
+  sample of every field exactly, and both recorder runs closed with their last
+  snapshot.
+- ⛔ **The pair is one sample short of publishable.** The build answered one of
+  the lab's two peer connections, so `peer_wire/peer_id` is one value per
+  capture and `E-PUB-03` refuses the pair. Both connections come from
+  `127.0.0.1`; the work order now leads with dialling the second from another
+  loopback address.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-09`, [`TODO/observer.md`](TODO/observer.md)
+  `OBS-04`. No version bump and no deploy.
+
 ### 2026-10-14T05:03:32Z
 
 - ⛔ **`aria2-next` 3.0.2 IS STARTED WITH EVERY DISCOVERY SWITCH IT REPORTS OFF.**
