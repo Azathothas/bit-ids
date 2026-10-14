@@ -838,6 +838,40 @@ else
 fi
 
 # ============================================================================
+# check-release
+# ============================================================================
+#
+# ⭐ PORTED 2026-10-14. One plant makes the checksum file state the manifest's
+# digest over the wrong bytes, which only the independent reader can see; one
+# renames the refusal a symbolic link is given, which only that case may notice.
+if [ "$HARNESSES" = "0" ]; then
+  printf 'check-bitcheck: the check-release cases were NOT run; --harnesses or --compare runs them\n' >&2
+else
+  agree "release clean tree" check-release publishing/check-release 0
+  go_said "release clean tree" '{"schema":"check-release/1","total":15,"passed":15,"failed":0}'
+
+  REL="$TREE/crates/bit-ids/src/release.rs"
+  cp "$REL" "$WORK/release.orig" || exit 2
+  if replace_once "$REL" 'Sha256Digest::of(manifest)' 'Sha256Digest::of(b"")'; then
+    agree "release checksums that misstate the manifest" check-release publishing/check-release 1
+    go_said "release checksums that misstate the manifest" '{"schema":"check-release/1","total":15,"passed":14,"failed":1}'
+  else
+    fail "release checksums that misstate the manifest: NOT PLANTED"
+  fi
+  cp "$WORK/release.orig" "$REL"
+
+  if replace_once "$REL" '"E-REL-02",' '"E-REL-0X",'; then
+    agree "release a link refused under the wrong code" check-release publishing/check-release 1
+    go_said "release a link refused under the wrong code" '{"schema":"check-release/1","total":15,"passed":14,"failed":1}'
+  else
+    fail "release a link refused under the wrong code: NOT PLANTED"
+  fi
+  cp "$WORK/release.orig" "$REL"
+
+  agree "release clean tree again" check-release publishing/check-release 0
+fi
+
+# ============================================================================
 # check-catalogue
 # ============================================================================
 #

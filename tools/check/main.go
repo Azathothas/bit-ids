@@ -112,6 +112,7 @@ var checks = map[string]check{
 	"check-no-secrets":    checkNoSecrets,
 	"check-one-home":      checkOneHome,
 	"check-placeholders":  checkPlaceholders,
+	"check-release":       checkRelease,
 	"check-project":       checkProject,
 	"check-remote-items":  checkRemoteItems,
 }

@@ -109,7 +109,8 @@ One Rust assembler builds the publication tree once and reads no wall clock. The
 data-branch job and release job consume the same uploaded tree.
 [`release`](../crates/bit-ids/src/release.rs) is that assembler, with
 `cargo run -p bit-ids --example assemble-release -- DIR` as its driving surface
-and [`check-release.sh`](../scripts/publishing/check-release.sh) as its prover.
+and `bit-check check-release`, in
+[`../tools/check/release.go`](../tools/check/release.go), as its prover.
 
 ⛔ **What it consumes is a tree built from the STORE.** A capture bundle is
 evidence and a publication is assembled from records, and the distance between

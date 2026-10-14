@@ -1329,7 +1329,7 @@ than one population:
 
 | kind | rows, as `check-gate.ps1` declares them | closes when |
 | --- | --- | --- |
-| a portable subject | `check-assemble`, `check-connector`, `check-formats`, `check-release`, `check-staleness`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
+| a portable subject | `check-assemble`, `check-connector`, `check-formats`, `check-staleness`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
 | class B | `check-store` | its plants are reconsidered for Windows: a symbolic link and a named pipe cannot be made by an unprivileged Windows session, and a half that skipped them would report a smaller pass under the same name |
 | class C, an `sh` subject | `check-access`, `check-bundle`, `check-publish`, `check-transmission` | the subject gains a Windows half; not this entry's to close |
 | an `sh` subject not yet classed | `check-capture-client`, `check-release-route`, `check-source-route` | class C as well: each subject is an `sh` script; their reasons say so in the next change to them |
@@ -1360,6 +1360,27 @@ until the exact line `  ]`; the `sh` half's `sed` range ends at any line
 starting `  ]`, so the port read on into the next section and found the
 corrected record there. It reads as `sed` does now. The dropped-prover plant in
 `check-gate-rows` removes `publishing/check-release` now.
+
+⭐ **CI run on `b63228e` read both ports back on the Windows lane**: `✅ ok
+check-corpus` and `✅ ok check-indexes`, 42 checks, 19 passed, 0 failed, 0
+skipped, 23 declared.
+
+⭐ **And `check-release` the third.**
+[`../tools/check/release.go`](../tools/check/release.go) ports its 15 rows.
+⛔ Its checksum row is the one that needed a decision. The `sh` half handed
+`SHA256SUMS` to `sha256sum -c` because a reader this project did not write is
+the point. A non-bash step on a Windows runner sees no `sha256sum`, so the port
+asks `sha256sum` where it exists and `certutil -hashfile` for each row where it
+does not. Hashing with this binary's own SHA-256 would be the writer checking
+itself. A host with neither cannot run the check. The `certutil` reader was
+driven here with a stub printing Windows' format, on a `PATH` with no
+`sha256sum`: 15 of 15, and 14 of 15 with one wrong digest. Two plants went into
+the assembler, and both halves agreed on each. One stated the manifest's digest
+over the wrong bytes and failed the checksum row alone. One renamed `E-REL-02`
+and failed that case alone. ⚠ Its `E-REL-02` plant makes a symbolic link, which
+a Windows session needs privilege for; a hosted runner's user has it, and the
+next CI run is what shows it. `check-gate-rows`' dropped-prover plant removes
+`publishing/check-formats` now.
 
 Prove: ⛔ **Rewritten with the Approach.** Every portable-subject row is a
 `bit-check` row on the Windows lane, each port compared against its `sh` half

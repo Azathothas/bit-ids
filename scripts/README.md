@@ -77,9 +77,12 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   still filed where they were. ⭐ It was `corpus/check-indexes.sh` until
   2026-10-14, compared case for case against it before that half was deleted.
   `CI-07`.
-- [`publishing/check-release.sh`](publishing/check-release.sh) assembles a
-  release twice, compares the bytes, and hands the checksum file to `sha256sum
-  -c`, which is a reader this project did not write.
+- `bit-check check-release` assembles a release twice, compares the bytes,
+  and hands the checksum file to a reader this project did not write:
+  `sha256sum -c` where there is one, and Windows' own `certutil -hashfile` per
+  row where there is not. ⭐ It was `publishing/check-release.sh` until
+  2026-10-14, compared case for case against it before that half was deleted.
+  `CI-07`.
 - [`publishing/check-formats.sh`](publishing/check-formats.sh) renders every
   published format over a store that carries a correction, compares two renders
   as bytes, checks that the corrected record is not published as a record in any

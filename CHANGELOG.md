@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T20:24:35Z
+
+- ⭐ **`check-release` runs on the Windows lane**, ported and compared like the
+  two before it. Its checksums are read by `sha256sum` where a host has one and
+  by Windows' own `certutil` where it does not, never by this project's own
+  hashing.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-07`. No version bump and no deploy.
+
 ### 2026-10-14T19:51:14Z
 
 - ⭐ **`check-indexes` runs on the Windows lane too**, ported and compared the
