@@ -13,9 +13,16 @@ would have been the observer agreeing with itself.
 The contract is `CI-09`'s and it is already proved from the other side: a
 connector declared in the attestation's `connectors=` writes
 `connector/<id>.txt` into the bundle, one `field_path=value` line per field the
-observer measured, where the value is lowercase hex, `absent` or
-`out_of_scope`. `assemble-capture` reads it and refuses a declared connector
+observer measured. `assemble-capture` reads it and refuses a declared connector
 that is silent about a field.
+
+  The value is `out_of_scope`, or EVERY SAMPLE of the field in document order,
+  comma-separated, each lowercase hex or `absent`. A surface the bundle carries
+  with no segment showing the build answering is one `absent`, the same line one
+  absent sample would write: both say the build put nothing there. ⛔ One sample
+  per segment rather than one value per field, because a field resting on four
+  announces is four observations and a single value corroborates one of them;
+  `assemble-capture` compares the lists position by position.
 
 WHERE THE INDEPENDENCE ACTUALLY IS, STATED RATHER THAN CLAIMED
 ==============================================================
@@ -53,10 +60,18 @@ BitTorrent protocol string. Selecting by position would have made the two
 readers share a decision, and a record's corroboration would then rest on both
 of them having guessed the same segment.
 
-  Two segments that both parse and DISAGREE are refused rather than resolved.
-  A connector that took one of two conflicting announces would be manufacturing
-  the constant the record is about to declare. Two that agree corroborate each
-  other, which is what a client announcing twice actually gives you.
+  Two segments that both parse and DISAGREE are both reported, in order, rather
+  than resolved. A connector that took one of two differing announces would be
+  manufacturing the constant the record is about to declare, and one that
+  refused them would be calling a build that varies a broken bundle.
+
+  ⛔ THIS REFUSED THEM UNTIL 2026-10-14, AND THAT REFUSAL WAS THE DEFECT. Both
+  contained `capture-client` runs of 2026-10-11 put `aria2-next` 2.8.6 on the
+  wire for two sessions, the build announced a different peer ID in each, and
+  this file exited 1 with "two segments disagree about tracker_http/peer_id" -
+  so neither capture became a record. A tail that moves between sessions is
+  what `SCHEMA-04` calls `patterned`; the samples are the measurement, and
+  choosing between them was never this reader's to do.
 
 WHY PYTHON, WHEN THIS REPOSITORY'S RULE IS SHELL AND RUST
 =========================================================
@@ -272,17 +287,19 @@ def handshake_fields(raw):
 
 
 def collect(found, reader, raw):
-    """Fold one segment's fields into the report, refusing a disagreement."""
+    """Append one segment's fields to the report, one sample per segment.
+
+    ⛔ Every sample is kept, in document order, and none is compared with
+    another here. Whether two announces differ is the record's question -
+    `sampling::field_state` reads the fixed span and the moving one - and a
+    reader that answered it by refusing or by picking would be deciding the
+    measurement instead of reporting it.
+    """
     fields = reader(raw)
     if fields is None:
         return
     for path, value in fields.items():
-        if path in found and found[path] != value:
-            raise Refused(
-                "two segments disagree about %s; a connector that picked one "
-                "would be manufacturing the constant the record declares" % path
-            )
-        found[path] = value
+        found.setdefault(path, []).append(value)
 
 
 # Which surface each field belongs to, so a transcript the bundle does not
@@ -312,10 +329,12 @@ def report_for(bundle):
                 value = OUT_OF_SCOPE
             elif path in found:
                 # `absent` is what a reader put there for a header the request
-                # did not carry; bytes are hex.
-                value = found[path]
-                if isinstance(value, bytes):
-                    value = hex_of(value)
+                # did not carry; bytes are hex. ⚠ Neither spelling carries a
+                # comma, which is what makes the list readable without quoting.
+                value = ",".join(
+                    hex_of(sample) if isinstance(sample, bytes) else sample
+                    for sample in found[path]
+                )
             else:
                 # The surface is in the bundle and nothing in it showed the
                 # build answering. That is an absence two connectors can

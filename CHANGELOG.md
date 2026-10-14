@@ -5,6 +5,23 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T02:55:53Z
+
+- ⛔ **THE SECOND CONNECTOR NO LONGER REFUSES A BUILD THAT VARIES.** Both
+  contained `capture-client` runs of 2026-10-11 ended with `cpython-stdlib`
+  refusing *two segments disagree about tracker_http/peer_id* over `aria2-next`
+  2.8.6's two sessions. It now reports every sample of a field in document
+  order, comma-separated, and a peer ID that moves between sessions is two
+  samples of the `patterned` field `SCHEMA-04` already models.
+- ⭐ **`assemble-capture` corroborates every sample, not the first.** It lines
+  the connector's samples up against the observer's by position; a record
+  carries the first position where they part, and a count that differs is a
+  disagreement about what the build sent.
+- ⭐ `check-capture-client` reproduces the 2026-10-11 failure through the real
+  observer, runner and connector, and passes it now. Twelve plants into the
+  connector and the assembler were each refused.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-09`. No version bump and no deploy.
+
 ### 2026-10-11T04:47:32Z
 
 - ⭐ **THE DOCS ARE AMENDED TO WHAT THE ROOT FIX MADE TRUE.** `capture-client.yml`'s

@@ -143,6 +143,9 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   It reads the bundle's transcripts, decodes the announce with `urllib.parse`
   and the headers with `http.client`, and writes `connector/<id>.txt` - the
   contract `assemble-capture` already refuses a capture for not carrying.
+  ⛔ A line carries every sample of its field, comma-separated in document
+  order, and the assembler compares them position by position; two announces
+  that differ are both reported rather than refused.
   ⚠ It names itself with `--describe`; a caller never composes the identifier.
 - [`capture/check-connector.sh`](capture/check-connector.sh) proves it, and the
   load-bearing case is not a refusal. ⛔ A connector that echoed the observer

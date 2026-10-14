@@ -251,6 +251,15 @@ case "$COMMAND" in
       *) printf 'stub-adapter: no announce URL in %s\n' "$TORRENT" >&2; exit 1 ;;
     esac
     PEER="${BIT_IDS_STUB_PEER_ID:-stub-adapter-00000001}"
+    # ⭐ A PEER ID REGENERATED PER SESSION, which is what `aria2-next` 2.8.6 put
+    # on the wire on 2026-10-11 and what the second connector refused. The
+    # workdir outlives a session, so a count kept there is which start this is,
+    # and the last digit becomes it.
+    if [ "${BIT_IDS_STUB_PEER_PER_SESSION:-}" = yes ]; then
+      STARTS=$(($(cat "$2/stub-starts" 2>/dev/null || printf 0) + 1))
+      printf '%s\n' "$STARTS" >"$2/stub-starts"
+      PEER="${PEER%?}$STARTS"
+    fi
     Q="?info_hash=%5a%5a%5a%5a%5a%5a%5a%5a%5a%5a%5a%5a%5a%5a%5a%5a%5a%5a%5a%5a"
     case "${BIT_IDS_STUB_ANNOUNCE:-yes}" in
       overlong)
@@ -472,6 +481,7 @@ export BIT_IDS_STUB_START_DELAY=""
 export BIT_IDS_STUB_STOP_RC=0
 export BIT_IDS_STUB_ANNOUNCE=yes
 export BIT_IDS_STUB_PEER_ID=stub-adapter-00000001
+export BIT_IDS_STUB_PEER_PER_SESSION=""
 export BIT_IDS_STUB_DROP_NAMED=""
 export BIT_IDS_STUB_DROP_VALUED=""
 export BIT_IDS_STUB_INSTALL_DROP=""
@@ -549,11 +559,32 @@ fi
 # that disagree are a real finding; two that agree are the corroboration a
 # record is allowed to carry. A connector reporting the OBSERVER's own fixture
 # identity, or nothing, would satisfy the row above.
-if [ "$(awk -F= '$1 == "tracker_http/peer_id" { print $2; exit }' "$REPORT" 2>/dev/null)" = "$STUB_HEX" ]; then
-  pass "the connector read the same peer ID out of the transcript as the observer"
+# ⚠ ONE SAMPLE PER ANNOUNCE, and the stub announces once per session, so the
+# report carries the peer ID twice - the count `announces=2` above states.
+if [ "$(awk -F= '$1 == "tracker_http/peer_id" { print $2; exit }' "$REPORT" 2>/dev/null)" = "$STUB_HEX,$STUB_HEX" ]; then
+  pass "the connector read the same peer ID out of each announce as the observer"
 else
-  fail "the connector read the same peer ID out of the transcript as the observer"
+  fail "the connector read the same peer ID out of each announce as the observer"
   [ "$JSON" = "1" ] || sed 's/^/          /' "$REPORT" 2>/dev/null | head -4
+fi
+
+# ⛔ AND A BUILD WHOSE PEER ID MOVES BETWEEN SESSIONS IS CAPTURED, NOT REFUSED.
+# Both contained `capture-client` runs of 2026-10-11 put `aria2-next` 2.8.6 on
+# the wire for two sessions, each announced its own peer ID, and the connector
+# refused with *two segments disagree about tracker_http/peer_id* - so the run
+# went red and its evidence never left the host. This is that shape through the
+# real observer, the real runner and the real connector.
+BIT_IDS_STUB_PEER_PER_SESSION=yes
+run_case 0 "" "a build that announces a different peer ID in each session is captured"
+BIT_IDS_STUB_PEER_PER_SESSION=""
+_first=$(printf 'stub-adapter-00000001' | od -An -tx1 | tr -d ' \n')
+_second=$(printf 'stub-adapter-00000002' | od -An -tx1 | tr -d ' \n')
+if [ "$(awk -F= '$1 == "tracker_http/peer_id" { print $2; exit }' \
+  "$CASE_OUT/bundle/connector/$CONNECTOR_ID.txt" 2>/dev/null)" = "$_first,$_second" ]; then
+  pass "and the connector reports both sessions' peer IDs, in the order they were sent"
+else
+  fail "and the connector reports both sessions' peer IDs, in the order they were sent"
+  [ "$JSON" = "1" ] || sed 's/^/          /' "$CASE_OUT/bundle/connector/$CONNECTOR_ID.txt" 2>/dev/null | head -4
 fi
 
 # ⛔ THE ATTESTATION DECLARES IT, WHICH IS THE KEY `assemble-capture` READS.

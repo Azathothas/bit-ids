@@ -7,10 +7,10 @@ and why it is not the record. The work order is
 
 | | |
 | --- | --- |
-| the task | Take the work order in `TODO/PROGRESS.md` in sequence. |
-| the resume point | the work order's first item: the second connector's refusal over a varying peer ID. |
-| in flight | nothing. The 2026-10-11 session ended at a clean state; [`SESSION-2026-10-11-CONTAINMENT.md`](SESSION-2026-10-11-CONTAINMENT.md) is its record. |
-| the state of the tree | clean, gate green, and both branches at one commit when this was written. Read CI back for the tip before trusting that. |
+| the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
+| the resume point | the work order's first item: a capture that refuses uploads no evidence, then a dispatch. |
+| in flight | the connector fix is committed (every sample reported and corroborated, `CI-09`). Next: the rule-12 scan out of `capture-client.sh` into one script, so *Upload the evidence bundle* can run on a refused capture without shipping an unscanned workdir; `.github/workflows/capture-client.yml`, `scripts/capture/capture-client.sh`, `scripts/ci/check-workflow.sh`. |
+| the state of the tree | gate 40 checks, 39 passed, 1 skipped, exit 0, measured after the connector change. |
 
 ## Starting, on this host
 
@@ -26,6 +26,9 @@ and why it is not the record. The work order is
   check run on the commit shows the host's state while the job runs.
 - ⚠ The session host is `root` and a runner is uid 1001. Drive anything that
   uses `sudo` as an unprivileged user before believing a local pass.
+- ⚠ A capture that refuses uploads no evidence bundle today, so runs 38109299467
+  and 38111442119 left only their job logs: the connector's refusal is in them,
+  the bytes are not.
 
 ## The paste
 
@@ -35,4 +38,7 @@ Re-measure identity, branch, remote and clone depth before editing: the containe
 may start on a claude/* branch, with an agent identity, and a shallow clone.
 Install tools with sh scripts/doctor/provision.sh. Then read
 docs/history/RESUME.md, the record, and the required reading the router names.
+Before every push, run what the table at the top of scripts/README.md names for
+the kind of change. Debug a capture dispatch from its flight-recorder check run,
+not from the job's step list.
 ```

@@ -410,3 +410,9 @@ value per field, so a field resting on four samples is corroborated on one of
 them. Widening that is a change to the connector contract in
 [`../scripts/capture/connectors/`](../scripts/capture/connectors/), and `OBS-07`
 owns it.
+
+⭐ **Widened on 2026-10-14.** A report line carries every sample in document
+order and `assemble-capture` compares the two readers position by position, so
+each observation a pattern rests on is corroborated. ⚠ The record still holds
+one value per connector per field: the first position where the readers part,
+or the first sample when they never do. `CI-09` carries it.

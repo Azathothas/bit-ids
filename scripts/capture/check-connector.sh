@@ -319,24 +319,64 @@ fi
 # -- 4. two announces, which is what a real client sends ----------------------
 #
 # ⭐ TRANSMISSION ANNOUNCED TWICE IN A REAL CAPTURE, so this is the shape rather
-# than an invented one. Two that agree corroborate each other; two that disagree
-# are refused, because a connector that picked one would be manufacturing the
-# constant the record is about to declare.
+# than an invented one. ⛔ EVERY ANNOUNCE IS A SAMPLE AND EVERY SAMPLE IS
+# REPORTED, in document order, whether or not two of them agree: the assembler
+# compares the list position by position against the observer's.
 write_bundle "$WORK/twice" \
   "from_target:$(announce_hex "$(pct_of "$PEER")")" \
   "from_target:$(announce_hex "$(pct_of "$PEER")")" -- "$CLEAN_PEER" || exit 2
-run_case 0 "" "two announces that agree are one observation" "$WORK/twice"
-if [ "$(reported "$CASES_RUN" tracker_http/peer_id)" = "$PEER_HEX" ]; then
-  pass "two agreeing announces report the value they agree on"
+run_case 0 "" "two announces that agree are read" "$WORK/twice"
+if [ "$(reported "$CASES_RUN" tracker_http/peer_id)" = "$PEER_HEX,$PEER_HEX" ] &&
+  [ "$(reported "$CASES_RUN" tracker_http/user_agent)" = "$AGENT_HEX,$AGENT_HEX" ]; then
+  pass "two agreeing announces are two samples, not one value"
 else
-  fail "two agreeing announces report the value they agree on"
+  fail "two agreeing announces are two samples, not one value"
 fi
 
-write_bundle "$WORK/conflict" \
+# ⛔ AND TWO THAT DIFFER ARE BOTH REPORTED, WHICH IS WHAT THIS FILE USED TO
+# REFUSE. Both contained `capture-client` runs of 2026-10-11 put `aria2-next`
+# on the wire for two sessions, each announced its own peer ID, and the old
+# refusal - *two segments disagree about tracker_http/peer_id* - kept either
+# capture from becoming a record. A tail that moves between sessions is
+# `SCHEMA-04`'s `patterned`, and the samples are what the record needs.
+write_bundle "$WORK/varies" \
   "from_target:$(announce_hex "$(pct_of "$PEER")")" \
   "from_target:$(announce_hex "$(pct_of "$OTHER")")" -- "$CLEAN_PEER" || exit 2
-run_case 1 "disagree about tracker_http/peer_id" \
-  "two announces that disagree are refused rather than resolved" "$WORK/conflict"
+run_case 0 "" "two announces that differ are read rather than refused" "$WORK/varies"
+if [ "$(reported "$CASES_RUN" tracker_http/peer_id)" = "$PEER_HEX,$OTHER_HEX" ]; then
+  pass "two differing announces report both peer IDs, in the order they were sent"
+else
+  fail "two differing announces report both peer IDs, in the order they were sent"
+fi
+
+# ⛔ THE ORDER IS THE TRANSCRIPT'S, NOT A SORT. The case above passes over a
+# reader that collected a sorted set, because `-XX0000-a` sorts before
+# `-XX0000-m`; the same two announces sent the other way round separate the two.
+# The assembler lines samples up by position, so a reordered report is a
+# disagreement over a build that did nothing unusual.
+write_bundle "$WORK/reversed" \
+  "from_target:$(announce_hex "$(pct_of "$OTHER")")" \
+  "from_target:$(announce_hex "$(pct_of "$PEER")")" -- "$CLEAN_PEER" || exit 2
+run_case 0 "" "the same two announces sent the other way round are read" "$WORK/reversed"
+if [ "$(reported "$CASES_RUN" tracker_http/peer_id)" = "$OTHER_HEX,$PEER_HEX" ]; then
+  pass "the samples follow the transcript's order rather than their own"
+else
+  fail "the samples follow the transcript's order rather than their own"
+fi
+
+# ⚠ AND THE PEER SURFACE IS THE SAME RULE, on the field that carries a
+# per-connection tail: a build that answers two dials with two tails is two
+# samples, and the lab's own handshake between them is still not one.
+write_bundle "$WORK/twohandshakes" "$CLEAN_TRACKER" -- \
+  "$CLEAN_PEER_LAB" "$CLEAN_PEER" "$CLEAN_PEER_LAB" \
+  "from_target:$(handshake_hex "$OTHER_HEX")" || exit 2
+run_case 0 "" "two handshakes with two tails are read" "$WORK/twohandshakes"
+if [ "$(reported "$CASES_RUN" peer_wire/peer_id)" = "$PEER_HEX,$OTHER_HEX" ] &&
+  [ "$(reported "$CASES_RUN" peer_wire/reserved)" = "$RESERVED_HEX,$RESERVED_HEX" ]; then
+  pass "two handshakes report both peer IDs and both reserved blocks"
+else
+  fail "two handshakes report both peer IDs and both reserved blocks"
+fi
 
 # -- 5. absence is a value and it is not a refusal ----------------------------
 #
@@ -351,6 +391,20 @@ if [ "$(reported "$CASES_RUN" tracker_http/user_agent)" = "absent" ] &&
   pass "a missing header is absent and the rest of the announce still reads"
 else
   fail "a missing header is absent and the rest of the announce still reads"
+fi
+
+# ⚠ AND A MISSING HEADER IS A SAMPLE TOO, IN ITS PLACE. Two announces of which
+# the second carries no `User-Agent` are two samples of that field, and an
+# absence that vanished from the list would line the rest up against the wrong
+# announce.
+write_bundle "$WORK/agentonce" \
+  "from_target:$(announce_hex "$(pct_of "$PEER")")" \
+  "from_target:$(announce_hex "$(pct_of "$PEER")" "")" -- "$CLEAN_PEER" || exit 2
+run_case 0 "" "two announces of which one has no User-Agent are read" "$WORK/agentonce"
+if [ "$(reported "$CASES_RUN" tracker_http/user_agent)" = "$AGENT_HEX,absent" ]; then
+  pass "an absent header keeps its position among the samples"
+else
+  fail "an absent header keeps its position among the samples"
 fi
 
 write_bundle "$WORK/nohandshake" "$CLEAN_TRACKER" -- "$CLEAN_PEER_LAB" || exit 2

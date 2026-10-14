@@ -29,6 +29,11 @@ instances in one day, all in the capture path. Ask what actually ships.
 ⛔ **A guard that sees ONE SPELLING of the thing it forbids reports clean over
 the others.**
 
+⛔ **A rule against CHOOSING one value grew into a rule against REPORTING two.**
+The second connector refused two announces that differed, so a build whose peer
+ID moves between sessions - a shape the record already models - turned two
+captures red. Ask whether a refusal forbids the defect or the measurement.
+
 ⛔ **A one-gated-door defect arrives in the change that fixes something else.** A
 subject left outside a build gate answers 127 under every environment, which
 reads as *the same answer under all 6*.

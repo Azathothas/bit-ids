@@ -763,7 +763,16 @@ transcripts**, [`../scripts/capture/connectors/cpython-stdlib.py`](../scripts/ca
 and `capture-client` refuses to run without one. It decodes the announce with
 `urllib.parse`, its headers with `http.client` and the transcript document with
 `json` - implementations this project did not write - and reports one
-`field_path=value` line per field into `connector/<id>.txt` inside the bundle.
+`field_path=value` line per field into `connector/<id>.txt` inside the bundle,
+the value being every sample of the field in document order.
+
+⛔ **Every sample is corroborated, not the first.** `assemble-capture` lines the
+connector's samples up against the observer's position by position, so a field
+resting on four announces is four comparisons. A record holds one value per
+connector, so it carries the first position where the readers part, or the
+first sample when they never do. ⚠ A build whose peer ID moves between sessions
+is two different samples, which `SCHEMA-04` reads as `patterned`; the connector
+refused that shape until 2026-10-14, and `CI-09` carries the two runs it cost.
 
 ⛔ **It is two READINGS of one capture's bytes, not two observations of the
 wire.** `OBS-07` states what that costs. It identifies each surface by CONTENT

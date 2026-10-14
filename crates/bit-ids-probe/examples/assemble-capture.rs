@@ -60,7 +60,7 @@ use bit_ids::acquisition::{AcquisitionRoute, RouteKind, SignatureStatus, SourceI
 use bit_ids::agreement::{ConnectorObservation, FieldCorroboration, Projection, SeenValue};
 use bit_ids::canonical::{HexBytes, Instant, Label, RelPath, Sha256Digest, Slug, Url, Version};
 use bit_ids::identity::{RecordId, RecordKey, SchemaVersion};
-use bit_ids::observation::{FieldPath, FieldState, ObservedField};
+use bit_ids::observation::{FieldPath, ObservedField};
 use bit_ids::record::{
     Build, Capture, Connector, EvidenceKind, EvidenceRef, Profile, Target, TargetKind,
 };
@@ -565,13 +565,13 @@ fn evidence_of(lane: &Lane) -> Result<Vec<(EvidenceRef, PathBuf)>, String> {
 /// sampled segment. ⚠ With one segment it answers `constant` with one sample,
 /// which is what this wrote by hand before - so a capture that connects once is
 /// unchanged rather than newly refused.
-fn observations_of(lane: &Lane) -> Result<(Vec<ObservedField>, Firsts), String> {
+fn observations_of(lane: &Lane) -> Result<(Vec<ObservedField>, Readings), String> {
     let mut out = Vec::new();
-    let mut firsts = Firsts::new();
-    tracker_observations(lane, &mut out, &mut firsts)?;
-    peer_observations(lane, &mut out, &mut firsts)?;
+    let mut readings = Readings::new();
+    tracker_observations(lane, &mut out, &mut readings)?;
+    peer_observations(lane, &mut out, &mut readings)?;
     out.sort_by_key(|entry| entry.path.to_string());
-    Ok((out, firsts))
+    Ok((out, readings))
 }
 
 /// The announce surface, whose samples are attributed to sessions.
@@ -582,7 +582,7 @@ fn observations_of(lane: &Lane) -> Result<(Vec<ObservedField>, Firsts), String> 
 fn tracker_observations(
     lane: &Lane,
     out: &mut Vec<ObservedField>,
-    firsts: &mut Firsts,
+    readings: &mut Readings,
 ) -> Result<(), String> {
     use bit_ids_lab::evidence::parse_transcript_document;
     use bit_ids_wire::tracker_http::HttpRequest;
@@ -645,7 +645,7 @@ fn tracker_observations(
     }
     push_sampled(
         out,
-        firsts,
+        readings,
         "tracker_http/peer_id",
         &peer_ids,
         lane,
@@ -653,7 +653,7 @@ fn tracker_observations(
     )?;
     push_sampled(
         out,
-        firsts,
+        readings,
         "tracker_http/user_agent",
         &agents,
         lane,
@@ -666,7 +666,7 @@ fn tracker_observations(
 fn peer_observations(
     lane: &Lane,
     out: &mut Vec<ObservedField>,
-    firsts: &mut Firsts,
+    readings: &mut Readings,
 ) -> Result<(), String> {
     use bit_ids_lab::evidence::parse_transcript_document;
     use bit_ids_wire::peer_wire::Handshake;
@@ -715,13 +715,13 @@ fn peer_observations(
     }
     push_sampled(
         out,
-        firsts,
+        readings,
         "peer_wire/peer_id",
         &handshake_ids,
         lane,
         "peer",
     )?;
-    push_sampled(out, firsts, "peer_wire/reserved", &reserved, lane, "peer")?;
+    push_sampled(out, readings, "peer_wire/reserved", &reserved, lane, "peer")?;
     Ok(())
 }
 
@@ -731,10 +731,24 @@ fn peer_observations(
 /// the contract `OBS-07` has to satisfy.** A connector declared in the
 /// attestation writes `connector/<id>.txt` into the bundle, one
 /// `field_path=value` line per field the observer measured, where the value is
-/// lowercase hex, `absent` or `out_of_scope`. A declared connector that reports
-/// nothing about a field is refused rather than recorded as silent: `E-COR-07`
-/// already says silence is not the same as `not_corroborated`, and a connector
-/// this example filled in for would be corroboration the run never produced.
+/// `out_of_scope` or every sample of the field in document order,
+/// comma-separated, each lowercase hex or `absent`. A declared connector that
+/// reports nothing about a field is refused rather than recorded as silent:
+/// `E-COR-07` already says silence is not the same as `not_corroborated`, and a
+/// connector this example filled in for would be corroboration the run never
+/// produced.
+///
+/// ⛔ **EVERY SAMPLE IS COMPARED, NOT THE FIRST.** This compared one value per
+/// field until 2026-10-14, so a field resting on four announces was corroborated
+/// on one of them and the record's `exact` vouched for three readings nobody
+/// had made. ⭐ The lists are compared position by position, and a record
+/// carries the first position where the readers part - or the first sample, when
+/// they never do - because a corroboration entry holds one value per connector
+/// and `E-COR-14` refuses a `disagrees` whose values match.
+/// ⚠ **A count that differs is a disagreement about which segments the build
+/// sent**, and the reader with no sample at that position is recorded as having
+/// seen nothing there: [`SeenValue::Absent`], which is what it looked for and did
+/// not find.
 ///
 /// ⭐ **A capture HAS written one now, measured on 2026-09-15.**
 /// `capture-client` run 15's release lane carries
@@ -752,7 +766,7 @@ fn peer_observations(
 fn corroboration_of(
     lane: &Lane,
     fields: &[ObservedField],
-    firsts: &Firsts,
+    readings: &Readings,
     connectors: &[Connector],
 ) -> Result<Vec<FieldCorroboration>, String> {
     let mut reports: BTreeMap<String, Record> = BTreeMap::new();
@@ -778,70 +792,49 @@ fn corroboration_of(
 
     let mut out = Vec::new();
     for field in fields {
-        let mut observations = Vec::new();
+        let key = field.path.to_string();
+        let mut read = Vec::new();
         for connector in connectors {
-            let seen = if connector.id.as_str() == "bit-ids-probe" {
-                // ⛔ THE OBSERVATION, NOT THE STATE. A sampled field has no
+            let samples = if connector.id.as_str() == "bit-ids-probe" {
+                // ⛔ THE OBSERVATIONS, NOT THE STATE. A sampled field has no
                 // single value, and mapping everything but `constant` to
                 // `out_of_scope` left every patterned field uncorroborated -
                 // which `E-PUB-02` refuses, so sampling a field would have
                 // blocked publication through a second door the moment it
                 // stopped blocking it through the first.
-                match firsts.get(&field.path.to_string()) {
-                    Some(bytes) => SeenValue::Bytes(bytes.clone()),
-                    None => match &field.state {
-                        FieldState::Constant(value) => SeenValue::Bytes(value.value.clone()),
-                        _ => SeenValue::OutOfScope,
-                    },
-                }
+                let values = readings
+                    .get(&key)
+                    .ok_or_else(|| format!("{key}: the observer kept no observation of it"))?;
+                Some(values.iter().cloned().map(SeenValue::Bytes).collect())
             } else {
                 let report = &reports[connector.id.as_str()];
-                let key = field.path.to_string();
-                match report.get(&key).map(String::as_str) {
-                    Some("absent") => SeenValue::Absent,
-                    Some("out_of_scope") => SeenValue::OutOfScope,
-                    Some(hex) => SeenValue::Bytes(
-                        HexBytes::parse(hex).map_err(|error| format!("{key}: {error}"))?,
-                    ),
-                    None => {
-                        return Err(format!(
-                            "connector {} reports nothing about {key}, and silence is not the \
-                             same as not_corroborated",
-                            connector.id
-                        ));
-                    }
-                }
+                let Some(value) = report.get(&key) else {
+                    return Err(format!(
+                        "connector {} reports nothing about {key}, and silence is not the same \
+                         as not_corroborated",
+                        connector.id
+                    ));
+                };
+                reported_samples(value)
+                    .map_err(|error| format!("connector {} on {key}: {error}", connector.id))?
             };
+            read.push((connector.id.clone(), samples));
+        }
+        let (seen, agreement, conflict) = compare_samples(&key, &read)?;
+        let mut observations = Vec::new();
+        for (connector, value) in read.iter().map(|(id, _)| id).zip(seen) {
             observations.push(ConnectorObservation {
-                connector: connector.id.clone(),
+                connector: connector.clone(),
                 evidence: field
                     .evidence
                     .first()
                     .cloned()
                     .ok_or_else(|| format!("{} cites no evidence", field.path))?,
                 projection: Projection::Raw,
-                seen,
+                seen: value,
             });
         }
         observations.sort_by_key(|entry| entry.connector.to_string());
-        let in_scope: Vec<&SeenValue> = observations
-            .iter()
-            .map(|entry| &entry.seen)
-            .filter(|seen| seen.in_scope())
-            .collect();
-        let (agreement, conflict) = match in_scope.as_slice() {
-            [] | [_] => (Agreement::NotCorroborated, None),
-            [first, rest @ ..] if rest.iter().all(|other| *other == *first) => {
-                (Agreement::Exact, None)
-            }
-            _ => (
-                Agreement::Disagrees,
-                Some(
-                    Label::parse("connectors read different bytes for this field")
-                        .map_err(|error| error.to_string())?,
-                ),
-            ),
-        };
         out.push(FieldCorroboration {
             path: field.path.clone(),
             observations,
@@ -853,16 +846,114 @@ fn corroboration_of(
     Ok(out)
 }
 
-/// What each field's FIRST observation was, keyed by field path.
+/// One connector's report line for one field, as samples in document order.
+///
+/// `None` is `out_of_scope`: the connector could not see the surface at all,
+/// which is not a list of anything. ⛔ An empty element is refused rather than
+/// skipped, because `a,,b` is a report that lost a sample somewhere and a reader
+/// that closed the gap would line the rest up against the wrong segments.
+fn reported_samples(value: &str) -> Result<Option<Vec<SeenValue>>, String> {
+    if value == "out_of_scope" {
+        return Ok(None);
+    }
+    let mut out = Vec::new();
+    for (index, sample) in value.split(',').enumerate() {
+        out.push(match sample {
+            "absent" => SeenValue::Absent,
+            "" => return Err(format!("sample {} is empty", index + 1)),
+            hex => SeenValue::Bytes(
+                HexBytes::parse(hex).map_err(|error| format!("sample {}: {error}", index + 1))?,
+            ),
+        });
+    }
+    Ok(Some(out))
+}
+
+/// One value per connector, and the outcome, from every connector's samples.
+///
+/// ⛔ **The position recorded is the first at which the in-scope readers part,
+/// or the first sample when they never do.** A corroboration entry holds one
+/// value per connector, so the record shows the pair that decided the verdict:
+/// `exact` over the first sample means every position matched, and `disagrees`
+/// carries the position that did not. ⚠ A reader with no sample at a position
+/// that another reader has is recorded as [`SeenValue::Absent`] there.
+///
+/// ⛔ **A difference the record cannot show is refused rather than written as
+/// agreement.** A missing sample beside an `absent` one is a different count and
+/// the same value, so `disagrees` over two matching values is what `E-COR-14`
+/// refuses and `exact` would be false. No real capture produces it - the
+/// observer refuses an announce with no `User-Agent` - so `check-assemble`
+/// plants it, and the day a capture does, it reaches a reader rather than a
+/// record.
+fn compare_samples(
+    key: &str,
+    read: &[(Slug, Option<Vec<SeenValue>>)],
+) -> Result<(Vec<SeenValue>, Agreement, Option<Label>), String> {
+    let in_scope: Vec<&Vec<SeenValue>> = read.iter().filter_map(|(_, s)| s.as_ref()).collect();
+    let longest = in_scope
+        .iter()
+        .map(|samples| samples.len())
+        .max()
+        .unwrap_or(0);
+    let parted = (0..longest).find(|&at| {
+        let mut values = in_scope.iter().map(|samples| samples.get(at));
+        let first = values.next().flatten();
+        values.any(|value| value != first)
+    });
+    let at = parted.unwrap_or(0);
+    let seen: Vec<SeenValue> = read
+        .iter()
+        .map(|(_, samples)| match samples {
+            None => SeenValue::OutOfScope,
+            Some(samples) => samples.get(at).cloned().unwrap_or(SeenValue::Absent),
+        })
+        .collect();
+    if in_scope.len() < 2 {
+        return Ok((seen, Agreement::NotCorroborated, None));
+    }
+    let Some(at) = parted else {
+        return Ok((seen, Agreement::Exact, None));
+    };
+    let shown: Vec<&SeenValue> = seen.iter().filter(|value| value.in_scope()).collect();
+    if shown.iter().all(|value| *value == shown[0]) {
+        return Err(format!(
+            "{key}: the readers part at sample {} only in how many samples each found, and a \
+             record holding one value per connector cannot show that",
+            at + 1
+        ));
+    }
+    // ⚠ In the order the observations are listed, which is by connector, so a
+    // count is attributable without a name: two slugs can fill a label alone.
+    let counts: Vec<String> = in_scope
+        .iter()
+        .map(|samples| samples.len().to_string())
+        .collect();
+    let text = if counts.iter().all(|count| *count == counts[0]) {
+        format!(
+            "connectors read different bytes at sample {} of {}",
+            at + 1,
+            counts[0]
+        )
+    } else {
+        format!(
+            "connectors read {} samples, and part at sample {}",
+            counts.join(" and "),
+            at + 1
+        )
+    };
+    let conflict = Label::parse(&text).map_err(|error| format!("{key}: {error}"))?;
+    Ok((seen, Agreement::Disagrees, Some(conflict)))
+}
+
+/// Every observation of each field, in document order, keyed by field path.
 ///
 /// ⛔ **Corroboration is per OBSERVATION, not per state.** A connector reads the
-/// bundle and reports the bytes it saw on one connection; a sampled field has no
-/// single value to compare that against. So the observer reports the same
-/// observation the connector did - the first segment of the transcript - and the
-/// pattern over the rest is the record's claim rather than the corroborated one.
-/// ⚠ That is the golden fixture's own shape: its `peer_wire/peer_id` is
-/// `patterned` and its corroboration carries bytes.
-type Firsts = BTreeMap<String, HexBytes>;
+/// bundle and reports the bytes it saw on each connection; a sampled field has no
+/// single value to compare that against. So the observer's own observations are
+/// kept beside the state they produced, and [`compare_samples`] lines the two
+/// lists up. ⚠ The pattern over them is the record's claim; what is corroborated
+/// is each observation it rests on.
+type Readings = BTreeMap<String, Vec<HexBytes>>;
 
 /// One observation of one field, with where in the plan it came from.
 ///
@@ -932,17 +1023,17 @@ impl Sessions {
     }
 }
 
-/// Builds one sampled field and remembers the observation corroboration uses.
+/// Builds one sampled field and keeps the observations corroboration compares.
 fn push_sampled(
     out: &mut Vec<ObservedField>,
-    firsts: &mut Firsts,
+    readings: &mut Readings,
     path: &str,
     values: &[Observation],
     lane: &Lane,
     evidence: &str,
 ) -> Result<(), String> {
-    let (field, first) = sampled(path, values, lane, evidence)?;
-    firsts.insert(path.to_owned(), first);
+    let (field, samples) = sampled(path, values, lane, evidence)?;
+    readings.insert(path.to_owned(), samples);
     out.push(field);
     Ok(())
 }
@@ -968,7 +1059,7 @@ fn sampled(
     values: &[Observation],
     lane: &Lane,
     evidence: &str,
-) -> Result<(ObservedField, HexBytes), String> {
+) -> Result<(ObservedField, Vec<HexBytes>), String> {
     if values.is_empty() {
         return Err(format!("{path}: 0 observation(s)"));
     }
@@ -1016,18 +1107,14 @@ fn sampled(
     };
     let state = field_state(&samples, &plan)
         .ok_or_else(|| format!("{path}: no state rests on those observations"))?;
-    let first = samples
-        .first()
-        .ok_or_else(|| format!("{path}: no observations"))?
-        .value
-        .clone();
+    let kept = samples.into_iter().map(|sample| sample.value).collect();
     Ok((
         ObservedField {
             path: FieldPath::parse(path).map_err(|error| format!("{path}: {error}"))?,
             state,
             evidence: vec![lane.evidence_id(evidence)],
         },
-        first,
+        kept,
     ))
 }
 
@@ -1184,12 +1271,12 @@ fn profile_of(lanes: &[Lane], watched: usize, version: &Version) -> Result<Profi
         supersedes: None,
         adjudication: None,
     };
-    let (observations, firsts) = observations_of(lane)?;
+    let (observations, readings) = observations_of(lane)?;
     profile.observations = observations;
     profile.corroboration = corroboration_of(
         lane,
         &profile.observations,
-        &firsts,
+        &readings,
         &profile.capture.connectors,
     )?;
     profile.evidence.sort_by_key(|entry| entry.id.to_string());

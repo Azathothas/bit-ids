@@ -1814,6 +1814,17 @@ Decision: two segments that both parse and disagree are refused rather than
 resolved. A connector that took one of two conflicting announces would be
 manufacturing the constant the record is about to declare.
 
+⛔ **Corrected on 2026-10-14: refusing them was the defect, and the reason above
+is kept because it is half right.** Picking one of two announces would
+manufacture a constant; refusing both calls a build that varies a broken bundle.
+Both contained `capture-client` runs of 2026-10-11 put `aria2-next` 2.8.6 on the
+wire for two sessions, it announced a different peer ID in each, and this
+connector exited 1 - so neither capture became a record and, because a failed
+capture uploaded no bundle, the bytes were lost with the hosts. ⭐ The connector
+now reports every sample in document order and `assemble-capture` corroborates
+each one, which is the widening `SCHEMA-04`'s last paragraph assigned here.
+`CI-09` carries the change and its proof.
+
 ### ⛔ Where the independence actually is, measured rather than claimed
 
 | what is decoded | by what | how independent |

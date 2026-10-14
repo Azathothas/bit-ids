@@ -196,13 +196,26 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
   } >"$_cap/capture/attestation.txt"
 
   # The second connector's own report, which is the contract `OBS-07` fills.
+  # ⛔ EVERY SAMPLE, IN THE TRANSCRIPT'S ORDER, which is what the contract asks
+  # since 2026-10-14: the eighth argument is what the connector read for the
+  # FIRST segment of each surface - which a case moves to plant a conflict - and
+  # a ninth adds the second segment's value as the transcript carries it.
   if [ -n "${8:-}" ]; then
     mkdir -p "$_cap/capture/bundle/connector" || return 1
+    _agent=$(hexof 'fixture-client/1.2.3')
+    _ids=$(hexof "$8")
+    _agents=$_agent
+    _reserved=$RESERVED_HEX
+    if [ -n "${9:-}" ]; then
+      _ids="$_ids,$(hexof "$9")"
+      _agents="$_agents,$_agent"
+      _reserved="$_reserved,$RESERVED_HEX"
+    fi
     {
-      printf 'tracker_http/peer_id=%s\n' "$(hexof "$8")"
-      printf 'tracker_http/user_agent=%s\n' "$(hexof 'fixture-client/1.2.3')"
-      printf 'peer_wire/peer_id=%s\n' "$(hexof "$8")"
-      printf 'peer_wire/reserved=%s\n' "$RESERVED_HEX"
+      printf 'tracker_http/peer_id=%s\n' "$_ids"
+      printf 'tracker_http/user_agent=%s\n' "$_agents"
+      printf 'peer_wire/peer_id=%s\n' "$_ids"
+      printf 'peer_wire/reserved=%s\n' "$_reserved"
     } >"$_cap/capture/bundle/connector/fixture-oracle.txt"
   fi
 
@@ -670,6 +683,111 @@ if [ "$CONFLICTED" = "2" ]; then
 else
   fail "the conflict is on the two altered fields and not on the two agreed ones ($CONFLICTED rows)"
   [ "$JSON" = "1" ] || grep -F -e 'E-PUB-01' "$WORK/conflict.out" | sed 's/^/          /'
+fi
+
+# -- ⛔ AND EVERY SAMPLE IS CORROBORATED, NOT THE FIRST ------------------------
+#
+# ⛔ THE ASSEMBLER COMPARED ONE VALUE PER FIELD UNTIL 2026-10-14, so a field
+# resting on two announces was corroborated on the first and the record's
+# `exact` vouched for a second reading nobody had compared. This lane's
+# connector agrees on every first sample and reads a different peer ID out of
+# the SECOND announce only: an assembler comparing first samples calls it exact
+# and publishes it.
+write_lane late-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 \
+  "$PEER_B" "$PEER_B" "$PEER_D" || exit 2
+_late_report="$WORK/late-source-capture/capture/bundle/connector/fixture-oracle.txt"
+_late_from="tracker_http/peer_id=$(hexof "$PEER_B"),$(hexof "$PEER_D")"
+_late_to="tracker_http/peer_id=$(hexof "$PEER_B"),$(hexof "$PEER_C")"
+sed "s|^$_late_from\$|$_late_to|" "$_late_report" >"$WORK/late.txt"
+if cmp -s "$WORK/late.txt" "$_late_report"; then
+  fail "the second-sample plant applied"
+else
+  pass "the second-sample plant applied"
+  cp "$WORK/late.txt" "$_late_report"
+  case_is 0 "E-PUB-01" \
+    "a connector that parts from the observer on the second sample is a conflict" \
+    late samp-release late-source
+  if [ "$(grep -c -F -e 'E-PUB-01' "$WORK/late.out")" = "1" ]; then
+    pass "the late conflict is on the one field it was planted in"
+  else
+    fail "the late conflict is on the one field it was planted in"
+    [ "$JSON" = "1" ] || grep -F -e 'E-PUB-01' "$WORK/late.out" | sed 's/^/          /'
+  fi
+  # ⭐ AND THE RECORD CARRIES THE SAMPLE THAT PARTED. A corroboration entry holds
+  # one value per connector, and `E-COR-14` refuses a `disagrees` whose values
+  # match - so the pair recorded is the second, and both of its values are the
+  # transcript's and the planted report's rather than the first sample twice.
+  _late_record=$(find "$WORK/store-late/profiles" -name 'cap-source.json' -type f | head -1)
+  if grep -q -F -e 'at sample 2 of 2' "$_late_record" &&
+    grep -q -F -e "\"$(hexof "$PEER_C")\"" "$_late_record" &&
+    grep -q -F -e "\"$(hexof "$PEER_D")\"" "$_late_record"; then
+    pass "the record names sample 2 and carries what each reader saw there"
+  else
+    fail "the record names sample 2 and carries what each reader saw there"
+  fi
+fi
+
+# ⛔ AND A REPORT THAT COUNTED FEWER SAMPLES DISAGREES ABOUT WHAT WAS SENT. One
+# value over a field the observer saw twice is the contract this replaced, and
+# reading it as a corroboration of the first sample is what the old assembler
+# did. The reader with no second sample is recorded as having seen nothing
+# there, which is what it looked for and did not find.
+write_lane short-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 \
+  "$PEER_B" "$PEER_B" "$PEER_D" || exit 2
+_short_report="$WORK/short-source-capture/capture/bundle/connector/fixture-oracle.txt"
+sed "s|^tracker_http/user_agent=\\([0-9a-f]*\\),.*\$|tracker_http/user_agent=\\1|" \
+  "$_short_report" >"$WORK/short.txt"
+if cmp -s "$WORK/short.txt" "$_short_report"; then
+  fail "the one-sample plant applied"
+else
+  pass "the one-sample plant applied"
+  cp "$WORK/short.txt" "$_short_report"
+  case_is 0 "E-PUB-01" \
+    "a connector that read fewer samples than the observer is a conflict" \
+    shortrep samp-release short-source
+  if grep -q -F -e 'read 2 and 1 samples, and part at sample 2' \
+    "$(find "$WORK/store-shortrep/profiles" -name 'cap-source.json' -type f | head -1)"; then
+    pass "the record says how many samples each reader found"
+  else
+    fail "the record says how many samples each reader found"
+  fi
+fi
+
+# ⛔ AND A DIFFERENCE THE RECORD CANNOT SHOW IS REFUSED BY NAME. One announce,
+# and a connector that reports a second, absent, `User-Agent` after it: the two
+# readers differ only in how many samples each found, the one with no second
+# sample is recorded as seeing nothing there, and so is the one that reported an
+# absence. `disagrees` over two matching values is what `E-COR-14` refuses and
+# `exact` would be false, so the assembler says which it is rather than leaving
+# the validator to refuse the record for a reason that names neither reader.
+write_lane extra-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+_extra_report="$WORK/extra-source-capture/capture/bundle/connector/fixture-oracle.txt"
+sed 's|^\(tracker_http/user_agent=[0-9a-f]*\)$|\1,absent|' "$_extra_report" >"$WORK/extra.txt"
+if cmp -s "$WORK/extra.txt" "$_extra_report"; then
+  fail "the extra-absent-sample plant applied"
+else
+  pass "the extra-absent-sample plant applied"
+  cp "$WORK/extra.txt" "$_extra_report"
+  case_is 1 "only in how many samples each found" \
+    "a count-only difference no record can show is refused by name" \
+    extra good-release extra-source
+fi
+
+# ⛔ AND A LIST WITH A HOLE IN IT IS REFUSED, NOT CLOSED UP. `a,,b` lost a sample
+# somewhere, and a reader that skipped the gap would line every later sample up
+# against the wrong segment.
+write_lane hole-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 \
+  "$PEER_B" "$PEER_B" "$PEER_D" || exit 2
+_hole_report="$WORK/hole-source-capture/capture/bundle/connector/fixture-oracle.txt"
+sed 's|^peer_wire/reserved=\([0-9a-f]*\),|peer_wire/reserved=\1,,|' \
+  "$_hole_report" >"$WORK/hole.txt"
+if cmp -s "$WORK/hole.txt" "$_hole_report"; then
+  fail "the empty-sample plant applied"
+else
+  pass "the empty-sample plant applied"
+  cp "$WORK/hole.txt" "$_hole_report"
+  case_is 1 "sample 2 is empty" "a connector report with an empty sample is refused" \
+    hole samp-release hole-source
 fi
 
 # -- ⛔ A ROUTE THAT ACQUIRED NOTHING IS NOT A SECOND ROUTE --------------------

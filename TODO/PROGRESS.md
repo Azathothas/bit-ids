@@ -1,6 +1,6 @@
 # Current progress
 
-State instant: 2026-10-11
+State instant: 2026-10-14
 Total: 66
 Open: 21
 In progress: 0
@@ -53,10 +53,10 @@ were written by hand from published BEPs.
 | has a stock client been put on the wire? | yes. Transmission 4.0.5 and qBittorrent 4.6.3 announced to the HTTP tracker observer on 2026-09-08, one observer, one platform, one route. `OBS-07`. |
 | has a `Profile` been assembled from a dispatch? | yes, from `capture-client` run 17's artifacts, on 2026-09-15, into a scratch store. Both records are `provisional`. `CI-09`. |
 | has a record been produced publishable? | only over a stub target written to announce twice and accept two connections, on 2026-09-15. That proves the path, not a product. `CI-09`. |
-| does a stock `aria2-next` cooperate? | partly. Runs 18 and 19 opened two peer connections and it answered one, so `E-PUB-03` refused the pair. ⚠ The contained runs of 2026-10-11, on 2.8.6, announced with a different peer ID on two announces and the second connector refused to choose; the work order's first item. `OBS-04`, `CI-09`. |
+| does a stock `aria2-next` cooperate? | partly. Runs 18 and 19 opened two peer connections and it answered one, so `E-PUB-03` refused the pair. ⚠ The contained runs of 2026-10-11, on 2.8.6, announced with a different peer ID on two announces and the second connector refused them; it reports every sample since 2026-10-14, and no dispatch has taken it yet. `OBS-04`, `CI-09`. |
 | whose identity does `aria2-next` present? | qBittorrent 5.2.3's: user agent `qBittorrent/5.2.3`, peer ID prefix `-qB5230-`, corroborated by the `cpython-stdlib` connector. `CLIENT-14`. |
 | does a client install finish on a runner? | ⭐ **yes, and it always did.** The "hang" of runs 3 to 34 was *Cut the route* severing the runner agent from GitHub, measured on 2026-10-11 by a flight recorder posting off the host. The capture now runs in a network namespace; both `aria2-next` routes then completed, release in 1.5 minutes and source in 12.5. `CI-08`. |
-| how many connectors does the capture path declare? | two: the Rust observer and `scripts/capture/connectors/cpython-stdlib.py`. ⚠ The second is two readings of one capture's bytes, not a second observation of the wire. `OBS-07`. |
+| how many connectors does the capture path declare? | two: the Rust observer and `scripts/capture/connectors/cpython-stdlib.py`. ⚠ The second is two readings of one capture's bytes, not a second observation of the wire. ⭐ Every sample of a field is corroborated, not the first, since 2026-10-14. `OBS-07`, `CI-09`. |
 | has the publisher run against this repository's remote? | no, and it must not until a measured record exists. It cannot run at all yet: `publish-data.yml` downloads an artifact named `bundle` and no workflow uploads one. |
 | has a published URL been fetched? | no. `docs/publishing.md` carries the forms and says they are unexercised. |
 | does anything schedule the staleness monitor? | no. `CI-02` built the comparison; no capture request has been opened. |
@@ -99,13 +99,13 @@ owns the rule and `docs/AGENTS.md` absolute 16 restates it.
 
 ⛔ **Nothing here is blocked.** Take these in order.
 
-1. **The second connector's refusal**, which is what stops every capture now.
-   Both contained runs on 2026-10-11 put `aria2-next` on the wire and then
-   `cpython-stdlib` refused: *two segments disagree about
-   tracker_http/peer_id*. A peer ID that differs per announce is `OBS-04`'s
-   per-connection identity, and `SCHEMA-04` already models a varying field; the
-   connector has to report it as varying rather than refuse. `CI-09` owns the
-   path. [`ci.md`](ci.md) under `CI-08` carries the two runs.
+1. **A capture that refuses uploads no evidence.** *Upload the evidence bundle*
+   runs on success only, so the two contained runs of 2026-10-11 left job logs
+   and no bytes. ⛔ Uploading on failure must not bypass the rule-12 scan, which
+   `capture-client.sh` runs only on its success path. Then dispatch
+   `capture-client` and assemble what it uploads: the second connector reports
+   every sample since 2026-10-14, so a peer ID that moves between sessions no
+   longer refuses the capture. `CI-09` owns the path.
 2. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
    `CLIENT-06` has a same-version pair for Transmission 4.1.3 that needs no new
    route, under its entry in [`clients.md`](clients.md); its source build needs

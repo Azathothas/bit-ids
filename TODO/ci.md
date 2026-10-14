@@ -3422,6 +3422,73 @@ it and accepted it both exit 0; removing the declaration is what separated them.
 removed, a declaration naming no real entry, a declaration gone stale, a
 `pattern:` download, and a reordered step.
 
+### ⛔ The second connector refused a build that varies, and it reports every sample now. 2026-10-14
+
+⛔ **Both contained runs of 2026-10-11 ended in the connector, not in the build.**
+`capture-client` runs 38109299467 and 38111442119 put `aria2-next` 2.8.6 on the
+wire through both routes, and each *Capture* step exited 1 with the same two
+lines, read from the job logs through `AGENTS.md` rule 8's route:
+
+```text
+cpython-stdlib: two segments disagree about tracker_http/peer_id; a connector that picked one would be manufacturing the constant the record declares
+capture-client: the second connector could not read what the observer recorded
+```
+
+⚠ **That is all that survived.** *Upload the evidence bundle* runs only on
+success, so the transcripts were destroyed with the hosts; the artifact list for
+both runs holds `install-*` and no `capture-client-*`. What the lines establish
+is that two announces of one capture carried two peer IDs; the capture runs two
+sessions by default, so a peer ID regenerated per process is the reading the
+attestation's own `sessions=2` predicts, and it is not measured.
+
+⛔ **The refusal was the defect.** A tail that moves between sessions is what
+`SCHEMA-04` calls `patterned`, and `sampling::field_state` already reads it;
+the connector's rule against *picking* one of two announces had grown into a rule
+against *reporting* two. ⭐ The repair is the widening `SCHEMA-04` assigned to
+`OBS-07`:
+
+| where | what changed |
+| --- | --- |
+| `cpython-stdlib.py` | a report line carries every sample, comma-separated in document order, each lowercase hex or `absent`; `out_of_scope` stays a whole-field value |
+| `assemble-capture` | the observer keeps every observation, not the first, and `compare_samples` lines the two lists up by position: `exact` only if every position matches |
+| the record | one value per connector, as before: the first position where the readers part, or the first sample when they never do, because `E-COR-14` refuses a `disagrees` whose values match |
+| a count that differs | a disagreement about which segments the build sent; the reader with no sample at that position is recorded as `absent` there, and a count difference no record can show - a missing sample beside an `absent` one - is refused by name |
+
+⭐ **Reproduced first, then shown passing.** `check-capture-client` gains a stub
+that announces a different peer ID in each session, driven through the real
+observer, the real `capture-client.sh` and the real connector. Against the
+connector at `30a9801` it fails with exactly the two lines above; against this
+one it passes and the report carries both peer IDs in the order they were sent.
+
+| measured on this host, 2026-10-14 | result |
+| --- | --- |
+| `sh scripts/capture/check-connector.sh` | 51 cases, 51 passed; against `30a9801`'s connector, 9 of them fail |
+| `sh scripts/capture/check-assemble.sh` | 51 cases, 51 passed |
+| `sh scripts/capture/check-capture-client.sh` | 125 cases, 125 passed; against `30a9801`'s connector, 3 fail, the per-session capture among them |
+
+Guard mutation, twelve plants into scratch copies of the tree, each replaced
+exactly once and verified to have changed the file, the harness's own exit code
+read unpiped, clean control either side:
+
+| plant | verdict |
+| --- | --- |
+| the assembler compares the first sample only, which is what it did before | ⭐ refused, 6 cases |
+| it compares up to the SHORTER list, so a count never differs | ⭐ refused, 3 cases |
+| it records the first sample rather than the one that parted | ⭐ refused, 5 cases: `E-COR-14` refuses the record |
+| an empty sample is skipped rather than refused | ⭐ refused, by the case written for it |
+| the count-only refusal is removed | ⭐ refused, by its message alone: the validator refuses the record anyway, naming neither reader |
+| the observer keeps its first observation only | ⭐ refused, 4 cases |
+| a missing sample matches anything | ⭐ refused, 3 cases |
+| the connector keeps its first sample only | ⭐ refused, 5 cases |
+| it reports a sorted list | ⭐ refused, 2 cases, one of them the pair of announces sent the other way round |
+| it reports each distinct value once | ⭐ refused, 2 cases |
+| it drops `absent` samples | ⭐ refused, 2 cases |
+| it refuses two that differ, which is the defect | ⭐ refused, 8 cases |
+
+⚠ **Unproved on a runner.** No dispatch has taken this connector, so whether
+`aria2-next` regenerates its peer ID per session, and whether the pair then
+reaches `build_equivalent`, is the next dispatch's to say.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05
