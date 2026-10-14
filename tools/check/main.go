@@ -116,6 +116,7 @@ var checks = map[string]check{
 	"check-release":       checkRelease,
 	"check-project":       checkProject,
 	"check-remote-items":  checkRemoteItems,
+	"check-staleness":     checkStaleness,
 }
 
 func names() []string {

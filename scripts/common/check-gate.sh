@@ -314,8 +314,8 @@ fi
 # ⭐ AND THE HARNESSES, 2026-09-29: `check-cache` and `check-catalogue` left the
 # prover list below for this one, each compared case for case against both of
 # its halves first. They build Rust examples, which the build above has already
-# made a no-op. ⭐ `check-corpus`, `check-indexes`, `check-release` and
-# `check-formats` followed on 2026-10-14, `CI-07`, each compared against its one half; none had a
+# made a no-op. ⭐ `check-corpus`, `check-indexes`, `check-release`,
+# `check-formats` and `check-staleness` followed on 2026-10-14, `CI-07`, each compared against its one half; none had a
 # PowerShell twin, so this is what closed the Windows lane's declared row for
 # each.
 # ⚠ `check-remote-items` joined the same day and NEEDS gh AND THE NETWORK, so it
@@ -325,7 +325,8 @@ fi
 for c in check-adapters check-cache check-catalogue check-changelog \
   check-control-bytes check-corpus check-docs check-formats check-ignores \
   check-indexes check-licences check-markers check-no-secrets check-one-home \
-  check-placeholders check-project check-release check-remote-items; do
+  check-placeholders check-project check-release check-remote-items \
+  check-staleness; do
   if [ -x "$GOBIN" ]; then
     queue "$c" "$GOBIN" "$c"
   else
@@ -386,10 +387,8 @@ fi
 # scratch directory and touch no real remote, and check-capture binds only
 # loopback and reads a routing table it wrote itself.
 # ⚠ They need cargo, so they exit 2 on a host without
-# one, which is a skip and not a pass. ⚠ check-staleness needs python3 as well,
-# which is what re-derives a request identifier independently of the encoder
-# under test, and check-capture needs curl, which is the HTTP client it drives
-# the observer with. None has a PowerShell half; scripts/README.md carries why,
+# one, which is a skip and not a pass. ⚠ check-capture needs curl, which is
+# the HTTP client it drives the observer with. None has a PowerShell half; scripts/README.md carries why,
 # and ⭐ check-capture is the one that runs the PowerShell half of its SUBJECT
 # anyway, because capture-run.ps1 takes a route table as a file.
 #
@@ -401,10 +400,10 @@ fi
 # of this group rather than being a text rule over the tree, and because
 # check-twins pairs the common/ checks and neither has a PowerShell half.
 #
-# ⚠ ci/check-staleness AND ci/check-step-bodies ARE IN THIS LIST AND
-# ci/check-workflow IS NOT. They sit in one directory and differ in one property:
-# two of check-workflow's cases run this gate, so a runner that listed it would
-# re-enter itself. Neither of the other two runs a gate - check-step-bodies runs
+# ⚠ ci/check-step-bodies IS IN THIS LIST AND ci/check-workflow IS NOT. They sit
+# in one directory and differ in one property: two of check-workflow's cases run
+# this gate, so a runner that listed it would re-enter itself.
+# check-step-bodies runs no gate - it runs
 # two capture workflows' step bodies against stubbed guards and a stub product,
 # and the capture workflows are dispatch-only and call no gate.
 #
@@ -429,7 +428,7 @@ for spec in acquisition/check-release-route \
   common/check-shell \
   publishing/check-publish publishing/check-access \
   publishing/check-bundle \
-  ci/check-staleness ci/check-step-bodies \
+  ci/check-step-bodies \
   capture/check-assemble capture/check-connector capture/check-transmission \
   common/check-examples \
   common/check-handbook common/check-gate-rows common/check-public-row \

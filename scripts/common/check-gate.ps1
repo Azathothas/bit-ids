@@ -257,6 +257,10 @@ Invoke-Ported 'check-release'
 # ⭐ AND check-formats, whose database reader is Python's sqlite3. CI-07.
 Invoke-Ported 'check-formats'
 
+# ⭐ AND check-staleness, which was declared here because its harness was sh;
+# its subject never needed a POSIX feature. CI-07.
+Invoke-Ported 'check-staleness'
+
 # ⭐ AND THE LAST `common/` TWIN THIS LANE RAN, 2026-09-29. This row ran
 # `check-remote-items.ps1`, compared case for case against both halves before
 # they were deleted. ⚠ It NEEDS gh AND THE NETWORK, so it exits 2 on a machine
@@ -302,16 +306,10 @@ else {
 Add-Unavailable 'check-store' 'its plants are a symlink and a named pipe; reconsider them, do not translate; CI-07 class B'
 Add-Unavailable 'check-publish' 'its subject publish-data.sh has no PowerShell half; CI-07 class C'
 
-# ⚠ DECLARED FOR A DIFFERENT REASON, AND THE WORDING SAYS WHICH. check-staleness
-# plants nothing on a filesystem and needs no POSIX-only feature; it is an sh
-# harness with no PowerShell half, and it needs python3 for the independent
-# derivation of a request identifier. Copying the row above would have recorded a
-# reason that is not this one.
 Add-Unavailable 'check-access' 'its subject publish-data.sh has no PowerShell half; CI-07 class C'
 Add-Unavailable 'check-bundle' 'its subjects assemble-bundle.sh and publish-data.sh have no PowerShell half; CI-07 class C'
 Add-Unavailable 'check-examples' 'it RUNS a document sh fenced blocks and there is no sh here; CI-07 class D'
 Add-Unavailable 'check-handbook' 'it RUNS a document sh fenced blocks and there is no sh here; CI-07 class D'
-Add-Unavailable 'check-staleness' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
 
 # ⛔ AND THIS ONE IS THE ROW THAT WATCHES THIS LIST. check-gate-rows compares the
 # names this runner declares against the ones the sh runner queues, so a prover

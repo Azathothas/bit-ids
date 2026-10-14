@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T21:10:48Z
+
+- ⭐ **`check-staleness` runs on the Windows lane**, ported and compared like
+  the four before it. Its request identifier is re-derived with Go's SHA-256,
+  independent of the Rust encoder as Python's was.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-07`. No version bump and no deploy.
+
 ### 2026-10-14T20:58:13Z
 
 - ⭐ **`check-formats` runs on the Windows lane**, ported and compared like the

@@ -906,6 +906,40 @@ else
 fi
 
 # ============================================================================
+# check-staleness
+# ============================================================================
+#
+# ⭐ PORTED 2026-10-14. One plant moves the request identifier's domain, which
+# only the independent re-derivation can see; one never treats a held request
+# as already open, which the repeat rows exist to see.
+if [ "$HARNESSES" = "0" ]; then
+  printf 'check-bitcheck: the check-staleness cases were NOT run; --harnesses or --compare runs them\n' >&2
+else
+  agree "staleness clean tree" check-staleness ci/check-staleness 0
+  go_said "staleness clean tree" '{"schema":"check-staleness/1","total":19,"passed":19,"failed":0}'
+
+  STL="$TREE/crates/bit-ids/src/staleness.rs"
+  cp "$STL" "$WORK/staleness.orig" || exit 2
+  if replace_once "$STL" 'const DOMAIN: &'"'"'static str = "bit-ids/capture-request/1";' 'const DOMAIN: &'"'"'static str = "bit-ids/capture-request/2";'; then
+    agree "staleness a request identifier under another domain" check-staleness ci/check-staleness 1
+    go_said "staleness a request identifier under another domain" '{"schema":"check-staleness/1","total":19,"passed":18,"failed":1}'
+  else
+    fail "staleness a request identifier under another domain: NOT PLANTED"
+  fi
+  cp "$WORK/staleness.orig" "$STL"
+
+  if replace_once "$STL" 'state: if held {' 'state: if false && held {'; then
+    agree "staleness a held request opened again" check-staleness ci/check-staleness 1
+    go_said "staleness a held request opened again" '{"schema":"check-staleness/1","total":19,"passed":16,"failed":3}'
+  else
+    fail "staleness a held request opened again: NOT PLANTED"
+  fi
+  cp "$WORK/staleness.orig" "$STL"
+
+  agree "staleness clean tree again" check-staleness ci/check-staleness 0
+fi
+
+# ============================================================================
 # check-catalogue
 # ============================================================================
 #

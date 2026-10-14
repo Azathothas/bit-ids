@@ -147,8 +147,8 @@ fi
 cp "$SH_GATE" "$WORK/gate.sh" || exit 2
 cp "$PS_GATE" "$WORK/gate.ps1" || exit 2
 
-if replace_once "$WORK/gate.sh" 'ci/check-staleness ci/check-step-bodies' \
-  'ci/check-staleness ci/check-step-bodies ci/check-planted'; then
+if replace_once "$WORK/gate.sh" '  ci/check-step-bodies ' \
+  '  ci/check-step-bodies ci/check-planted '; then
   rows_sh "$WORK/gate.sh" "$WORK/sh.plant"
   compare "sh       a prover added to the sh list alone is caught" \
     "$WORK/sh.plant" "$WORK/ps.rows" differ
@@ -165,8 +165,8 @@ else
   fail "sh       the dropped-prover plant did not apply"
 fi
 
-if replace_once "$WORK/gate.ps1" "Add-Unavailable 'check-staleness'" \
-  "Add-Unavailable 'check-only-in-powershell' 'planted'; Add-Unavailable 'check-staleness'"; then
+if replace_once "$WORK/gate.ps1" "Add-Unavailable 'check-assemble'" \
+  "Add-Unavailable 'check-only-in-powershell' 'planted'; Add-Unavailable 'check-assemble'"; then
   rows_ps "$WORK/gate.ps1" "$WORK/ps.plant"
   compare "pwsh     a row declared on the PowerShell lane alone is caught" \
     "$WORK/sh.rows" "$WORK/ps.plant" differ

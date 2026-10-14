@@ -8,7 +8,7 @@
 //! resolution. What the survey sees is what the resolver decided.
 //!
 //! ⚠ The store side is a `LatestRow` list rather than a whole corpus, which is
-//! what [`bit_ids::index::Indexes::latest`] is. `check-staleness.sh` is the half
+//! what [`bit_ids::index::Indexes::latest`] is. `bit-check check-staleness` is the half
 //! that builds a real store, indexes it and feeds the document back in, because
 //! a suite that constructs both sides of a comparison agrees with itself about
 //! the shape they share.

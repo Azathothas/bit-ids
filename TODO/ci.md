@@ -1329,7 +1329,7 @@ than one population:
 
 | kind | rows, as `check-gate.ps1` declares them | closes when |
 | --- | --- | --- |
-| a portable subject | `check-assemble`, `check-connector`, `check-staleness`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
+| a portable subject | `check-assemble`, `check-connector`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
 | class B | `check-store` | its plants are reconsidered for Windows: a symbolic link and a named pipe cannot be made by an unprivileged Windows session, and a half that skipped them would report a smaller pass under the same name |
 | class C, an `sh` subject | `check-access`, `check-bundle`, `check-publish`, `check-transmission` | the subject gains a Windows half; not this entry's to close |
 | an `sh` subject not yet classed | `check-capture-client`, `check-release-route`, `check-source-route` | class C as well: each subject is an `sh` script; their reasons say so in the next change to them |
@@ -1397,6 +1397,17 @@ each. One stated one record more than the database holds; one wrote no
 check handed the CBOR to `cbor2`. Neither half ever did: `cbor2` read it once,
 in `PUB-03`'s driven pass. Both comments say so now. `check-gate-rows`'
 dropped-prover plant removes `publishing/check-publish` now.
+
+⭐ **And `check-staleness` the fifth.**
+[`../tools/check/staleness.go`](../tools/check/staleness.go) ports its 19 rows.
+The request identifier is re-derived with Go's SHA-256 where the `sh` half used
+Python's. Either is independent of the Rust encoder, which is the point. Two
+plants went into the survey, and both halves agreed on each. Moving the
+identifier's domain to `capture-request/2` failed the re-derivation row alone,
+18 of 19. Never treating a held request as already open failed the three repeat
+rows, 16 of 19. `check-gate-rows` anchored two plants on `check-staleness`: its
+place in the `sh` list and its declared row in the `.ps1`. They anchor on
+`check-step-bodies` and `check-assemble` now.
 
 Prove: ⛔ **Rewritten with the Approach.** Every portable-subject row is a
 `bit-check` row on the Windows lane, each port compared against its `sh` half

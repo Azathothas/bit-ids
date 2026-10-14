@@ -239,12 +239,13 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   beside it, two attempts, and a lane whose resolver wrote no `resolution.json`.
   [`assemble-bundle.yml`](../.github/workflows/assemble-bundle.yml) runs it, and
   `check-assemble` drives it.
-- [`ci/check-staleness.sh`](ci/check-staleness.sh) drives the staleness monitor
-  over real stores and real resolutions: a new stable release opens one request,
-  a preview and a release already measured open none, and a second run over a
-  tracker holding the first run's request opens nothing. ⭐ It re-derives the
-  request identifier with `python3`'s SHA-256, which is an implementation this
-  project did not write.
+- `bit-check check-staleness` drives the staleness monitor over real stores
+  and real resolutions: a new stable release opens one request, a preview and a
+  release already measured open none, and a second run over a tracker holding
+  the first run's request opens nothing. ⭐ It re-derives the request
+  identifier with Go's SHA-256, an implementation this project did not write;
+  its `sh` half used Python's. It was `ci/check-staleness.sh` until 2026-10-14,
+  compared case for case against it before that half was deleted. `CI-07`.
 - [`common/check-shell.sh`](common/check-shell.sh) runs `shellcheck` and `shfmt`
   over every tracked shell script, as two rows rather than one, because a red row
   has to say which tool refused. ⛔ The gate ran neither until 2026-09-10, which
@@ -476,11 +477,10 @@ includes `capture-run.ps1`, which the capture workflow's Windows job runs on a
 real Windows host with no `-RouteTable`. That is a stronger control than this
 lane could give and it happens somewhere else.
 
-⚠ `check-staleness` is declared on the PowerShell lane for a **different**
-reason, and its row says which: it plants nothing on a filesystem and needs no
-POSIX-only feature. It is an `sh` harness with no PowerShell half, and it needs
-`python3` for the independent derivation. Copying the neighbouring reason would
-have recorded a gap that closes on the wrong event.
+⭐ `check-staleness` was declared on the PowerShell lane for a **different**
+reason, and its row said which: it plants nothing on a filesystem and needs no
+POSIX-only feature. That is why porting it into `bit-check` closed it, on
+2026-10-14, and the Windows lane runs it now.
 
 `ci/check-workflow.sh` is the one mutation prover deliberately kept **out** of
 the gate. ⚠ This sentence carried an ordinal - "a thirteenth" - and it was wrong
