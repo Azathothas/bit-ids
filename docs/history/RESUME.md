@@ -8,9 +8,9 @@ and why it is not the record. The work order is
 | | |
 | --- | --- |
 | the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
-| the resume point | `CI-09`'s run manifest: the workflow barrier, so every lane's capture follows every route's install, then the assembler writing `manifest.json` and the corpus check reading it back. |
-| in flight | nothing dispatched; steps 1 to 3 of `CI-09`'s plan are pushed. |
-| the state of the tree | `check-capture-client` 133 of 133, `check-rootless` 26 of 26, `check-step-bodies` 35 of 35. |
+| the resume point | `CI-09` step 5: `assemble-capture` writes a `manifest.json` per record from the keys steps 1 to 4 added, and the corpus check reads it back. Test it on the dispatch carrying those keys. |
+| in flight | a `capture-client` dispatch on the barrier's commit, the first to carry every new key. |
+| the state of the tree | `check-workflow` 115 of 115; `check-step-bodies` 39 of 39. |
 
 ## Starting, on this host
 

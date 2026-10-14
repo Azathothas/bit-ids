@@ -5,6 +5,15 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T12:13:51Z
+
+- ⭐ **EVERY LANE'S CAPTURE NOW FOLLOWS EVERY ROUTE'S INSTALL.** The lanes of a
+  `capture-client` dispatch install on separate runners, and run 37's release
+  lane observed before the source route had installed. Each lane now arrives at
+  a barrier, a check run on the commit named for its run attempt, and waits for
+  the others; it never fails a lane, and writes `passed`, `failed` or `timeout`.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-09`. No version bump and no deploy.
+
 ### 2026-10-14T11:19:01Z
 
 - ⭐ **A CAPTURE KEEPS THE HOST FACTS A RUN MANIFEST NEEDS.** The claim marker

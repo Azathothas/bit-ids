@@ -3908,6 +3908,20 @@ uptime at finish into the attestation. The install record carries
 signature. ⚠ `check-capture-client`'s install stub has no executable, so only the
 empty half of the size rule is driven here; the next dispatch drives the other.
 
+⭐ **Step 4, the barrier, is written.** After *Install the client* each lane
+arrives with a check run named for its run attempt, adapter and route,
+`success` or `failure`, and waits until every route of its adapter has arrived;
+the capture follows. `scripts/ci/install-barrier.sh` never fails a lane, so a
+route that cannot be satisfied still leaves the others' measurements intact,
+with `failed` or `timeout` in the `install-barrier.txt` the install artifact
+uploads. `check-step-bodies` drives both bodies against a stub `curl` that keeps
+check runs by name: both routes arriving pass, a failed route ends the wait at
+once and is named, a route that never arrives is a timeout, and an earlier run
+attempt's barrier on the same commit does not count. Three plants were each
+refused: the attempt left out of the name, a failure read as missing, and a
+missing route read as arrived. `check-workflow` puts the wait after the install
+and before the capture.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05

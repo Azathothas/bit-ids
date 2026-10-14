@@ -860,6 +860,15 @@ if unit capture-fork; then
         order_case "$job" "Resolve the release artifact" "Install the client"
       fi
 
+      # ⛔ AND THE BARRIER SITS BETWEEN EVERY INSTALL AND THE CAPTURE. Run 37's
+      # release lane observed while the source route was still installing on
+      # another runner, and a run manifest says acquired twice, then observed.
+      # `CI-09`. ⚠ Asserted only where a workflow has the wait.
+      if [ -n "$(step_index "$CAPWF" "$job" "Wait at the install barrier")" ]; then
+        order_case "$job" "Install the client" "Wait at the install barrier"
+        order_case "$job" "Wait at the install barrier" "Capture"
+      fi
+
       # ⛔ AND EVERY UPLOAD IS AFTER THE RESTORE, NOT ONLY THE EVIDENCE ONE.
       # Between *Cut the route* and *Restore the route* this host has no way off
       # itself, so an upload placed there cannot reach GitHub at all. ⚠ The install
@@ -1053,6 +1062,17 @@ if unit static-readers; then
       pass "probe    the order reader sees an install moved after containment"
     else
       fail "probe    the order reader missed an install moved after containment"
+    fi
+
+    # ⛔ AND A CAPTURE MOVED AHEAD OF THE BARRIER IS SEEN, which is run 37's
+    # order made a workflow edit.
+    swap_steps "Wait at the install barrier" "Capture" "$MUTWF"
+    _a=$(step_index "$MUTWF" linux "Wait at the install barrier")
+    _b=$(step_index "$MUTWF" linux "Capture")
+    if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+      pass "probe    the order reader sees a capture moved ahead of the install barrier"
+    else
+      fail "probe    the order reader missed a capture moved ahead of the install barrier"
     fi
 
     # ⛔ AND THE NAMESPACE RULE IS REFUTED BY TAKING THE WRAPPER AWAY, which is

@@ -251,6 +251,7 @@ jobs:
       # and the runner agent with it, measured on 2026-10-11 and recorded in
       # `TODO/ci.md` under `CI-08`. The capture is contained in a namespace now.
       - name: Install the client
+        id: install
         env:
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
           ROUTE: ${{ matrix.route }}
@@ -288,6 +289,41 @@ jobs:
           cat "$RUNNER_TEMP/install-step.log" || true
           exit "$rc"
         # ⚠ The body this replaced is in that file, unchanged in what it does.
+
+      # ⛔ THE BARRIER, BECAUSE EACH ROUTE INSTALLS ON ITS OWN RUNNER. A run
+      # manifest says the build was acquired twice before it was observed, and
+      # run 37's release lane observed while the source route was still
+      # compiling elsewhere. Settled by the operator on 2026-10-14: every lane's
+      # capture waits for every route's install. `CI-09`, and
+      # `scripts/ci/install-barrier.sh` says how the runners meet.
+      # ⚠ Neither step fails the job: a route that cannot be satisfied fails its
+      # own lane, and the others' measurements stay intact with a verdict that
+      # says why their order is not proven.
+      - name: Arrive at the install barrier
+        if: always() && steps.install.outcome != 'skipped'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BARRIER_RUN: ${{ github.run_id }}-${{ github.run_attempt }}
+          BARRIER_ADAPTER: ${{ matrix.adapter }}
+          ROUTE: ${{ matrix.route }}
+          INSTALL_CONCLUSION: ${{ steps.install.outcome == 'success' && 'success' || 'failure' }}
+        run: |
+          rc=0
+          sh scripts/ci/install-barrier.sh arrive "$BARRIER_ADAPTER" "$ROUTE" "$INSTALL_CONCLUSION" || rc=$?
+          [ "$rc" = 0 ] || echo "install-barrier: could not arrive (exit $rc); the other lanes will time out"
+
+      - name: Wait at the install barrier
+        if: steps.install.outcome == 'success'
+        timeout-minutes: 30
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BARRIER_RUN: ${{ github.run_id }}-${{ github.run_attempt }}
+          BARRIER_ADAPTER: ${{ matrix.adapter }}
+          ROUTES: ${{ inputs.routes }}
+        run: |
+          rc=0
+          sh scripts/ci/install-barrier.sh wait "$BARRIER_ADAPTER" "$ROUTES" "$RUNNER_TEMP/install-barrier.txt" || rc=$?
+          [ "$rc" = 0 ] || echo "install-barrier: could not wait (exit $rc); this capture's order is not proven"
 
       # ⛔ THE CAPTURE IS CONTAINED, NOT THE HOST. This workflow used to delete
       # the host's default routes here and put them back after the capture. The
@@ -405,6 +441,7 @@ jobs:
             ${{ runner.temp }}/install-${{ matrix.route }}/*.txt
             ${{ runner.temp }}/install-${{ matrix.route }}.txt
             ${{ runner.temp }}/install-step.log
+            ${{ runner.temp }}/install-barrier.txt
             ${{ runner.temp }}/release/*.txt
             ${{ runner.temp }}/release/*.json
             ${{ runner.temp }}/release/*.err

@@ -863,6 +863,134 @@ else
   fail "sh       capture-client.yml has no linux step named Start or Stop the flight recorder"
 fi
 
+# -- 4c. the install barrier, between lanes that share nothing but a commit ---
+#
+# ⛔ RUN 37'S RELEASE LANE OBSERVED BEFORE THE SOURCE ROUTE HAD INSTALLED, on
+# another runner, so a run manifest could not say the build was acquired twice
+# first. These cases run the workflow's own *Arrive* and *Wait* bodies against a
+# stub `curl` that keeps the check runs it is sent in a directory and answers a
+# query by name, which is the one place two runners can meet.
+BARBIN="$WORK/barbin"
+BARDB="$WORK/bardb"
+mkdir -p "$BARBIN" "$TREE/scripts/ci" || exit 2
+cp "$ROOT/scripts/ci/install-barrier.sh" "$TREE/scripts/ci/" || exit 2
+cat >"$BARBIN/curl" <<'STUBCURL'
+#!/bin/sh
+# Keeps posted check runs by name; answers a query for one name with it.
+set -u
+method=GET
+url=""
+body=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -X) method=$2; shift ;;
+    --data-binary) body=${2#@}; shift ;;
+    -o | -w | -H | --max-time) shift ;;
+    http*) url=$1 ;;
+  esac
+  shift
+done
+mkdir -p "$STUB_BARRIER_DB"
+case "$method" in
+  POST)
+    name=$(jq -r '.name' "$body")
+    key=$(printf '%s' "$name" | sha256sum | cut -d' ' -f1)
+    cp "$body" "$STUB_BARRIER_DB/$key.json"
+    printf '{"id": 9}\n'
+    ;;
+  GET)
+    q=${url#*check_name=}
+    q=${q%%&*}
+    name=$(printf '%s' "$q" | python3 -I -c 'import sys,urllib.parse; print(urllib.parse.unquote(sys.stdin.read()), end="")')
+    key=$(printf '%s' "$name" | sha256sum | cut -d' ' -f1)
+    if [ -f "$STUB_BARRIER_DB/$key.json" ]; then
+      jq '{total_count: 1, check_runs: [.]}' "$STUB_BARRIER_DB/$key.json"
+    else
+      printf '{"total_count": 0, "check_runs": []}\n'
+    fi
+    ;;
+esac
+STUBCURL
+chmod +x "$BARBIN/curl"
+
+if lift "$CLIENT_WF" linux "Arrive at the install barrier" "$WORK/bar-arrive.sh" &&
+  lift "$CLIENT_WF" linux "Wait at the install barrier" "$WORK/bar-wait.sh"; then
+  _path=$PATH
+  PATH="$BARBIN:$PATH"
+  GH_TOKEN=stub-token
+  GITHUB_API_URL=http://127.0.0.1:9
+  GITHUB_REPOSITORY=fixture-owner/fixture-repo
+  GITHUB_SHA=0000000
+  BARRIER_ADAPTER=stub
+  # shellcheck disable=SC2089,SC2090 # a JSON array, which the body hands on literally
+  ROUTES='["release","source"]'
+  BIT_IDS_BARRIER_INTERVAL=1
+  BIT_IDS_BARRIER_TIMEOUT=4
+  STUB_BARRIER_DB=$BARDB
+  RUNNER_TEMP="$WORK/bar-temp"
+  mkdir -p "$RUNNER_TEMP"
+  # shellcheck disable=SC2090
+  export GH_TOKEN GITHUB_API_URL GITHUB_REPOSITORY GITHUB_SHA BARRIER_ADAPTER ROUTES \
+    BIT_IDS_BARRIER_INTERVAL BIT_IDS_BARRIER_TIMEOUT STUB_BARRIER_DB RUNNER_TEMP
+
+  arrive() { # run route conclusion
+    BARRIER_RUN=$1 ROUTE=$2 INSTALL_CONCLUSION=$3 run_body "$WORK/bar-arrive.sh" default "$TREE"
+  }
+  verdict() { # run -> the verdict a wait wrote
+    rm -f "$RUNNER_TEMP/install-barrier.txt"
+    BARRIER_RUN=$1 run_body "$WORK/bar-wait.sh" default "$TREE"
+    sed -n 's/^verdict=//p' "$RUNNER_TEMP/install-barrier.txt" 2>/dev/null
+  }
+
+  rm -rf "$BARDB"
+  arrive 7-1 release success
+  arrive 7-1 source success
+  _v=$(verdict 7-1)
+  if [ "$BODY_RC" = 0 ] && [ "$_v" = passed ]; then
+    pass "sh       both routes arrived, so the barrier passes"
+  else
+    fail "sh       both routes arrived, so the barrier passes (exit $BODY_RC, verdict [$_v])"
+  fi
+
+  rm -rf "$BARDB"
+  arrive 8-1 release success
+  arrive 8-1 source failure
+  _v=$(verdict 8-1)
+  if [ "$BODY_RC" = 0 ] && [ "$_v" = failed ] &&
+    grep -q -x 'failed_routes=source' "$RUNNER_TEMP/install-barrier.txt"; then
+    pass "sh       a route that could not install ends the wait at once, named, and fails nothing"
+  else
+    fail "sh       a route that could not install ends the wait at once, named, and fails nothing (exit $BODY_RC, verdict [$_v])"
+  fi
+
+  rm -rf "$BARDB"
+  arrive 9-1 release success
+  _v=$(verdict 9-1)
+  if [ "$BODY_RC" = 0 ] && [ "$_v" = timeout ] &&
+    grep -q -x 'missing_routes=source' "$RUNNER_TEMP/install-barrier.txt"; then
+    pass "sh       a route that never arrives is a timeout, named, and fails nothing"
+  else
+    fail "sh       a route that never arrives is a timeout, named, and fails nothing (exit $BODY_RC, verdict [$_v])"
+  fi
+
+  # ⛔ AND AN EARLIER DISPATCH OF THE SAME COMMIT IS NOT THIS ONE. Check runs
+  # outlive their run, so a barrier keyed on the commit alone would pass on a
+  # route that installed an hour ago on a host since destroyed.
+  rm -rf "$BARDB"
+  arrive 10-1 release success
+  arrive 10-1 source success
+  _v=$(verdict 10-2)
+  if [ "$_v" = timeout ]; then
+    pass "sh       a barrier another run attempt left on the commit does not satisfy this one"
+  else
+    fail "sh       a barrier another run attempt left on the commit does not satisfy this one (verdict [$_v])"
+  fi
+  PATH=$_path
+  RUNNER_TEMP="$TREE/temp"
+else
+  fail "sh       capture-client.yml has no linux step named Arrive at or Wait at the install barrier"
+fi
+
 # -- 5. a step this harness names and the workflow does not have --------------
 #
 # ⛔ A HARNESS THAT NAMED A DELETED STEP WOULD REPORT NOTHING RATHER THAN A
