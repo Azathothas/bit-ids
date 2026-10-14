@@ -1428,6 +1428,20 @@ the report before running the connector that writes it.
 ⭐ **CI on `628b88a` read `check-staleness` back on the Windows lane:** 22 passed,
 0 failed, 0 skipped, 20 declared.
 
+⛔ **And CI on `1166bc8` failed `check-connector` there, which is the port doing
+its job.** The connector wrote its report with `open(out, "w")`, which on
+Windows is a text-mode file, so every line ended `\r\n` and every value a
+reader took out of it carried a carriage return. Its `--describe` went through
+a text-mode stdout the same way, so the identifier read back was
+`cpython-stdlib\r`. The connector's own read-back opened the file in text mode,
+whose universal newlines turned `\r\n` back into `\n`, so it agreed with a file
+that did not carry what was meant. ⭐ It writes bytes now on every stream a
+caller parses, and reads its report back as bytes. This was a defect in the
+second connector on Windows that no Linux run could show; the Windows capture
+path would have read every connector value with a trailing carriage return.
+`check-connector`'s failing rows now print what they read, quoted, because the
+Windows run named seventeen failures and nothing beside them.
+
 ⚠ **`check-assemble` is the one portable row left, and it is not a straight
 port.** Most of its 64 rows drive `assemble-capture`, a Rust example, over
 lanes the harness writes, and those port as the six above did. ⛔ Its six

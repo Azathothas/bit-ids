@@ -357,11 +357,18 @@ def main(argv):
     rest = list(argv)
     while rest:
         flag = rest.pop(0)
+        # ⛔ BYTES, NOT TEXT, ON EVERY STREAM A CALLER PARSES. On Windows a
+        # text-mode stdout writes `\r\n`, and a caller reading `id=` then
+        # held `cpython-stdlib\r`: measured on the Windows lane on 2026-10-14.
         if flag == "--describe":
-            sys.stdout.write(describe())
+            sys.stdout.flush()
+            sys.stdout.buffer.write(describe().encode("utf-8"))
+            sys.stdout.buffer.flush()
             return 0
         if flag in ("-h", "--help"):
-            sys.stdout.write(__doc__)
+            sys.stdout.flush()
+            sys.stdout.buffer.write(__doc__.encode("utf-8"))
+            sys.stdout.buffer.flush()
             return 0
         if flag == "--bundle":
             if not rest:
@@ -389,20 +396,27 @@ def main(argv):
             os.makedirs(directory, exist_ok=True)
         except OSError as error:
             raise CannotRun("cannot create %s: %s" % (directory, error))
+    # ⛔ THE REPORT IS THE SAME BYTES ON EVERY HOST. A text-mode file on
+    # Windows turns every `\n` into `\r\n`, and every value a reader took out of
+    # it then ended in a carriage return: `check-connector` failed on the
+    # Windows lane on 2026-10-14 for exactly that.
+    encoded = text.encode("utf-8")
     try:
-        with open(out, "w") as handle:
-            handle.write(text)
+        with open(out, "wb") as handle:
+            handle.write(encoded)
     except OSError as error:
         raise CannotRun("cannot write %s: %s" % (out, error))
 
     # Read back rather than assumed, which is this repository's rule for every
-    # artifact a script claims to have written.
+    # artifact a script claims to have written. ⚠ As bytes: a text-mode read
+    # turns `\r\n` back into `\n`, so it agreed with a file that did not carry
+    # what was meant, which is how the Windows defect above went unseen.
     try:
-        with open(out, "r") as handle:
+        with open(out, "rb") as handle:
             written = handle.read()
     except OSError as error:
         raise CannotRun("cannot read back %s: %s" % (out, error))
-    if written != text:
+    if written != encoded:
         raise CannotRun("%s does not carry what was written" % out)
 
     sys.stdout.write("%s: %d field(s) -> %s\n" % (CONNECTOR_ID, len(text.splitlines()), out))

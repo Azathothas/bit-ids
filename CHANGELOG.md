@@ -5,6 +5,15 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T22:07:27Z
+
+- ⛔ **The second connector wrote carriage returns on Windows.** Its report and
+  its `--describe` went through text-mode streams, so every value a reader took
+  out ended in `\r`, and its own read-back, in text mode too, could not see it.
+  It writes and reads back bytes now. Found by the Windows lane running
+  `check-connector` for the first time.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-07`. No version bump and no deploy.
+
 ### 2026-10-14T21:34:37Z
 
 - ⭐ **`check-connector` runs on the Windows lane**, ported and compared like

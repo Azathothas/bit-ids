@@ -126,20 +126,30 @@ func checkConnector(r *repo) (verdict, error) {
 		}
 		h.ok(name)
 	}
+	// ⚠ What every check read is kept until the check is decided, so a row
+	// that fails says what it saw, quoted, a carriage return included. A Windows
+	// run failed seventeen rows with nothing beside them on 2026-10-14.
+	var seen []string
 	reported := func(run int, field string) string {
+		v := ""
 		for _, l := range fileLines(report(run)) {
-			if k, v, ok := strings.Cut(l, "="); ok && k == field {
-				return v
+			if k, val, ok := strings.Cut(l, "="); ok && k == field {
+				v = val
+				break
 			}
 		}
-		return ""
+		seen = append(seen, fmt.Sprintf("%s=%q", field, v))
+		return v
 	}
 	check := func(ok bool, name string) {
 		if ok {
 			h.ok(name)
+		} else if len(seen) > 0 {
+			h.bad(name + " (read " + strings.Join(seen, " ") + ")")
 		} else {
 			h.bad(name)
 		}
+		seen = nil
 	}
 
 	clean := bundle("clean", []string{cleanTracker}, cleanPeerLab, cleanPeer)
@@ -282,7 +292,9 @@ func checkConnector(r *repo) (verdict, error) {
 			break
 		}
 	}
+	seen = append(seen, fmt.Sprintf("described=%q", described))
 	check(described != "", "the connector describes its own identifier")
+	seen = append(seen, fmt.Sprintf("described=%q", described))
 	slug := described != "" && !strings.HasPrefix(described, "-") && !strings.HasSuffix(described, "-") &&
 		!strings.Contains(described, "--")
 	for _, c := range described {
