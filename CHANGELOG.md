@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T10:14:21Z
+
+- ⭐ **BOTH PEER CONNECTIONS ARE ANSWERED ON A RUNNER.** `capture-client` run 37
+  put `aria2-next` 3.0.3 on both routes, the re-dial left from `127.0.0.2`, and
+  `peer_wire/peer_id` is `patterned` and agrees across routes.
+- ⛔ **The pair is refused over a coincidence.** Each capture's two announced
+  tails share one random byte, the sampling classifier calls it fixed, and two
+  routes with fixed bytes in different places disagree. `SCHEMA-04` leads the
+  work order.
+- ⚠ `check-workflow`'s clean-tree gate control prints the gate's failed rows,
+  because CI run 188 reported it failed and not why.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-09`, [`TODO/schema.md`](TODO/schema.md)
+  `SCHEMA-04`. No version bump and no deploy.
+
 ### 2026-10-14T07:35:56Z
 
 - ⭐ **THE LAB'S SECOND PEER CONNECTION LEAVES FROM A SECOND ADDRESS.**

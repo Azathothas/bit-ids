@@ -3794,6 +3794,43 @@ address is what measures it.
 capture path writes a `manifest.json`, so both records fail `E-CRP-01` and their
 evidence `E-CRP-06`.
 
+### ⭐ Run 37: both peer connections answered on a runner, and a coincidence refuses the pair. 2026-10-14
+
+`capture-client` run 37, id 38543482073, on `18b21b8`, green on both lanes.
+The vendor had published **3.0.3** since run 36, and both routes resolved it:
+the release asset `0350294c…` and the runner's source build `7bb82fc9…`,
+installed in 6 and 455 seconds. Both lanes' adapters passed every discovery
+guard `CLIENT-14` describes.
+
+⭐ **`OBS-04`'s change held on a runner.** On each lane the re-dial left from
+`127.0.0.2`, `peer-streams` was 2, and `peer_wire/peer_id` is `patterned` over
+two samples: `-qB5230-` and a twelve-byte tail. It **agrees across routes**,
+which is the field run 36 was refused over.
+
+⛔ **The refusal moved to `tracker_http/peer_id`, and it is a coincidence the
+classifier reads as a fact.** Each capture's four announces carry two distinct
+peer IDs, one per session, and in each capture those two random tails happen to
+share one byte at one offset:
+
+| lane | the two tails | what the classifier made of them |
+| --- | --- | --- |
+| release | `A(Mq~CueHfWD`, `bEMwBhHOPtBp` | `-qB5230-`, two varying, **`M` fixed**, nine varying |
+| source | `)4*kPYzfVub6`, `-bsHBBNc_uUC` | `-qB5230-`, nine varying, **`u` fixed**, two varying |
+
+`SCHEMA-04`'s per-offset rule calls a byte fixed when every sample carries it,
+and two random values match at any one offset about one time in sixty-four if
+the tail draws from some sixty-four symbols, which is an estimate rather than a
+measurement; a twelve-byte tail sampled twice would then show such a byte in
+about a sixth of captures. ⛔ **Two such patterns cannot agree**, so `E-PUB-03` refuses the pair
+over one byte neither build fixes. `SCHEMA-04` owns the repair: a fixed byte
+inside a span that varies has to be one the samples can establish, not one two
+values happened to share. The work order leads with it.
+
+⚠ CI run 188 on the same commit failed one control in `check-workflow` shard 1,
+*the repository gate, after every restore*, without saying which check. The same
+shard passed locally, 45 of 45; the job was re-run once, and the control now
+prints the gate's failed rows.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05

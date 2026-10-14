@@ -53,7 +53,7 @@ were written by hand from published BEPs.
 | has a stock client been put on the wire? | yes. Transmission 4.0.5 and qBittorrent 4.6.3 announced to the HTTP tracker observer on 2026-09-08, one observer, one platform, one route. `OBS-07`. |
 | has a `Profile` been assembled from a dispatch? | yes, from `capture-client` run 17's artifacts on 2026-09-15 and run 36's on 2026-10-14, each pair into a scratch store. Every record is `provisional`. `CI-09`. |
 | has a record been produced publishable? | only over a stub target written to announce twice and accept two connections, on 2026-09-15. That proves the path, not a product. `CI-09`. |
-| does a stock `aria2-next` cooperate? | partly. ⭐ Run 36 on 2026-10-14 put 3.0.2 on the wire on both routes, and the second connector corroborated every sample exactly. ⛔ The build answered one of the lab's two peer connections, as in runs 18 and 19, so `peer_wire/peer_id` has one sample per capture and `E-PUB-03` refuses the pair. Both came from `127.0.0.1`, and driven in a loopback namespace a second from `127.0.0.2` was answered; the lab re-dials from there now and no dispatch has taken it yet. `OBS-04`, `CLIENT-14`, `CI-09`. |
+| does a stock `aria2-next` cooperate? | yes, since run 37 on 2026-10-14: 3.0.3 on both routes answered both peer connections once the second came from `127.0.0.2`, and every sample was corroborated exactly. ⛔ The pair is refused over a byte two random announce tails happened to share, which the classifier calls fixed; `SCHEMA-04` owns that. `OBS-04`, `CLIENT-14`, `CI-09`. |
 | whose identity does `aria2-next` present? | qBittorrent 5.2.3's: user agent `qBittorrent/5.2.3`, peer ID prefix `-qB5230-`, corroborated by the `cpython-stdlib` connector. `CLIENT-14`. |
 | does a client install finish on a runner? | ⭐ **yes, and it always did.** The "hang" of runs 3 to 34 was *Cut the route* severing the runner agent from GitHub, measured on 2026-10-11 by a flight recorder posting off the host. The capture now runs in a network namespace; both `aria2-next` routes then completed, release in 1.5 minutes and source in 12.5, and 3.0.2's source build installed in 694 seconds on 2026-10-14. `CI-08`, `CI-09`. |
 | how many connectors does the capture path declare? | two: the Rust observer and `scripts/capture/connectors/cpython-stdlib.py`. ⚠ The second is two readings of one capture's bytes, not a second observation of the wire. ⭐ Every sample of a field is corroborated, not the first, since 2026-10-14. `OBS-07`, `CI-09`. |
@@ -104,15 +104,14 @@ still open is a host that never reached it.
 
 ⛔ **Nothing here is blocked.** Take these in order.
 
-1. **Dispatch `capture-client` and assemble the pair.** `capture-client` run
-   36 assembled a two-route pair of `aria2-next` 3.0.2 that was one sample
-   short: the build answered one of two connections, both from `127.0.0.1`, so
-   `peer_wire/peer_id` had one sample per capture and `E-PUB-03` refused it.
-   ⭐ Since 2026-10-14 the lab re-dials from `127.0.0.2` upward, and driven
-   against 3.0.2 in a loopback namespace both connections were answered, each
-   with its own tail. A dispatch says whether a runner agrees and whether the
-   pair then agrees across routes. Debug it from the recorder's check run.
-   `OBS-04`, `CI-09`.
+1. **`SCHEMA-04`: a fixed byte two samples happen to share is not fixed.**
+   `capture-client` run 37 put `aria2-next` 3.0.3 on both routes with both peer
+   connections answered, and `peer_wire/peer_id` agrees across routes. ⛔ The
+   pair is refused over `tracker_http/peer_id` instead: each capture's two
+   announced tails share one random byte at one offset, the per-offset rule
+   calls it fixed, and two patterns with a fixed byte in different places
+   cannot agree. A byte inside a varying span needs evidence the samples can
+   give before it is fixed. Then dispatch again. `SCHEMA-04`, `CI-09`.
 2. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
    `CLIENT-06` has a same-version pair for Transmission 4.1.3 that needs no new
    route, under its entry in [`clients.md`](clients.md); its builds need

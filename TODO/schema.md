@@ -416,3 +416,14 @@ order and `assemble-capture` compares the two readers position by position, so
 each observation a pattern rests on is corroborated. ⚠ The record still holds
 one value per connector per field: the first position where the readers part,
 or the first sample when they never do. `CI-09` carries it.
+
+⛔ **Reopened in substance by `capture-client` run 37, 2026-10-14: a byte two
+samples happen to share is called fixed.** Each 3.0.3 capture carried two
+distinct announce peer IDs, and in each the random tails shared one byte at one
+offset, `M` in one and `u` in the other; the per-offset rule in
+[`sampling.rs`](../crates/bit-ids/src/sampling.rs) made each a fixed run inside
+the varying tail, and `classify_across` then found the two routes disagreeing
+over bytes neither build fixes. `CI-09` carries the records. Acceptance: a fixed
+run between varying runs needs evidence the samples can give before it is
+emitted, and `cargo test -p bit-ids` holds a case of two random tails sharing a
+byte that classifies as one varying span, beside the existing prefix cases.

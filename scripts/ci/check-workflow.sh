@@ -501,6 +501,10 @@ gate_control() { # label [subject]
   fi
   if ! grep -q -E '^[0-9]+ checks: .*, 0 failed,' "$LOG"; then
     fail "control  $1: $_what failed a check"
+    # ⛔ AND IT SAYS WHICH. CI run 188 reported this row and nothing else, so a
+    # red shard could not be read from its own log. The gate's failed rows and
+    # the lines under them are what a reader needs.
+    [ "$JSON" = "1" ] || grep -A12 -F 'FAIL ' "$LOG" | head -40 | sed 's/^/          /'
     return
   fi
   if [ "$_rc" = 0 ]; then

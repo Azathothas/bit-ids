@@ -1152,7 +1152,9 @@ the artifact uploads beside the bundle; the first dial's is not printed, and the
 ordinal ties a source to the peer ID it presented rather than to a transcript's
 connection identifier, which does not follow dial order. ⛔ **What is still a
 dispatch's to say** is whether a runner gives the same two answers, and whether
-a new dispatch's pair agrees across routes.
+a new dispatch's pair agrees across routes. ⭐ **Run 37 said both, on 3.0.3**:
+two peer streams per lane, the re-dial from `127.0.0.2`, and `peer_wire/peer_id`
+`patterned` and agreeing across routes. `CI-09`.
 
 ⚠ **Two hosts give a lab one loopback address.** Linux and Windows route all of
 `127.0.0.0/8` to loopback; macOS and the BSDs put `127.0.0.1` alone on `lo0`, so

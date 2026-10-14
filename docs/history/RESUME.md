@@ -8,9 +8,9 @@ and why it is not the record. The work order is
 | | |
 | --- | --- |
 | the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
-| the resume point | dispatch `capture-client` (`aria2-next`, release and source) on the change that re-dials from a second loopback address, read it from its recorder runs, and assemble the pair. Work order item 1. |
-| in flight | the change after `6ba2431`: `bind::dial_from` over `socket2` 0.6.5, `Lab::dial_again_from`, and `client-capture` re-dialling from `127.0.0.2` upward. Driven against 3.0.2 in a loopback namespace: two peer streams, and one under a plant. `OBS-04`. |
-| the state of the tree | at the commit after `6ba2431`: `cargo test` 599 passed in 54 result blocks, fmt and clippy clean, `check-bitcheck --harnesses` 261 of 261, the gate 40 checks with 39 passed and 1 skipped. |
+| the resume point | `SCHEMA-04`: a fixed byte inside a varying span needs evidence the samples can give, then dispatch `capture-client` again and assemble. Work order item 1. |
+| in flight | CI run 188 on `18b21b8`: one control in `check-workflow` shard 1 failed without naming its check, passed locally 45 of 45, and its job was re-run once. Read the re-run before anything else. |
+| the state of the tree | run 37 recorded in `CI-09`; the clean-tree gate control now prints the gate's failed rows. |
 
 ## Starting, on this host
 
