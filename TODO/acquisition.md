@@ -990,11 +990,11 @@ reading**: an ellipsis outside this project's five markers, a `A && B || C` that
   belonging to some OTHER user is outside what it can see. Measured on the driven
   pass: it reported `0 holder(s)` and said in words that one descriptor did not
   resolve to a path, rather than answering confidently about a pipe.
-- ⚠ **`transmission`'s `daemon()` has no prefix branch and the other three
-  adapters' `binary()` do.** Neither of that target's routes installs into a
-  prefix - the package route writes where the distribution does and the release
-  route refuses before installing - so a branch there would be a path nothing can
-  produce. It lands with the first route that installs one.
+- ⭐ **`transmission`'s lookups have a prefix branch now**, since 2026-10-14.
+  Its release and source routes compile and install into the prefix, so the
+  branch landed with the first route that installs one, as this residual said.
+  Both routes fetch libcurl's headers without privilege, through an `apt-get`
+  whose index lives in the workdir. `CLIENT-06`.
 - ⚠ **The Windows guard still writes under `ProgramData`.** `capture.yml` is a
   FIXTURE capture that installs nothing, so the privilege question this entry is
   about does not arise there. It closes when a Windows capture installs a client,

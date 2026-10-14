@@ -218,8 +218,8 @@ it, and one that does not should say so where the record can see it.
 about 1.35x; on 2026-10-14 a runner reached `v3.0.2`'s compile error in 508
 seconds where the session host took 588. So a locally measured build time is not
 an estimate of what a runner needs in either direction, and the bound carries
-the margin. The workflow raises `BIT_IDS_INSTALL_TIMEOUT` for `source` lanes
-alone.
+the margin. The workflow raises `BIT_IDS_INSTALL_TIMEOUT` for the lanes whose
+route the adapter declares in `compiles`.
 
 ### The release route's artifact, declared where the target is known
 
@@ -238,6 +238,14 @@ with something that names nothing.
 | `release_max_components` | the most |
 | `release_asset` | which artifact of a release is the installable one |
 | one of `release_digest_asset` / `release_digest_unpublished` | how this vendor publishes a digest, or the measured reason it publishes none |
+
+⛔ **And one more key, about the install's bound rather than its artifact.**
+`compiles` names, comma-separated, the routes whose install runs a build, for
+example `compiles=release,source`. `capture-client.yml` reads it before the
+install and bounds such a lane as a build: 1500 seconds instead of 420. A
+route it does not name is bounded as a download. ⚠ It replaced a bound keyed on
+the route's name on 2026-10-14, because Transmission's release asset is a
+source tarball. `CLIENT-06`.
 
 ⛔ **THE DIGEST DISPOSITION IS DECLARED AND NEVER DEFAULTED, AND EXACTLY ONE OF
 THE TWO IS REQUIRED.** `ACQ-06`. An adapter that named neither would install

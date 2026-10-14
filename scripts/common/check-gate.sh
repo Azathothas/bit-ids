@@ -428,7 +428,8 @@ for spec in acquisition/check-release-route \
   publishing/check-formats publishing/check-publish publishing/check-access \
   publishing/check-bundle \
   ci/check-staleness ci/check-step-bodies \
-  capture/check-assemble capture/check-connector common/check-examples \
+  capture/check-assemble capture/check-connector capture/check-transmission \
+  common/check-examples \
   common/check-handbook common/check-gate-rows common/check-public-row \
   common/check-bitcheck; do
   PROVER="$HERE/../$spec.sh"

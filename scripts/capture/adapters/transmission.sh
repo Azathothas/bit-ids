@@ -52,28 +52,129 @@ cannot() {
   exit 2
 }
 
-# ⛔ THE ROOTLESS INSTALLER, WHICH THIS ADAPTER USES FOR ITS FETCH ALONE.
-# ⚠ `daemon()` deliberately has NO prefix branch, unlike the other three
-# adapters: neither of this target's routes installs into one - the package
-# route writes where the distribution does and the release route refuses before
-# it installs anything - so a branch here would be a path nothing can produce.
-# `TODO/acquisition.md` carries it under `ACQ-06` rather than leaving it implied.
+# ⛔ THE ROOTLESS INSTALLER, AND THE ONE PREFIX IT DERIVES. The release and
+# source routes compile and place both executables at `<prefix>/bin`, so the
+# lookups below ask that prefix first. `daemon()` had no prefix branch until
+# 2026-10-14, when neither route installed into one. `CLIENT-06`.
 ROOTLESS=$(CDPATH='' cd -- "$(dirname -- "$0")/../../acquisition" && pwd)/install-rootless.sh
-
-daemon() {
-  if [ -n "${BIT_IDS_TRANSMISSION_DAEMON:-}" ]; then
-    printf '%s' "$BIT_IDS_TRANSMISSION_DAEMON"
-    return 0
-  fi
-  command -v transmission-daemon 2>/dev/null
+prefix() {
+  [ -f "$ROOTLESS" ] || cannot "$ROOTLESS is not present"
+  sh "$ROOTLESS" --prefix
 }
 
-remote() {
-  if [ -n "${BIT_IDS_TRANSMISSION_REMOTE:-}" ]; then
-    printf '%s' "$BIT_IDS_TRANSMISSION_REMOTE"
+# ⛔ ONE LOOKUP PER EXECUTABLE, so every subcommand finds the same build.
+installed() { # override name
+  if [ -n "$1" ]; then
+    printf '%s' "$1"
     return 0
   fi
-  command -v transmission-remote 2>/dev/null
+  _prefix=$(prefix 2>/dev/null) || _prefix=""
+  if [ -n "$_prefix" ] && [ -x "$_prefix/bin/$2" ]; then
+    printf '%s' "$_prefix/bin/$2"
+    return 0
+  fi
+  command -v "$2" 2>/dev/null
+}
+daemon() { installed "${BIT_IDS_TRANSMISSION_DAEMON:-}" transmission-daemon; }
+remote() { installed "${BIT_IDS_TRANSMISSION_REMOTE:-}" transmission-remote; }
+
+# ⛔ LIBCURL'S HEADERS, WITHOUT ROOT AND WITHOUT CHANGING THE HOST. Transmission
+# 4.x links libcurl, and a runner carries its runtime and not its development
+# package. Measured on 2026-10-14: `apt-get` with its index and cache in the
+# workdir runs as an unprivileged user, fetches `libcurl4-openssl-dev` through
+# the distribution's signed index, and `dpkg-deb -x` unpacks it there. The
+# headers then belong to the runtime the host already has, which is checked
+# rather than assumed. `ACQ-06` is why nothing here may escalate.
+# Prints the include directory, and writes what it took and which runtime the
+# headers describe to `build-deps.txt`.
+curl_headers() { # workdir
+  _wd=$1
+  _deps="$_wd/deps"
+  mkdir -p "$_deps/apt/lists/partial" "$_deps/apt/cache/archives/partial" \
+    "$_deps/deb" "$_deps/root" || cannot "cannot create $_deps"
+  for _need in apt-get dpkg-deb; do
+    command -v "$_need" >/dev/null 2>&1 ||
+      cannot "the build needs libcurl's headers and $_need is not on this host"
+  done
+  set -- -o "Dir::State::Lists=$_deps/apt/lists" -o "Dir::Cache=$_deps/apt/cache" \
+    -o Debug::NoLocking=1
+  timeout 300 apt-get "$@" update </dev/null >"$_wd/deps.log" 2>&1 ||
+    refuse "a private package index could not be fetched for libcurl's headers"
+  (cd "$_deps/deb" && timeout 120 apt-get "$@" download libcurl4-openssl-dev) \
+    </dev/null >>"$_wd/deps.log" 2>&1 ||
+    refuse "libcurl4-openssl-dev could not be downloaded"
+  set -- "$_deps"/deb/libcurl4-openssl-dev_*.deb
+  if [ $# != 1 ] || [ ! -f "$1" ]; then
+    refuse "the download left no single libcurl4-openssl-dev package"
+  fi
+  _deb=$1
+  dpkg-deb -x "$_deb" "$_deps/root" || refuse "libcurl4-openssl-dev could not be unpacked"
+  _header=$(find "$_deps/root/usr/include" -path '*/curl/curl.h' -type f | head -1)
+  [ -n "$_header" ] || refuse "libcurl4-openssl-dev carried no curl/curl.h"
+  # ⛔ THE HEADERS MUST DESCRIBE THE LIBRARY THAT WILL BE LOADED. The package's
+  # `libcurl.so` names the file of the runtime it was built against, and that
+  # file must already be on this host.
+  _link=$(find "$_deps/root/usr/lib" -name libcurl.so -type l | head -1)
+  [ -n "$_link" ] || refuse "libcurl4-openssl-dev carried no libcurl.so link"
+  _dir=${_link#"$_deps/root"}
+  _runtime="${_dir%/*}/$(readlink "$_link")"
+  [ -f "$_runtime" ] ||
+    refuse "libcurl4-openssl-dev is for $_runtime, which this host does not have"
+  {
+    printf 'package=%s\n' "$(dpkg-deb -f "$_deb" Package)"
+    printf 'version=%s\n' "$(dpkg-deb -f "$_deb" Version)"
+    printf 'sha256=%s\n' "$(sha256sum "$_deb" | cut -d' ' -f1)"
+    printf 'runtime=%s\n' "$_runtime"
+  } >"$_wd/build-deps.txt" || refuse "the build could not record its dependency"
+  printf '%s\n' "${_header%/curl/curl.h}"
+}
+
+# ⛔ ONE BUILD FOR BOTH ROUTES, so the pair differs in what it was built from and
+# in nothing this file chose. The daemon and `transmission-remote` are built; the
+# GTK and Qt clients, the CLI and the tests are not, because the capture drives
+# the daemon. The configure line goes to `build-configure.txt` beside the
+# install, as `aria2-next`'s source route does.
+build_into_prefix() { # source-dir route
+  _src=$1
+  _route=$2
+  _include=$(curl_headers "$WORKDIR") || exit $?
+  _runtime=$(awk -F= '$1 == "runtime" { print $2 }' "$WORKDIR/build-deps.txt")
+  for _need in cmake ninja c++; do
+    command -v "$_need" >/dev/null 2>&1 || cannot "the $_route route compiles and $_need is not on this host"
+  done
+  PREFIX=$(prefix) || cannot "the rootless prefix could not be derived"
+  mkdir -p "$PREFIX/bin" ||
+    refuse "this user cannot create $PREFIX/bin; a rootless install writes nowhere else"
+  set -- -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DENABLE_GTK=OFF -DENABLE_QT=OFF -DENABLE_MAC=OFF -DENABLE_CLI=OFF \
+    -DENABLE_TESTS=OFF -DENABLE_DAEMON=ON -DENABLE_UTILS=ON \
+    "-DCURL_INCLUDE_DIR=$_include" "-DCURL_LIBRARY=$_runtime"
+  {
+    printf 'cmake -S <%s> -B <build>' "$_route"
+    for _a in "$@"; do printf " '%s'" "$_a"; done
+    printf '\nhost CFLAGS=%s\n' "${CFLAGS-<unset>}"
+    printf 'host CXXFLAGS=%s\n' "${CXXFLAGS-<unset>}"
+    printf 'host LDFLAGS=%s\n' "${LDFLAGS-<unset>}"
+  } >"$WORKDIR/build-configure.txt" ||
+    refuse "the $_route route could not record how it configured the build"
+  cmake -S "$_src" -B "$WORKDIR/build" "$@" </dev/null >>"$WORKDIR/install.log" 2>&1 ||
+    refuse "the $_route route could not configure a build"
+  cmake --build "$WORKDIR/build" </dev/null >>"$WORKDIR/install.log" 2>&1 ||
+    refuse "the $_route route could not build transmission"
+  # ⛔ BOTH ARE CHECKED BEFORE EITHER IS INSTALLED. A refusal that had already
+  # placed the daemon would leave a build in the prefix for the next lane to
+  # measure; `check-transmission` found that on its first run, 2026-10-14.
+  for _exe in daemon/transmission-daemon utils/transmission-remote; do
+    [ -x "$WORKDIR/build/$_exe" ] ||
+      refuse "the $_route route built nothing at build/$_exe"
+  done
+  for _exe in daemon/transmission-daemon utils/transmission-remote; do
+    _name=${_exe#*/}
+    cp "$WORKDIR/build/$_exe" "$PREFIX/bin/.$_name.new" ||
+      refuse "the $_route route could not stage $_name in $PREFIX/bin"
+    mv "$PREFIX/bin/.$_name.new" "$PREFIX/bin/$_name" ||
+      refuse "the $_route route could not install $_name into $PREFIX/bin"
+  done
 }
 
 [ $# -ge 1 ] || cannot "a subcommand is required"
@@ -81,13 +182,12 @@ COMMAND="$1"
 shift
 
 # What each route of this adapter delivers, as `Build.package` spells it.
-#
-# ⚠ Only the package route reaches this: the release route fetches a source
-# archive and refuses, because this adapter cannot build it, and a route that
-# installs nothing must not report a packaging either.
+# ⚠ The release and source routes compile, so what each delivers is an
+# executable this host built, which is `aria2-next`'s source route's spelling.
 package_format() { # route
   case "$1" in
     package) printf 'deb\n' ;;
+    release | source) printf 'elf-binary\n' ;;
     *) return 1 ;;
   esac
 }
@@ -108,11 +208,9 @@ case "$COMMAND" in
     # build from an adapter that declines to say.
     _where=$(daemon) || _where=""
     [ -z "$_where" ] || printf 'binary=%s\n' "$_where"
-    # ⛔ WHAT THE RELEASE ROUTE NEEDS TO KNOW, DECLARED EVEN THOUGH THAT ROUTE
-    # STILL REFUSES. The refusal is at the BUILD and not at the artifact: this
-    # project can say exactly which file a release route would fetch and cannot
-    # say how to compile it, and declaring the first is what makes the second a
-    # named gap rather than a whole route that is simply unreachable.
+    # ⛔ WHAT THE RELEASE ROUTE NEEDS TO KNOW. These were declared while the
+    # route still refused at the build, which made the build a named gap; the
+    # route builds since 2026-10-14. `CLIENT-06`.
     #
     # ⚠ THE TAGS CARRY NO PREFIX, measured by `ACQ-02`'s live dry run: 83
     # candidates, bare three-component tags, `4.1.3` selected over 10 superseded,
@@ -143,6 +241,11 @@ case "$COMMAND" in
     # all eleven. ⚠ The route refuses after its fetch either way; the declaration
     # is what stops the fetch itself being a transfer nothing identified.
     printf 'release_digest_unpublished=this release publishes installers and a source tarball and no checksums asset\n'
+    # ⛔ WHICH ROUTES COMPILE, SO THE WORKFLOW BOUNDS THEM AS BUILDS. The release
+    # asset is a source tarball, so both routes here run a build measured at 695
+    # seconds, and a release route bounded as a download would be killed
+    # half-way. `CLIENT-06`.
+    printf 'compiles=release,source\n'
     ;;
 
   install)
@@ -190,26 +293,12 @@ case "$COMMAND" in
         [ -n "${BIT_IDS_RELEASE_URL:-}" ] ||
           cannot "the release route needs BIT_IDS_RELEASE_URL, resolved before the route was cut"
         #
-        # ⛔ THIS ROUTE FETCHES AND REFUSES, RATHER THAN FETCHING AND REPORTING AN
-        # INSTALL IT DID NOT PERFORM. It used to leave the artifact in the workdir
-        # and return 0, so `version` answered from whatever was already on PATH
-        # and a second route would have measured the FIRST route's build - two
-        # routes agreeing for the most trivial reason available. Measured on
-        # 2026-09-08 and recorded in `ACQ-03`.
-        #
-        # ⛔ WHAT IT WOULD TAKE IS A BUILD, and it is not written. Transmission's
-        # newest release publishes `transmission-4.1.3.tar.xz`, two Windows
-        # installers and a macOS disk image; there is no Linux binary, so a Linux
-        # release route compiles - and 4.x builds with CMake against libcurl,
-        # libevent and a TLS library rather than with the autotools recipe aria2
-        # uses. ⚠ Writing it untested would be guessing at a second product's
-        # build system, and this route refusing is the honest state until it is
-        # driven.
-        #
-        # ⚠ AND THE VERSIONS WOULD NOT MEET ANYWAY. Ubuntu 24.04 ships 4.0.5
-        # against upstream 4.1.3, so this target has no same-version pair to
-        # compare today and `AGENTS.md` rule 5 forbids backfilling one.
-        # `CLIENT-06` carries it.
+        # ⭐ THE VENDOR'S SOURCE TARBALL, VERIFIED AND THEN BUILT. Release 4.1.3
+        # publishes no Linux binary: `transmission-4.1.3.tar.xz`, Windows
+        # installers and a macOS image. ⚠ This route refused after its fetch
+        # until 2026-10-14, because nothing here could build it; a route that
+        # installs nothing must not report an install, and that still holds
+        # for every refusal below. `CLIENT-06`.
         # ⛔ THE FETCH AND THE DIGEST ARE ONE CALL AND IT IS NOT THIS FILE'S.
         # `install-rootless.sh` bounds the transfer and settles the digest, and
         # it needs no privilege, so this route reaches its refusal on a host
@@ -244,7 +333,45 @@ case "$COMMAND" in
             cannot "the rootless installer could not run for the release route (exit $_rc)"
           refuse "the release route could not fetch the vendor's source archive"
         }
-        refuse "the release route fetched a source archive and this adapter cannot build it; a route that installs nothing must not report an install"
+        mkdir -p "$WORKDIR/release-src" ||
+          refuse "the release route could not create its source directory"
+        tar -xJf "$WORKDIR/transmission-release" -C "$WORKDIR/release-src" \
+          </dev/null >>"$WORKDIR/install.log" 2>&1 ||
+          refuse "the release route's archive did not unpack"
+        set -- "$WORKDIR"/release-src/*/CMakeLists.txt
+        if [ $# != 1 ] || [ ! -f "$1" ]; then
+          refuse "the release archive did not unpack into one source tree"
+        fi
+        build_into_prefix "${1%/CMakeLists.txt}" release
+        ;;
+      source)
+        # ⭐ THE SECOND ROUTE: THE REPOSITORY'S OWN TAG, CLONED AND BUILT. It
+        # resolves through the repository's refs rather than the release listing,
+        # and arrives as a clone rather than an asset, which is the shape
+        # `aria2-next` measured. ⚠ Whoever controls the repository controls both.
+        _tag=${BIT_IDS_SOURCE_TAG:-}
+        [ -n "$_tag" ] ||
+          cannot "the source route needs BIT_IDS_SOURCE_TAG, resolved from this repository's own refs before the route was cut"
+        command -v git >/dev/null 2>&1 || cannot "the source route clones and git is not on this host"
+        _repo=$(sh "$0" describe | awk -F= '$1 == "release_repo" { sub(/^[^=]*=/, ""); print; exit }')
+        [ -n "$_repo" ] || cannot "this adapter declares no release_repo to clone from"
+        # ⛔ THE SUBMODULES ARE PART OF THE SOURCE. 4.1.3 pins sixteen under
+        # `third-party/`, which the release tarball carries inline; a clone
+        # without them is a tree that does not build. Shallow, as the history
+        # is not the measurement: 39 seconds and 137 megabytes on 2026-10-14.
+        timeout 600 git clone --depth 1 --branch "$_tag" --recurse-submodules \
+          --shallow-submodules "https://github.com/$_repo.git" "$WORKDIR/src" \
+          </dev/null >"$WORKDIR/install.log" 2>&1
+        _clone=$?
+        [ "$_clone" = 0 ] || {
+          [ "$_clone" != 124 ] ||
+            refuse "the source route's clone of $_tag did not finish within 600s"
+          refuse "the source route could not clone $_tag"
+        }
+        # ⛔ THE COMMIT `E-ACQ-06` ASKS FOR, NOT THE TAG, which is a name.
+        git -C "$WORKDIR/src" rev-parse HEAD >"$WORKDIR/source-commit" 2>>"$WORKDIR/install.log" ||
+          refuse "the source route cloned $_tag and could not name its commit"
+        build_into_prefix "$WORKDIR/src" source
         ;;
       *) cannot "unknown route: $ROUTE" ;;
     esac

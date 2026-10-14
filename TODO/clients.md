@@ -1000,6 +1000,77 @@ Acceptance: each adapter's `start` reads what took effect - Transmission's
 `session-get` over its RPC - and refuses a discovery surface that is not off,
 refuted by a plant that leaves one on.
 
+### ⭐ Both 4.1.3 routes build without root, driven as an unprivileged user. 2026-10-14
+
+[`transmission.sh`](../scripts/capture/adapters/transmission.sh) now builds
+both halves of the pair the section above found:
+
+- **release** fetches `transmission-4.1.3.tar.xz` through `install-rootless.sh`,
+  identified by the listing's digest `ce7d2d8b…02617da`, unpacks it and builds.
+- **source** clones tag `4.1.3` with its sixteen submodules, shallow, names the
+  commit `838877323f…`, the build hash the daemon reports, and builds.
+
+Both use one build: CMake and Ninja with the daemon and `transmission-remote`
+on, and the GTK and Qt clients, the CLI and the tests off. Both executables go
+to the rootless prefix, and the configure line is written to
+`build-configure.txt`.
+
+⭐ **libcurl's headers without root.** The runner image carries libcurl's
+runtime and not its development package, and `ACQ-06` forbids an install that
+escalates. `apt-get` runs with its index and cache in the workdir, as an
+unprivileged user, and fetches `libcurl4-openssl-dev` through the
+distribution's signed index. `dpkg-deb -x` unpacks it there. The package's
+`libcurl.so` must name a runtime file this host already has, or the route
+refuses. `build-deps.txt` records the package, its version, its digest and
+that runtime.
+
+⛔ **The release route's bound was the defect the section above named.** The
+workflow bounded installs by the route's name, 1500 seconds for `source` and
+420 for everything else, and this release route compiles. Each adapter now
+declares `compiles` in `describe`, and a new step, *Read whether this route
+compiles*, sets the bounds from it before the install. `transmission` declares
+`release,source`, `aria2-next` `source`, and `aria2` `release`, whose release
+route has always compiled. `check-workflow` holds the step ahead of the
+install, with a probe that swaps them.
+
+Driven on the session host as uid 1000, through the adapter itself:
+
+| route | install | answers | from |
+| --- | --- | --- | --- |
+| release | 1013 s | `4.1.3` | `<prefix>/bin/transmission-daemon` |
+| source | 1078 s | `4.1.3` | `<prefix>/bin/transmission-daemon`, commit `838877323f…` |
+
+Both linked the host's `libcurl.so.4.8.0` through headers from
+`libcurl4-openssl-dev` `8.5.0-2ubuntu10.15`. ⚠ The source route's first drive
+failed at the clone because this host's CA bundle sits under `/root`. That is
+the session host, not the route, and the drive was repeated with a readable
+copy.
+
+⛔ **And a defect the new harness found on its first run.** The install loop
+placed the daemon before checking that `transmission-remote` had been built,
+so a refused build left a daemon in the prefix. Both are checked now before
+either is installed.
+[`check-transmission.sh`](../scripts/capture/check-transmission.sh) drives the
+real adapter with `apt-get`, `cmake` and `git` stubbed and a real `.deb` and
+`.tar.xz`, 12 of 12. Nine plants were each refused:
+
+| plant | refused by |
+| --- | --- |
+| the runtime the headers name is not checked | headers for a libcurl this host does not run |
+| a package without `curl.h` is accepted | a package with no `curl.h` |
+| two downloaded packages are accepted | two packages |
+| a missing executable is not checked | a build with no `transmission-remote` |
+| an archive with two trees is accepted | two source trees |
+| the clone drops `--recurse-submodules` | the clone carries the tag and its submodules |
+| the release route names no packaging | every release case |
+| `compiles` omits the release route | the declaration case |
+| the prefix lookup is skipped | the version case |
+
+⚠ **Still open here:** a dispatch of `["release","source"]` for this adapter.
+On a runner the builds are probably slower than 1013 and 1078 seconds; the
+1500-second bound is what that dispatch tests. The discovery read-back residual
+above is unchanged.
+
 ## CLIENT-07: Deluge capture adapter
 
 Source: operator scope and upstream project

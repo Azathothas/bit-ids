@@ -376,6 +376,7 @@ Add-Unavailable 'check-release-route' 'an sh harness whose subject has no PowerS
 # `store-lib.sh`'s again - the shared library CI-07 names as its first step -
 # rather than anything about the assembler, which is platform-independent.
 Add-Unavailable 'check-assemble' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
+Add-Unavailable 'check-transmission' 'its subject transmission.sh is an sh adapter with no PowerShell half; CI-07 class C'
 
 # ⛔ AND A FIFTH REASON, WHICH IS NEW WITH THE SECOND CONNECTOR. check-connector's
 # subject is `python3` and a file of stdlib Python: it runs here exactly as it

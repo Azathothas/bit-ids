@@ -5,6 +5,19 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T15:52:24Z
+
+- ⭐ **TRANSMISSION 4.1.3 BUILDS ON BOTH ROUTES WITHOUT ROOT.** The release
+  route builds the vendor's source tarball and the source route builds the
+  tag's clone, both against libcurl headers fetched through a private package
+  index. Driven as an unprivileged user: 1013 and 1078 seconds, both answering
+  4.1.3.
+- ⛔ **An install's bound follows whether its route compiles, not its name.**
+  Each adapter declares `compiles`, and `capture-client.yml` reads it before the
+  install. A release route that compiles had been bounded as a download.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-06`. No version bump and
+  no deploy.
+
 ### 2026-10-14T13:46:19Z
 
 - ⭐ **THE CAPTURE-TO-PUBLISHER PATH RAN ON RUNNERS, END TO END.** `assemble-bundle`

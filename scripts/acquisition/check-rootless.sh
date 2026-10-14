@@ -507,15 +507,14 @@ else
   fail "install   qbittorrent: rc=$(field qbittorrent rc) installed=$(field qbittorrent installed) version=$(field qbittorrent version)"
 fi
 
-# ⚠ AND THE TWO ROUTES THAT REFUSE, WHICH REFUSE AT DIFFERENT PLACES. Neither
-# can install on Linux, and reading them as one case would have been wrong:
+# ⚠ AND THE TWO ROUTES THAT COMPILE, WHICH REFUSE HERE ON PURPOSE. Each
+# fetches through the installer, identifies the bytes, and then refuses on an
+# archive this harness deliberately did not make one: `rc=1`, a recorded
+# digest, and each one's own words.
 #
-#   * aria2's release route COMPILES what it fetches, so it fetches through the
-#     installer, identifies the bytes, and then refuses on an archive this
-#     harness deliberately did not make one. `rc=1`, and a recorded digest.
-#   * transmission's refuses BEFORE any fetch, at `package_format`, which
-#     returns 1 for every route but `package`. `rc=2`, could-not-run, and no
-#     digest at all - because nothing was retrieved to have one.
+# ⚠ transmission's refused BEFORE any fetch until 2026-10-14, at
+# `package_format`, which named no packaging for its release route; the fetch
+# below it was unreachable. The route builds now. `CLIENT-06`.
 #
 # ⛔ What matters in both is that each reaches its OWN refusal with no privilege,
 # rather than dying on a directory it cannot write.
@@ -526,9 +525,9 @@ else
   fail "refusal   aria2: rc=$(field aria2 rc) digest=$(field aria2 digest)"
 fi
 
-if [ "$(field transmission rc)" = 2 ] &&
-  grep -q -F -e 'does not say how the release route packages a build' "$WORK/transmission.a.err"; then
-  pass "refusal   transmission refuses before any fetch, and needs no privilege to do it"
+if [ "$(field transmission rc)" = 1 ] && [ -n "$(field transmission digest)" ] &&
+  grep -q -F -e "the release route's archive did not unpack" "$WORK/transmission.a.err"; then
+  pass "refusal   transmission fetched and identified rootlessly, then refused on its archive"
 else
   sed 's/^/          /' "$WORK/transmission.a.err" | tail -4 >&2
   fail "refusal   transmission: rc=$(field transmission rc), and not for its own reason"

@@ -188,6 +188,9 @@ case "$COMMAND" in
     # recorded. `resolve-release.sh` selects it with the same call that selects
     # the artifact, from the same response.
     printf 'release_digest_asset=aria2-next-{version}-checksums.sha256\n'
+    # ⛔ THE ROUTE THAT COMPILES, SO THE WORKFLOW BOUNDS IT AS A BUILD: 870
+    # seconds for `v3.0.2` on the session host. The release route downloads.
+    printf 'compiles=source\n'
     ;;
 
   install)

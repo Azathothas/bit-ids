@@ -105,11 +105,10 @@ still open is a host that never reached it.
 ⛔ **Nothing here is blocked.** Take these in order.
 
 1. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
-   `CLIENT-06` has a same-version pair for Transmission 4.1.3 that needs no new
-   route, under its entry in [`clients.md`](clients.md); its builds need
-   libcurl's headers, which the runner image lacks, and its release tarball
-   compiles under the release route's 420-second bound, which will not hold a
-   695-second build.
+   `CLIENT-06`'s two 4.1.3 routes build without root and answer 4.1.3, driven
+   as an unprivileged user on 2026-10-14, and a compiling route is bounded as a
+   build. What is left is the dispatch and the assembly, under its entry in
+   [`clients.md`](clients.md).
 2. **`CI-08`**: `capture.yml` still contains its fixture captures by cutting the
    host's routes, the shape that severed the runner agent in `capture-client`.
    Its Linux job can move to `contained.sh`; its Windows job needs a different

@@ -864,6 +864,14 @@ if unit capture-fork; then
       # release lane observed while the source route was still installing on
       # another runner, and a run manifest says acquired twice, then observed.
       # `CI-09`. ⚠ Asserted only where a workflow has the wait.
+      # ⛔ AND THE ROUTE'S BOUND IS READ BEFORE THE INSTALL IT BOUNDS. The
+      # install's limits read this step's answer, and an answer that does not
+      # exist yet is empty, which reads as a download: a compiling lane would be
+      # killed at 420 seconds with nothing saying why. `CLIENT-06`.
+      if [ -n "$(step_index "$CAPWF" "$job" "Read whether this route compiles")" ]; then
+        order_case "$job" "Read whether this route compiles" "Install the client"
+      fi
+
       if [ -n "$(step_index "$CAPWF" "$job" "Wait at the install barrier")" ]; then
         order_case "$job" "Install the client" "Wait at the install barrier"
         order_case "$job" "Wait at the install barrier" "Capture"
@@ -1073,6 +1081,15 @@ if unit static-readers; then
       pass "probe    the order reader sees a capture moved ahead of the install barrier"
     else
       fail "probe    the order reader missed a capture moved ahead of the install barrier"
+    fi
+
+    swap_steps "Read whether this route compiles" "Install the client" "$MUTWF"
+    _a=$(step_index "$MUTWF" linux "Read whether this route compiles")
+    _b=$(step_index "$MUTWF" linux "Install the client")
+    if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+      pass "probe    the order reader sees the bound read moved after the install"
+    else
+      fail "probe    the order reader missed the bound read moved after the install"
     fi
 
     # ⛔ AND THE NAMESPACE RULE IS REFUTED BY TAKING THE WRAPPER AWAY, which is

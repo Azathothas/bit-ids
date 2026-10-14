@@ -155,6 +155,9 @@ case "$COMMAND" in
     # archives, no checksums asset, and `digest` is null on every one of the six
     # - the only one of this project's four targets for which that is true.
     printf 'release_digest_unpublished=this release publishes six archives and no checksums asset\n'
+    # ⛔ THE ROUTE THAT COMPILES, SO THE WORKFLOW BOUNDS IT AS A BUILD. 145
+    # seconds measured here, under the 420 a download gets, and a build still.
+    printf 'compiles=release\n'
     ;;
 
   install)

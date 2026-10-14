@@ -217,6 +217,12 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   about the assembler. ⚠ Its lanes are written by the harness rather than
   downloaded: a case that fetched a run's artifacts would go red the day that run
   expired.
+- [`capture/check-transmission.sh`](capture/check-transmission.sh) drives
+  Transmission's release and source routes through the real adapter, with
+  `apt-get`, `cmake` and `git` stubbed and a real `.deb` and `.tar.xz`. It
+  plants headers for a runtime the host lacks, a package without `curl.h`, two
+  packages, a build missing an executable, and an archive with two trees, and
+  checks that nothing reaches the prefix after any refusal.
 - [`capture/assemble-dispatch.sh`](capture/assemble-dispatch.sh) turns one
   `capture-client` dispatch's downloaded artifacts into its records, their run
   manifests and the `bundle` the publisher downloads. It pairs the lanes by
