@@ -57,7 +57,7 @@ were written by hand from published BEPs.
 | whose identity does `aria2-next` present? | qBittorrent 5.2.3's: user agent `qBittorrent/5.2.3`, peer ID prefix `-qB5230-`, corroborated by the `cpython-stdlib` connector. `CLIENT-14`. |
 | does a client install finish on a runner? | ⭐ **yes, and it always did.** The "hang" of runs 3 to 34 was *Cut the route* severing the runner agent from GitHub, measured on 2026-10-11 by a flight recorder posting off the host. The capture now runs in a network namespace; both `aria2-next` routes then completed, release in 1.5 minutes and source in 12.5, and 3.0.2's source build installed in 694 seconds on 2026-10-14. `CI-08`, `CI-09`. |
 | how many connectors does the capture path declare? | two: the Rust observer and `scripts/capture/connectors/cpython-stdlib.py`. ⚠ The second is two readings of one capture's bytes, not a second observation of the wire. ⭐ Every sample of a field is corroborated, not the first, since 2026-10-14. `OBS-07`, `CI-09`. |
-| has the publisher run against this repository's remote? | no. A measured record exists since 2026-10-14 and `assemble-bundle.yml` produces the `bundle` it downloads; the first append to `data` is the operator's call. `CI-09`. |
+| has the publisher run against this repository's remote? | as a dry run only: `publish-data` run 38574390252 verified `assemble-bundle` run 38574255232's 30-object bundle and pushed nothing. ⛔ The first append to `data` is the operator's call: dispatch it on that run with `dry_run` false. `CI-09`. |
 | has a published URL been fetched? | no. `docs/publishing.md` carries the forms and says they are unexercised. |
 | does anything schedule the staleness monitor? | no. `CI-02` built the comparison; no capture request has been opened. |
 
@@ -104,27 +104,23 @@ still open is a host that never reached it.
 
 ⛔ **Nothing here is blocked.** Take these in order.
 
-1. **`CI-09`'s dispatches**: `assemble-bundle.yml` on `capture-client` run 38,
-   then `publish-data.yml` on its bundle with `dry_run` left true. ⛔ The first
-   real append to `data` is the operator's call, not this work order's.
-   `CI-09`.
-2. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
+1. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
    `CLIENT-06` has a same-version pair for Transmission 4.1.3 that needs no new
    route, under its entry in [`clients.md`](clients.md); its builds need
    libcurl's headers, which the runner image lacks, and its release tarball
    compiles under the release route's 420-second bound, which will not hold a
    695-second build.
-3. **`CI-08`**: `capture.yml` still contains its fixture captures by cutting the
+2. **`CI-08`**: `capture.yml` still contains its fixture captures by cutting the
    host's routes, the shape that severed the runner agent in `capture-client`.
    Its Linux job can move to `contained.sh`; its Windows job needs a different
    containment, such as a firewall rule scoped to the capture's processes. Then
    the orphaned-subprocess residual, and `check-workflow` running a step as
    `sh -c` where GitHub runs `bash -e`.
-4. **`OBS-10`**, which needs a second platform, so it follows the captures.
-5. **`CI-07`**, whose premise `CI-10` changed: a declared Windows row closes by
+3. **`OBS-10`**, which needs a second platform, so it follows the captures.
+4. **`CI-07`**, whose premise `CI-10` changed: a declared Windows row closes by
    its harness joining `bit-check`, so the entry's Approach and Prove need
    rewriting to that route first.
-6. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
+5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
 7. The remaining client and engine breadth, then refinements.
 

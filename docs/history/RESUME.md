@@ -8,7 +8,7 @@ and why it is not the record. The work order is
 | | |
 | --- | --- |
 | the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
-| the resume point | `CI-09`: dispatch `assemble-bundle.yml` on run 38, then `publish-data.yml` with `dry_run` true on its bundle. The first real append is the operator's call. Then `CLIENT-06`. |
+| the resume point | `CLIENT-06`. ⛔ Waiting on the operator: appending run 38's bundle to `data`, by dispatching `publish-data.yml` on `assemble-bundle` run 38574255232 with `dry_run` false. |
 | in flight | nothing. |
 | the state of the tree | `check-assemble` 64 of 64; `check-bundle` 13 of 13; `check-publish` 19 of 19. |
 

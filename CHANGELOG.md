@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T13:46:19Z
+
+- ⭐ **THE CAPTURE-TO-PUBLISHER PATH RAN ON RUNNERS, END TO END.** `assemble-bundle`
+  run 38574255232 turned `capture-client` run 38 into a 30-object bundle, and
+  `publish-data` run 38574390252 verified it as a dry run and pushed nothing.
+  ⛔ The first append to `data` is the operator's call.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-09`. No version bump and no deploy.
+
 ### 2026-10-14T12:49:29Z
 
 - ⭐ **THE PUBLISHER'S `bundle` HAS A PRODUCER.** `assemble-bundle.yml` turns

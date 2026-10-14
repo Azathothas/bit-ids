@@ -4008,8 +4008,17 @@ either was refused by no case, because nothing ahead of them can make them
 fire short of a broken `assemble-release`. `check-bundle` reads the bundle back
 from outside instead, and the publisher's pre-push check is proven.
 
-⛔ **Nothing has been appended to `data`.** Whether to append run 38's bundle is
-the operator's call.
+⭐ **Driven on runners, end to end, on `c23bd37`.** `assemble-bundle` run
+38574255232 assembled `capture-client` run 38 into a 30-object `bundle`, with
+the same release digest `sha256:77cb519c…` as the session host. Both records
+are admitted to the published view. `publish-data` run 38574390252, with
+`dry_run` true, downloaded it and verified every digest with the runner's own
+`sha256sum`. It reported *dry run, 30 object(s) staged for data, nothing
+pushed*. The `data` branch still does not exist.
+
+⛔ **Nothing has been appended to `data`.** Whether to append run 38's bundle,
+by dispatching `publish-data.yml` on run 38574255232 with `dry_run` false, is
+the operator's call. Every other step of this entry's path has run.
 
 ## CI-05: Acceptance commands that cannot pass over nothing
 
