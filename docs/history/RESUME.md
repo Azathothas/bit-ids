@@ -8,9 +8,9 @@ and why it is not the record. The work order is
 | | |
 | --- | --- |
 | the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
-| the resume point | `SCHEMA-04`: a fixed byte inside a varying span needs evidence the samples can give, then dispatch `capture-client` again and assemble. Work order item 1. |
-| in flight | CI run 188 on `18b21b8`: one control in `check-workflow` shard 1 failed without naming its check, passed locally 45 of 45, and its job was re-run once. Read the re-run before anything else. |
-| the state of the tree | run 37 recorded in `CI-09`; the clean-tree gate control now prints the gate's failed rows. |
+| the resume point | `CI-09`'s residuals: a `manifest.json` beside each record and a `bundle` artifact for the publisher. Work order item 1. |
+| in flight | CI on `5dbc042` (run id 38548662797) and the re-run of CI 188's failed shard on `18b21b8`; read both before the next push. |
+| the state of the tree | `SCHEMA-04`'s coincidence rule in; `cargo test` 603 passed; run 37's pair re-assembles `publishable` and `build_equivalent`. |
 
 ## Starting, on this host
 

@@ -387,6 +387,47 @@ fn push_varying(runs: &mut Vec<PatternRun>, length: usize) {
     });
 }
 
+/// Whether a fixed run between two varying ones is more than two random
+/// values agreeing by chance.
+///
+/// ⛔ **Measured on `capture-client` run 37, 2026-10-14.** Each capture of
+/// `aria2-next` 3.0.3 carried two distinct announce peer IDs, and in each the
+/// random tails shared one byte at one offset; read per offset, that byte was a
+/// fixed run inside the tail, and two routes with such a byte in different
+/// places disagreed over bytes neither build fixes.
+///
+/// ⚠ The rule is the evidence a run of `length` bytes shared by `distinct`
+/// values carries: two values match at one offset about one time in
+/// sixty-four if a byte draws from that many symbols, so a run is kept once
+/// `length × (distinct − 1)` reaches two, about one chance in four thousand.
+/// A leading or trailing run is never absorbed, because nothing on its outer
+/// side varies; a coincidence at the edge of a varying span is not caught here.
+const fn established(length: usize, distinct: u32) -> bool {
+    length.saturating_mul(distinct.saturating_sub(1) as usize) >= 2
+}
+
+/// Folds every interior fixed run the samples cannot establish into the
+/// varying runs around it.
+fn absorb_coincidences(runs: Vec<PatternRun>, distinct: u32) -> Vec<PatternRun> {
+    let last = runs.len().saturating_sub(1);
+    let mut out: Vec<PatternRun> = Vec::new();
+    for (index, run) in runs.into_iter().enumerate() {
+        match run {
+            // ⚠ Runs alternate, because each push merges into a neighbour of its
+            // own kind, so a fixed run that is neither first nor last sits
+            // between two varying ones.
+            PatternRun::Fixed { bytes }
+                if index > 0 && index < last && !established(bytes.len(), distinct) =>
+            {
+                push_varying(&mut out, bytes.len());
+            }
+            PatternRun::Varying { length, .. } => push_varying(&mut out, length),
+            fixed @ PatternRun::Fixed { .. } => out.push(fixed),
+        }
+    }
+    out
+}
+
 /// The record state a set of samples supports.
 ///
 /// ⛔ **This is the join `SCHEMA-04` closed without**, and its absence is why
@@ -441,15 +482,21 @@ pub fn field_state(samples: &[Sample], plan: &SamplingPlan) -> Option<FieldState
 
     let first = samples.first()?.value.as_slice().to_vec();
     let mut runs: Vec<PatternRun> = Vec::new();
-    let mut varying = 0usize;
     for offset in 0..width {
         if differs_at(samples, offset) {
-            varying += 1;
             push_varying(&mut runs, 1);
         } else {
             push_fixed(&mut runs, &first[offset..=offset]).ok()?;
         }
     }
+    let runs = absorb_coincidences(runs, distinct_values(samples)?.get());
+    let varying: usize = runs
+        .iter()
+        .map(|run| match run {
+            PatternRun::Varying { length, .. } => *length,
+            PatternRun::Fixed { .. } => 0,
+        })
+        .sum();
 
     if varying == 0 {
         return Some(FieldState::Constant(ConstantValue {

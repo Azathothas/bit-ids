@@ -423,7 +423,29 @@ distinct announce peer IDs, and in each the random tails shared one byte at one
 offset, `M` in one and `u` in the other; the per-offset rule in
 [`sampling.rs`](../crates/bit-ids/src/sampling.rs) made each a fixed run inside
 the varying tail, and `classify_across` then found the two routes disagreeing
-over bytes neither build fixes. `CI-09` carries the records. Acceptance: a fixed
-run between varying runs needs evidence the samples can give before it is
-emitted, and `cargo test -p bit-ids` holds a case of two random tails sharing a
-byte that classifies as one varying span, beside the existing prefix cases.
+over bytes neither build fixes. `CI-09` carries the records.
+
+⭐ **Repaired the same day, in `field_state`.** A fixed run with varying bytes
+on both sides is kept only when `length × (distinct − 1)` reaches two: two
+random values match at one offset about one time in sixty-four if a byte draws
+from that many symbols, an estimate, so the bar is about one chance in four
+thousand. A leading or trailing run is never absorbed. ⚠ A coincidence at the
+edge of a varying span, which lengthens a fixed prefix by one byte, is not
+caught, and stays a residual.
+
+| `cargo test -p bit-ids --test variability`, 27 cases | |
+| --- | --- |
+| run 37's own release tails, sharing `M` | `-qB5230-` fixed, twelve varying |
+| one interior byte three distinct values share | kept |
+| two interior bytes two values share, the boundary | kept |
+| a one-byte trailing run two values share | kept |
+
+⭐ **Run 37's artifacts, assembled again with this**: both records
+**publishable**, and `classify_across` answers `build_equivalent`, four fields
+agreeing across two routes. `CI-09`.
+
+Guard mutation, five plants into `sampling.rs` in a scratch copy, each replaced
+exactly once and verified to have changed the file, clean control either side:
+every interior run kept, the bar at one, the bar at three, the distinct count
+ignored, and leading and trailing runs absorbed too. ⭐ All five refused, each by
+the case written for it.

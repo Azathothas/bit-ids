@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T10:23:06Z
+
+- ⭐ **THE FIRST PUBLISHABLE PAIR FROM A STOCK CLIENT.** `capture-client` run
+  37's `aria2-next` 3.0.3 records, assembled again, are `publishable` on both
+  routes and `build_equivalent` across them.
+- ⛔ **A byte two random values happen to share is no longer called fixed.** A
+  fixed run between varying ones is kept only when its length times one less
+  than the number of distinct values reaches two; five plants of the rule were
+  each refused.
+- ⚠ They are not a corpus yet: no `manifest.json` is written beside a record,
+  which now leads the work order.
+- Record: [`TODO/schema.md`](TODO/schema.md) `SCHEMA-04`,
+  [`TODO/ci.md`](TODO/ci.md) `CI-09`. No version bump and no deploy.
+
 ### 2026-10-14T10:14:21Z
 
 - ⭐ **BOTH PEER CONNECTIONS ARE ANSWERED ON A RUNNER.** `capture-client` run 37

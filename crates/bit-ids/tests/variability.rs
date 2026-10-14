@@ -576,3 +576,72 @@ fn the_plan_only_derivation_is_not_unknown_everywhere() {
         "every one of these plans separates exactly one dimension"
     );
 }
+
+// -- a byte two random values happen to share --------------------------------
+
+#[test]
+fn variability_will_not_call_a_byte_fixed_because_two_random_tails_shared_it() {
+    // ⛔ `capture-client` run 37's release lane, as announced: two sessions of
+    // `aria2-next` 3.0.3, whose random tails share `M` at offset 10. Per offset
+    // that was a fixed run inside the tail, and the source lane's own
+    // coincidence sat elsewhere, so the two routes disagreed.
+    let tails = [b"-qB5230-A(Mq~CueHfWD", b"-qB5230-bEMwBhHOPtBp"];
+    let samples: Vec<Sample> = tails
+        .iter()
+        .zip(0u32..)
+        .map(|(bytes, session)| Sample {
+            session,
+            torrent: 0,
+            connection: 0,
+            value: HexBytes::new(bytes.to_vec()).expect("twenty bytes is not empty"),
+        })
+        .collect();
+    let state = field_state(&samples, &plan(2, 1, 1)).expect("two samples support a state");
+    assert_eq!(runs_of(&state), vec![("fixed", 8), ("varying", 12)]);
+}
+
+#[test]
+fn variability_keeps_an_interior_byte_three_distinct_values_share() {
+    // ⚠ Three distinct values agreeing at one offset is about one chance in four
+    // thousand at random, which is a byte the samples establish.
+    let samples = vec![
+        sample(0, 0, 0, &peer_id("aabb7accddeeff0011223344")),
+        sample(1, 0, 0, &peer_id("11227a33445566778899aabb")),
+        sample(2, 0, 0, &peer_id("99887a6655443322110fedcb")),
+    ];
+    let state = field_state(&samples, &plan(3, 1, 1)).expect("three samples support a state");
+    assert_eq!(
+        runs_of(&state),
+        vec![("fixed", 8), ("varying", 2), ("fixed", 1), ("varying", 9)]
+    );
+}
+
+#[test]
+fn variability_keeps_two_interior_bytes_two_distinct_values_share() {
+    // ⚠ The boundary: two bytes shared by two values is as unlikely as one byte
+    // shared by three, so it is kept.
+    let samples = vec![
+        sample(0, 0, 0, &peer_id("aabb7a7bccddeeff00112233")),
+        sample(1, 0, 0, &peer_id("11227a7b3344556677889900")),
+    ];
+    let state = field_state(&samples, &plan(2, 1, 1)).expect("two samples support a state");
+    assert_eq!(
+        runs_of(&state),
+        vec![("fixed", 8), ("varying", 2), ("fixed", 2), ("varying", 8)]
+    );
+}
+
+#[test]
+fn variability_never_absorbs_a_leading_or_trailing_fixed_run() {
+    // ⚠ A one-byte fixed run at the end has nothing varying beyond it, so the
+    // rule does not reach it, however few values there are.
+    let samples = vec![
+        sample(0, 0, 0, &peer_id("aabbccddeeff00112233447f")),
+        sample(1, 0, 0, &peer_id("112233445566778899aabb7f")),
+    ];
+    let state = field_state(&samples, &plan(2, 1, 1)).expect("two samples support a state");
+    assert_eq!(
+        runs_of(&state),
+        vec![("fixed", 8), ("varying", 11), ("fixed", 1)]
+    );
+}

@@ -3831,6 +3831,16 @@ values happened to share. The work order leads with it.
 shard passed locally, 45 of 45; the job was re-run once, and the control now
 prints the gate's failed rows.
 
+⭐ **And assembled again once `SCHEMA-04` stopped calling a shared random byte
+fixed: the first publishable pair from a stock client.** The same four
+artifacts, the same assembler with that one change: both records
+`publishable`, `classify_across` `build_equivalent`, four fields agreeing
+across the release and source routes of `aria2-next` 3.0.3. ⚠ They are not a
+corpus yet: nothing on the capture path writes the `manifest.json` a record
+needs beside it, so `E-CRP-01` refuses both, and nothing uploads the `bundle`
+artifact the publisher reads. Those are this entry's residuals and now the
+whole of what stands between a capture and a publication.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05
