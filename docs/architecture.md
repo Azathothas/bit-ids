@@ -465,6 +465,17 @@ The dialling side speaks first, so a dial carries opening bytes: a responder is
 only called once something has arrived, and in that role nothing will until the
 observer has introduced itself.
 
+⛔ **A second connection leaves from a second address.** A build can key its
+peers on the address they come from: `aria2-next` 3.0.2 answered the first of
+two connections from `127.0.0.1` and both when the second left from
+`127.0.0.2`, measured on 2026-10-14, and its vendored libtorrent's source
+defaults to one connection per IP. `Lab::dial_again_from` takes the source,
+`bind::dial_from` binds it before connecting and reads back both ends, and
+`client-capture` re-dials from `127.0.0.2` upward and prints each re-dial's
+source beside the ordinal of the peer ID it presented. ⚠ It is the one
+door built on `socket2`, because the standard library cannot bind before it
+connects; [`supply-chain.md`](supply-chain.md) carries the decision.
+
 ⚠ **A responder is told which connection it is serving.** One responder serves
 every connection an endpoint accepts, so without an identity a peer observer has
 nowhere to keep per-connection state and sends a second handshake down the first

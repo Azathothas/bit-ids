@@ -520,6 +520,48 @@ impl Lab {
     where
         R: Fn(ConnectionId, &[u8]) -> crate::StreamReply + Send + Sync + 'static,
     {
+        self.dial_another(name, address, None, opening, responder)
+    }
+
+    /// Opens another connection to an endpoint this lab already dialled, from
+    /// a loopback source address of the caller's choosing.
+    ///
+    /// ⛔ **A second connection from the same address may be a connection the
+    /// build never answers.** Measured on 2026-10-14: `aria2-next` 3.0.2
+    /// answered one of two connections from `127.0.0.1` and both when the
+    /// second came from `127.0.0.2`, each with its own peer ID. The source is
+    /// part of what the lab offers, so the caller chooses it and records it.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::dial_again`], and [`LabError::Bind`] when the source is not on
+    /// loopback, is of the other address family, or is not the address the
+    /// socket left from.
+    pub fn dial_again_from<R>(
+        &mut self,
+        name: &str,
+        address: SocketAddr,
+        source: IpAddr,
+        opening: Vec<u8>,
+        responder: R,
+    ) -> Result<(), LabError>
+    where
+        R: Fn(ConnectionId, &[u8]) -> crate::StreamReply + Send + Sync + 'static,
+    {
+        self.dial_another(name, address, Some(source), opening, responder)
+    }
+
+    fn dial_another<R>(
+        &mut self,
+        name: &str,
+        address: SocketAddr,
+        source: Option<IpAddr>,
+        opening: Vec<u8>,
+        responder: R,
+    ) -> Result<(), LabError>
+    where
+        R: Fn(ConnectionId, &[u8]) -> crate::StreamReply + Send + Sync + 'static,
+    {
         if self.shared.stopped() {
             return Err(LabError::Stopped);
         }
@@ -530,7 +572,10 @@ impl Lab {
         if !known {
             return Err(LabError::UnknownEndpoint(name));
         }
-        let stream = bind::dial(address, self.dial_timeout)?;
+        let stream = match source {
+            Some(source) => bind::dial_from(source, address, self.dial_timeout)?,
+            None => bind::dial(address, self.dial_timeout)?,
+        };
 
         let shared = Arc::clone(&self.shared);
         let responder: Arc<StreamResponder> = Arc::new(responder);

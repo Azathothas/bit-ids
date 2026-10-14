@@ -44,7 +44,7 @@
 
 use core::fmt::Write as _;
 use std::collections::BTreeMap;
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::{Duration, Instant};
 
 use bit_ids::canonical::Slug;
@@ -281,20 +281,42 @@ fn dial_when_announced(
                 Err(error) => return (format!("refused: {error}"), 0),
             };
             let mut opened = 1;
-            for _ in 1..dials {
+            for index in 1..dials {
                 let presented = peer_wire.present();
+                // ⛔ AND FROM ANOTHER ADDRESS PER CONNECTION, which is what runs 18,
+                // 19 and 36 lacked: every dial left from `127.0.0.1`, and
+                // `aria2-next` answered the first of them only. Driven on
+                // 2026-10-14 against 3.0.2 in a namespace holding loopback alone,
+                // a second connection from `127.0.0.2` was answered, with a peer ID
+                // of its own. ⚠ The source is a condition of the run, so it is
+                // printed beside the connection it opened.
+                let source = redial_source(index);
                 // ⚠ A refused RE-dial ends the dialling and not the run, for the
                 // same reason: a build that accepts one connection and not a
                 // second has been measured once, which is a weaker record than
                 // was asked for and a better one than none. The count says so.
-                if let Err(error) = lab.dial_again(
-                    "peer-wire-dialled",
-                    address,
-                    presented.handshake().to_vec(),
-                    peer_wire.dialling(&presented),
-                ) {
+                let redialled = match source {
+                    Some(source) => lab.dial_again_from(
+                        "peer-wire-dialled",
+                        address,
+                        source,
+                        presented.handshake().to_vec(),
+                        peer_wire.dialling(&presented),
+                    ),
+                    None => lab.dial_again(
+                        "peer-wire-dialled",
+                        address,
+                        presented.handshake().to_vec(),
+                        peer_wire.dialling(&presented),
+                    ),
+                };
+                if let Err(error) = redialled {
                     println!("peer-redial refused: {error}");
                     break;
+                }
+                match source {
+                    Some(source) => println!("peer-redial {index} from {source}"),
+                    None => println!("peer-redial {index} from wherever the kernel chose"),
                 }
                 opened += 1;
             }
@@ -305,6 +327,19 @@ fn dial_when_announced(
         }
         std::thread::sleep(Duration::from_millis(200));
     }
+}
+
+/// The loopback address the `index`th re-dial leaves from: `127.0.0.2` for the
+/// first, counting up through `127.0.0.0/8`. ⚠ `None` only past
+/// `127.255.255.254`, the last address below the `/8`'s broadcast, where a
+/// re-dial leaves from wherever the kernel chooses.
+fn redial_source(index: u32) -> Option<IpAddr> {
+    let host = index.checked_add(1)?;
+    if host >= 0x00ff_ffff {
+        return None;
+    }
+    let [_, a, b, c] = host.to_be_bytes();
+    Some(IpAddr::V4(Ipv4Addr::new(127, a, b, c)))
 }
 
 /// What the build put in its announces.

@@ -396,6 +396,14 @@ redistribute = "refused"
 notice = ""
 
 [[dependencies]]
+name = "socket2"
+version = "0.6.5"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
 name = "syn"
 version = "3.0.4"
 licence = "MIT OR Apache-2.0"
@@ -423,6 +431,22 @@ notice = ""
 name = "vcpkg"
 version = "0.2.15"
 licence = "MIT/Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "windows-link"
+version = "0.2.1"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "windows-sys"
+version = "0.61.2"
+licence = "MIT OR Apache-2.0"
 licence_source = "crate-manifest"
 redistribute = "refused"
 notice = ""

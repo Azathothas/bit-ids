@@ -5,6 +5,22 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T07:35:56Z
+
+- ⭐ **THE LAB'S SECOND PEER CONNECTION LEAVES FROM A SECOND ADDRESS.**
+  `aria2-next` 3.0.2 answered one of two connections from `127.0.0.1`, and its
+  vendored libtorrent's source defaults to one connection per IP. Driven
+  against it in a loopback namespace, a second from `127.0.0.2` was answered
+  with a peer ID of its own, and through `client-capture` and the adapter the
+  planted alternative gave one peer stream where this gives two. `bind::dial_from` and `Lab::dial_again_from`
+  carry it, and `client-capture` re-dials from `127.0.0.2` upward.
+- ⛔ **`socket2` 0.6.5 is a new dependency, for that one door**: the standard
+  library cannot bind before it connects, and the workspace forbids the
+  `unsafe` a hand-made `bind(2)` would need. Three packages in the lockfile,
+  registered.
+- Record: [`TODO/observer.md`](TODO/observer.md) `OBS-04`,
+  [`docs/supply-chain.md`](docs/supply-chain.md). No version bump and no deploy.
+
 ### 2026-10-14T07:15:39Z
 
 - ⭐ **`aria2-next` 3.0.2 IS ON THE WIRE THROUGH BOTH ROUTES.** `capture-client`

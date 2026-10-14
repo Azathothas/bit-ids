@@ -811,6 +811,14 @@ else
   agree "catalogue a transport in another case is not one" check-catalogue publishing/check-catalogue 0
   cp "$WORK/crate-manifest.orig" "$CRATEMF"
 
+  # ⛔ AND THE SOCKET CRATE THE LAB TOOK. Until 2026-10-14 a manifest naming
+  # `socket2` was refused by the licence register, which had no row for it; the
+  # lab's one door gave it a row, so this rule is what refuses it here now.
+  printf '\n[package.metadata.zz-plant]\nsocket2 = "planted"\n' >>"$CRATEMF"
+  agree "catalogue the lab's socket crate in the manifest" check-catalogue publishing/check-catalogue 1
+  go_said "catalogue the lab's socket crate in the manifest" '{"schema":"check-catalogue/1","total":18,"passed":17,"failed":1}'
+  cp "$WORK/crate-manifest.orig" "$CRATEMF"
+
   # ⛔ THE LIBRARY REFUSES A MOVED RECORD UNDER ANOTHER CODE. Both sites that
   # raise E-LIB-02 are disabled - the manifest comparison fires on every per-file
   # mismatch as well, so disabling one would pass through the other - and the

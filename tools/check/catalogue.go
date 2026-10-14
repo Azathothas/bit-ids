@@ -50,7 +50,9 @@ var catalogueNeedles = []string{
 
 // catalogueTransports is the `^(...)` of the manifest check: a dependency line
 // beginning with one of these names a transport.
-var catalogueTransports = []string{"reqwest", "ureq", "hyper", "curl", "tokio", "async-std", "isahc"}
+// ⚠ `socket2` since 2026-10-14: it is in the lockfile for the lab's one door,
+// and a lockfile that already carries a crate no longer refuses it by itself.
+var catalogueTransports = []string{"reqwest", "ureq", "hyper", "curl", "tokio", "async-std", "isahc", "socket2"}
 
 func checkCatalogue(r *repo) (verdict, error) {
 	h := &harness{me: "check-catalogue"}

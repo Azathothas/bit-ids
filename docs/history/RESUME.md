@@ -8,9 +8,9 @@ and why it is not the record. The work order is
 | | |
 | --- | --- |
 | the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
-| the resume point | `OBS-04`'s residual: the lab's second peer connection dials from another loopback address, then a `capture-client` dispatch says whether `aria2-next` 3.0.2 answers both. Work order item 1. |
-| in flight | nothing. Run 36, id 38525418038, on `8870eed`, is green on both lanes, assembled and recorded in `CI-09`: two `provisional` records, refused by `E-PUB-03` over one `peer_wire` sample each. |
-| the state of the tree | clean once the record of run 36 is pushed. CI run 186 on `8870eed` is green on all six jobs, the four `check-workflow` shards among them. |
+| the resume point | dispatch `capture-client` (`aria2-next`, release and source) on the change that re-dials from a second loopback address, read it from its recorder runs, and assemble the pair. Work order item 1. |
+| in flight | the change after `6ba2431`: `bind::dial_from` over `socket2` 0.6.5, `Lab::dial_again_from`, and `client-capture` re-dialling from `127.0.0.2` upward. Driven against 3.0.2 in a loopback namespace: two peer streams, and one under a plant. `OBS-04`. |
+| the state of the tree | at the commit after `6ba2431`: `cargo test` 599 passed in 54 result blocks, fmt and clippy clean, `check-bitcheck --harnesses` 261 of 261, the gate 40 checks with 39 passed and 1 skipped. |
 
 ## Starting, on this host
 

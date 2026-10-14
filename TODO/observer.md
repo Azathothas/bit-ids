@@ -1091,9 +1091,89 @@ offering its own peer, and the build answered the first only, as runs 18 and
 19 measured on 2026-09-15. ⚠ The address reading gains a source: libtorrent's
 `allow_multiple_connections_per_ip` defaults to `false` in the copy 3.0.2
 vendors, and `aria2-next`'s own source never sets it. That sets priority and
-proves nothing. ⭐ **The next unit is the test**: the lab's second connection
-dials from another loopback address through `bind.rs`, and a dispatch says
-whether the build then answers both. `CI-09` carries the pair this blocks.
+proves nothing.
+
+### ⭐ The address it was: a second source, and both connections answered. 2026-10-14
+
+⭐ **Measured against the build before anything was written.** `aria2-next`
+3.0.2's release asset, started through its adapter in a network namespace
+holding loopback alone, dialled twice with a `BitTorrent` handshake for the
+torrent's info hash and a peer ID of its own on each:
+
+| the second connection left from | first connection | second connection |
+| --- | --- | --- |
+| `127.0.0.1`, twice | a handshake back | nothing |
+| `127.0.0.2` | a handshake back | a handshake back, with a tail of its own |
+
+⛔ **So the build answers by source address, as the reading said, and each
+answered connection drew its own tail.** Two connections from two addresses
+gave two peer IDs that share `-qB5230-` and differ after it, which is the
+`patterned` state the announces already show and the one a one-sample capture
+could never reach. ⚠ That libtorrent's setting is the cause is still a reading
+of the source.
+
+| where | what changed |
+| --- | --- |
+| [`bind.rs`](../crates/bit-ids-lab/src/bind.rs) | `dial_from`: refuses either address off loopback before the syscall, binds the source, connects, and reads back the peer and the address it left from; a source the kernel did not honour is `NotFromSource` |
+| [`lab.rs`](../crates/bit-ids-lab/src/lab.rs) | `Lab::dial_again_from`, the same checks as `dial_again` on one shared body, with the source the caller chose |
+| [`client-capture.rs`](../crates/bit-ids-probe/examples/client-capture.rs) | re-dials from `127.0.0.2` upward and prints `peer-redial N from ADDR` beside each |
+| `tests/lab_supervisor.rs` | a second connection arrives at the target from the address asked for, read off the target's own `accept`; one from off loopback is refused and opens nothing; `Socket::new` joins the doors no module but `bind.rs` may reach |
+
+⭐ **Driven through `client-capture` and the adapter, outside
+`capture-client.sh`**: the 3.0.2 asset, the same namespace, one session, a
+30-second window, and no attestation or scan. A plant of the source,
+re-dialling from the first connection's address, was built in a scratch copy
+of the tree:
+
+| observer | `peer-streams` |
+| --- | --- |
+| this change | **2**, the re-dial from `127.0.0.2` |
+| the plant | 1 |
+| this change again, the control | 2 |
+
+Guard mutation, each plant replaced exactly once in a scratch copy of the tree
+and verified to have changed the file, run through `cargo test -p bit-ids-lab`
+with its exit code read unpiped, clean control either side:
+
+| plant | verdict |
+| --- | --- |
+| `dial_from` stops refusing a source off loopback | ⭐ refused, by the off-loopback case |
+| `dial_from` stops refusing a destination off loopback | ⭐ refused, by the same case |
+| `dial_from` never binds the source | ⭐ refused, by the case that reads the target's `accept` |
+| `dial_from` stops refusing two families | ⭐ refused, once the case asked for the reason; it survived while the case accepted any refusal, because the kernel refuses that bind too |
+| `Lab::dial_again_from` dials from the default address | ⭐ refused, 2 cases |
+| `dial_from` stops reading back the address it left from | ⚠ **survived, and is kept**: nothing a test can arrange makes the kernel leave from another address than the one bound, so this guard is one no case can refute |
+
+⚠ It is the one door built on `socket2`, because the standard library cannot
+bind before it connects; [`../docs/supply-chain.md`](../docs/supply-chain.md)
+carries the decision and the three packages it cost. ⚠ The attestation does not
+carry the sources. The re-dials' requested sources are in `observer.log`, which
+the artifact uploads beside the bundle; the first dial's is not printed, and the
+ordinal ties a source to the peer ID it presented rather than to a transcript's
+connection identifier, which does not follow dial order. ⛔ **What is still a
+dispatch's to say** is whether a runner gives the same two answers, and whether
+a new dispatch's pair agrees across routes.
+
+⚠ **Two hosts give a lab one loopback address.** Linux and Windows route all of
+`127.0.0.0/8` to loopback; macOS and the BSDs put `127.0.0.1` alone on `lo0`, so
+the two tests that dial from `127.0.0.2` are ignored there with that reason, and
+a capture on such a host would re-dial into a refusal. Every capture runs on a
+Linux runner.
+
+⛔ **The door sweep of this change found two doors it had opened by adding the
+crate.** The probe crate's socket sweep and `check-catalogue`'s transport rule
+named no `socket2`, and until the lockfile carried it, a manifest naming it was
+refused only because the licence register had no row for it. Both name the
+crate now, and `check-bitcheck` plants it in the consumer crate's manifest.
+
+Residual: ⚠ **where each connection came from reaches no record.** The
+attestation carries neither the sources nor a count of connections, and a
+transcript's connection identifier does not follow dial order, so `SCHEMA-02`'s
+rule that capture conditions ship with every profile does not hold for this one.
+Acceptance: `capture-client.sh` writes each re-dial's source from the observer's
+`peer-redial N from ADDR` lines into the attestation, and the first connection's
+too, which the observer then has to print; `sh scripts/capture/check-capture-client.sh`
+holds a case whose observer reports two sources and one that reports none.
 
 ## OBS-05: BEP 10 and early-message observer
 

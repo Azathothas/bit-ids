@@ -76,9 +76,27 @@ rather than for an observer.
 
 `OBS-01` and the observers that followed it added two more workspace members,
 `bit-ids-lab` and `bit-ids-probe`, and no third-party crate: the lab binds
-sockets with `std::net` and one thread per endpoint rather than an async runtime,
+sockets with `std::net`, one door aside since `OBS-04`, and one thread per
+endpoint rather than an async runtime,
 which would have been a dependency tree an order of magnitude larger than
 everything here, in the component that must stay reviewable.
+
+⛔ **`OBS-04` added `socket2` 0.6.5 on 2026-10-14, for one door.** A build keyed
+its peers on their address: `aria2-next` 3.0.2 answered one of two connections
+from `127.0.0.1` and both when the second left from `127.0.0.2`; run 36's pair,
+the only one, was refused by `E-PUB-03` over one `peer_wire` sample per
+capture. Choosing
+the address a connection leaves from means binding before connecting, which
+`std::net` cannot do. ⭐ **Measured rather than argued: the lockfile diff is three
+packages**, `socket2` from the rust-lang organisation and `windows-sys` 0.61.2
+and `windows-link` 0.2.1 from Microsoft's `windows-rs`, which `socket2` names
+for its Windows half; `libc` was already here. ⛔ The rejected routes: calling
+`bind(2)` by hand needs `unsafe`, which this workspace forbids; a tracker answer
+offering two peer addresses for the build to dial would have changed which
+side speaks first, and `client-capture`'s own documentation argues the side that
+dials is the stronger measurement; and a second address family, `::1`, would have changed
+two conditions at once. ⚠ The crate is used in `bind::dial_from` alone,
+and `tests/lab_supervisor.rs` greps every other module for `Socket::new`.
 
 `OBS-08` added `sha1` 0.11.0, the fourth third-party crate and the first since
 `SCHEMA-01`. The info hash is SHA-1 by BEP 3 and this project does not get to

@@ -245,7 +245,10 @@ fn the_same_socket_reaches_a_loopback_destination() {
 /// call that turns one into a socket, or that sends on one.
 #[test]
 fn no_observer_opens_a_socket_of_its_own() {
-    const FORBIDDEN: [&str; 8] = [
+    // ⚠ `socket2` since 2026-10-14, when the lab took it for one door: in the
+    // lockfile, a crate here could name it and open a socket no needle above
+    // spells.
+    const FORBIDDEN: [&str; 9] = [
         "TcpListener",
         "UdpSocket::bind",
         "TcpStream::connect",
@@ -254,6 +257,7 @@ fn no_observer_opens_a_socket_of_its_own() {
         "join_multicast",
         "set_multicast",
         "std::net::UdpSocket::",
+        "socket2",
     ];
 
     let source = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");

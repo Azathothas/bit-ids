@@ -13,6 +13,13 @@ workspace = true
 bit-ids = { path = "../bit-ids" }
 bit-ids-wire = { path = "../bit-ids-wire" }
 sha1 = "0.11.0"
+# ⚠ One door only: `bind::dial_from`, because the standard library cannot bind a
+# source address before it connects, and a build keying its peers on their
+# address answered one of the lab's two connections. Measured, and
+# argued in `docs/supply-chain.md`: three packages, socket2 and the two Windows
+# crates it names, where the workspace forbids the `unsafe` a hand-rolled
+# `bind(2)` would need.
+socket2 = "0.6.5"
 
 # ⚠ Tests only, and no new package: `bit-ids` already depends on `serde_json`,
 # so the lockfile does not move. `OBS-09`'s acceptance splices the bundle's rows

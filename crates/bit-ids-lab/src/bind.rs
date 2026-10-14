@@ -44,6 +44,8 @@ use std::io;
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream, UdpSocket};
 use std::time::Duration;
 
+use socket2::{Domain, Protocol, SockAddr, Socket, Type};
+
 /// Why a socket was not created.
 #[derive(Debug)]
 pub enum BindError {
@@ -72,7 +74,19 @@ pub enum BindError {
         /// Where the datagram was addressed.
         destination: SocketAddr,
     },
-    /// The operating system refused the bind.
+    /// A dial asked to leave from one address, and the socket left from another.
+    ///
+    /// ⚠ The source was refused off loopback before the bind. What this
+    /// refuses is a measurement condition the lab did not get: a dial from
+    /// a second address exists so the build sees a second peer, and a socket the
+    /// kernel put back on the first one would show it the same peer twice.
+    NotFromSource {
+        /// The source address that was asked for.
+        requested: IpAddr,
+        /// What the kernel reported after connecting.
+        bound: SocketAddr,
+    },
+    /// The operating system refused the bind, the connection or the request.
     Io(io::Error),
 }
 
@@ -91,7 +105,11 @@ impl fmt::Display for BindError {
                 f,
                 "refusing to send to {destination}: a lab packet goes to loopback and nowhere else"
             ),
-            Self::Io(error) => write!(f, "the operating system refused the bind: {error}"),
+            Self::NotFromSource { requested, bound } => write!(
+                f,
+                "asked to dial from {requested} and the socket reports {bound}"
+            ),
+            Self::Io(error) => write!(f, "the operating system refused: {error}"),
         }
     }
 }
@@ -190,6 +208,71 @@ pub fn dial(address: SocketAddr, timeout: Duration) -> Result<TcpStream, BindErr
     // Read back, for the reason the bind path reads back: what was asked for
     // and what the kernel connected are different facts.
     check_bound(address.ip(), stream.peer_addr()?)?;
+    Ok(stream)
+}
+
+/// Dials a loopback address from a chosen loopback source, with a bounded wait.
+///
+/// ⛔ **A build can key its peers on the address they come from, so the lab
+/// needs more than one.** Measured on 2026-10-14 against `aria2-next` 3.0.2 in
+/// a namespace holding loopback alone: two connections from `127.0.0.1` got one
+/// handshake back, and the same two with the second from `127.0.0.2` got two,
+/// each with its own peer ID. libtorrent's `allow_multiple_connections_per_ip`
+/// is `false` by default, and a lab whose every connection came from one
+/// address could never show a value the build regenerates per connection.
+///
+/// ⚠ **The standard library cannot bind before it connects**, which is why
+/// this one door uses `socket2`; `docs/supply-chain.md` carries the decision.
+/// The rest of this module is `std::net` and stays so.
+///
+/// The guards are the dial's, and one more: the source and the destination
+/// are both refused off loopback before the syscall, the peer is read back as
+/// [`dial`] reads it, and so is the address the socket left from, because a
+/// source the kernel did not honour is a second peer the build never saw.
+///
+/// # Errors
+///
+/// Returns [`BindError::NotLoopback`] before the syscall for either address,
+/// [`BindError::BoundElsewhere`] when the connected peer is not on loopback,
+/// [`BindError::NotFromSource`] when the socket left from another address, and
+/// [`BindError::Io`] when the families differ or the connection is refused or
+/// times out.
+pub fn dial_from(
+    source: IpAddr,
+    address: SocketAddr,
+    timeout: Duration,
+) -> Result<TcpStream, BindError> {
+    check_requested(source)?;
+    check_requested(address.ip())?;
+    // ⚠ As `TcpStream::connect_timeout` answers it, so the two doors agree.
+    if timeout.is_zero() {
+        return Err(BindError::Io(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "a dial cannot wait for no time at all",
+        )));
+    }
+    if source.is_ipv4() != address.is_ipv4() {
+        return Err(BindError::Io(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("a dial from {source} cannot reach {address}: the families differ"),
+        )));
+    }
+    let socket = Socket::new(
+        Domain::for_address(address),
+        Type::STREAM,
+        Some(Protocol::TCP),
+    )?;
+    socket.bind(&SockAddr::from(SocketAddr::new(source, 0)))?;
+    socket.connect_timeout(&SockAddr::from(address), timeout)?;
+    let stream = TcpStream::from(socket);
+    check_bound(address.ip(), stream.peer_addr()?)?;
+    let left = stream.local_addr()?;
+    if left.ip() != source {
+        return Err(BindError::NotFromSource {
+            requested: source,
+            bound: left,
+        });
+    }
     Ok(stream)
 }
 
@@ -362,6 +445,56 @@ mod tests {
             super::dial(elsewhere, Duration::from_millis(50)),
             Err(BindError::NotLoopback { .. })
         ));
+    }
+
+    #[test]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "windows")),
+        ignore = "loopback here may hold 127.0.0.1 alone; `ifconfig lo0 alias 127.0.0.2` first"
+    )]
+    fn a_dial_from_a_second_loopback_address_reaches_the_listener_from_it() {
+        // ⛔ The measurement this exists for: the listener sees the source the
+        // dial asked for, not the address the kernel would have chosen.
+        let listener = stream(v4(127, 0, 0, 1)).expect("loopback binds");
+        let address = listener.local_addr().expect("a bound listener has one");
+        let dialled = super::dial_from(v4(127, 0, 0, 2), address, Duration::from_secs(5))
+            .expect("it connects");
+        let (_accepted, from) = listener.accept().expect("the dial arrives");
+        assert_eq!(from.ip(), v4(127, 0, 0, 2));
+        assert_eq!(
+            dialled
+                .local_addr()
+                .expect("a connected stream has one")
+                .ip(),
+            v4(127, 0, 0, 2)
+        );
+    }
+
+    #[test]
+    fn a_dial_from_off_loopback_is_refused_before_a_packet_leaves() {
+        // ⚠ The destination is a real listener, so a refusal here is the
+        // source's own guard and not a connection that failed.
+        let listener = stream(v4(127, 0, 0, 1)).expect("loopback binds");
+        let address = listener.local_addr().expect("a bound listener has one");
+        assert!(matches!(
+            super::dial_from(v4(198, 51, 100, 7), address, Duration::from_millis(50)),
+            Err(BindError::NotLoopback { .. })
+        ));
+        let elsewhere = SocketAddr::new(v4(198, 51, 100, 7), 6881);
+        assert!(matches!(
+            super::dial_from(v4(127, 0, 0, 2), elsewhere, Duration::from_millis(50)),
+            Err(BindError::NotLoopback { .. })
+        ));
+        // ⚠ The kernel would refuse this bind too; what is asserted is that the
+        // refusal says why, which only the family check does.
+        match super::dial_from(
+            IpAddr::V6(Ipv6Addr::LOCALHOST),
+            address,
+            Duration::from_millis(50),
+        ) {
+            Err(BindError::Io(error)) => assert!(error.to_string().contains("families differ")),
+            other => panic!("expected a family refusal, got {other:?}"),
+        }
     }
 
     #[test]

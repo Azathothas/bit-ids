@@ -568,13 +568,17 @@ fn a_close_reply_ends_the_connection_and_the_client_sees_the_end_of_stream() {
 /// door rather than a way around it.
 #[test]
 fn no_module_outside_the_bind_guard_reaches_the_network() {
-    const FORBIDDEN: [&str; 6] = [
+    // ⚠ `socket2` by its crate name, not by one call: `bind::dial_from` is its
+    // one door, and `SockRef` or an aliased import would pass a needle that
+    // named `Socket::new` alone.
+    const FORBIDDEN: [&str; 7] = [
         "TcpListener::bind",
         "UdpSocket::bind",
         "TcpStream::connect",
         "UdpSocket::connect",
         ".send_to(",
         "UdpSocket::send",
+        "socket2",
     ];
 
     let source = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
@@ -769,6 +773,110 @@ fn a_second_connection_to_one_endpoint_is_one_transcript_with_two_connections() 
         connections.len(),
         2,
         "one endpoint, two connections: {connections:?}"
+    );
+}
+
+#[test]
+#[cfg_attr(
+    not(any(target_os = "linux", target_os = "windows")),
+    ignore = "loopback here may hold 127.0.0.1 alone; `ifconfig lo0 alias 127.0.0.2` first"
+)]
+fn a_second_connection_from_another_loopback_address_arrives_from_it() {
+    // ⛔ A BUILD CAN KEY ITS PEERS ON THEIR ADDRESS. `aria2-next` 3.0.2 answered
+    // one of two connections from `127.0.0.1` and both when the second came
+    // from `127.0.0.2`, measured on 2026-10-14. What the target sees as the
+    // second connection's source is the fact this asserts, read off the
+    // target's own `accept` rather than off the lab's socket.
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("a listener");
+    let address = listener.local_addr().expect("an address");
+    let answering = std::thread::spawn(move || {
+        let mut sources = Vec::new();
+        for _ in 0..2 {
+            let (mut stream, from) = listener.accept().expect("a connection");
+            let mut seen = [0_u8; 5];
+            let _ = std::io::Read::read(&mut stream, &mut seen);
+            std::io::Write::write_all(&mut stream, b"ok").expect("a reply");
+            sources.push(from.ip());
+        }
+        sources
+    });
+
+    let mut lab = Lab::builder()
+        .stream("tracker-http", echo_once(b"ok"))
+        .expect("a canonical name")
+        .start()
+        .expect("loopback binds");
+    lab.dial("peer-dial", address, b"hello".to_vec(), echo_once(b"ok"))
+        .expect("the first connection opens");
+    lab.dial_again_from(
+        "peer-dial",
+        address,
+        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2)),
+        b"hello".to_vec(),
+        echo_once(b"ok"),
+    )
+    .expect("and so does the second, from the other address");
+    let sources = answering.join().expect("the stub answered both");
+    assert_eq!(
+        sources,
+        [
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
+            IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2))
+        ]
+    );
+    assert_eq!(
+        lab.endpoints().len(),
+        2,
+        "still one dialled endpoint beside the tracker"
+    );
+    lab.stop();
+    let journal = lab.shutdown();
+    let name = Slug::parse("peer-dial").expect("a canonical name");
+    let mut connections: Vec<u64> = journal
+        .for_endpoint(&name)
+        .iter()
+        .filter_map(|segment| segment.connection().map(ConnectionId::get))
+        .collect();
+    connections.sort_unstable();
+    connections.dedup();
+    assert_eq!(
+        connections.len(),
+        2,
+        "one transcript, two connections: {connections:?}"
+    );
+}
+
+#[test]
+fn a_second_connection_from_off_loopback_is_refused_before_a_packet_leaves() {
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("a listener");
+    let address = listener.local_addr().expect("an address");
+    let mut lab = Lab::builder()
+        .stream("tracker-http", echo_once(b"ok"))
+        .expect("a canonical name")
+        .start()
+        .expect("loopback binds");
+    lab.dial("peer-dial", address, b"hello".to_vec(), echo_once(b"ok"))
+        .expect("the first connection opens");
+    let (_first, _) = listener.accept().expect("the first dial arrives");
+    // ⛔ TEST-NET-2 as the source. If the guard stopped firing the socket would
+    // try to leave from an address this host should not have.
+    let refused = lab.dial_again_from(
+        "peer-dial",
+        address,
+        IpAddr::V4(Ipv4Addr::new(198, 51, 100, 7)),
+        b"hello".to_vec(),
+        echo_once(b"ok"),
+    );
+    match refused {
+        Err(LabError::Bind(error)) => assert!(error.to_string().contains("loopback")),
+        other => panic!("expected a loopback refusal, got {other:?}"),
+    }
+    listener
+        .set_nonblocking(true)
+        .expect("a nonblocking listener");
+    assert!(
+        listener.accept().is_err(),
+        "the refused dial opened no connection"
     );
 }
 
