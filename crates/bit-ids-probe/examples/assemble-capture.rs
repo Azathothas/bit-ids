@@ -255,8 +255,24 @@ impl Lane {
     /// the first capture to write that key - `connectors=cpython-stdlib` - so a
     /// lane of it declares TWO and `E-CAP-01` is satisfied. ⚠ Run 14 carried no
     /// such key, which is the whole of why it was refused as declaring one.
+    ///
+    /// ⛔ **Each version is the attestation's, never this file's.** Both were
+    /// `0.0.0` until 2026-10-14, written here for every connector; for the
+    /// observer that happened to be its crate's version and for the second
+    /// connector it was nobody's. `observer_version` is what the observer
+    /// printed and `connector_version` what the connector described, and a lane
+    /// without one is refused. ⚠ One `connector_version` names one connector, so
+    /// an attestation listing two beside the observer is refused rather than
+    /// given one version for both.
     fn connectors(&self) -> Result<Vec<Connector>, String> {
-        let version = Version::parse("0.0.0").map_err(|error| error.to_string())?;
+        let version_of = |key: &str| -> Result<Version, String> {
+            let text = self
+                .attestation
+                .get(key)
+                .filter(|text| !text.is_empty())
+                .ok_or_else(|| format!("the attestation records no `{key}`"))?;
+            Version::parse(text).map_err(|error| format!("{key} {text:?}: {error}"))
+        };
         let mut ids = vec![slug("bit-ids-probe")];
         for extra in self
             .attestation
@@ -272,14 +288,27 @@ impl Lane {
                 ids.push(id);
             }
         }
+        if ids.len() > 2 {
+            return Err(format!(
+                "the attestation names {} connectors beside the observer and one connector_version",
+                ids.len() - 1
+            ));
+        }
         ids.sort_by_key(std::string::ToString::to_string);
-        Ok(ids
-            .into_iter()
-            .map(|id| Connector {
-                id,
-                version: version.clone(),
+        let observer = slug("bit-ids-probe");
+        ids.into_iter()
+            .map(|id| {
+                let key = if id == observer {
+                    "observer_version"
+                } else {
+                    "connector_version"
+                };
+                Ok(Connector {
+                    id,
+                    version: version_of(key)?,
+                })
             })
-            .collect())
+            .collect()
     }
 
     fn evidence_id(&self, suffix: &str) -> Slug {

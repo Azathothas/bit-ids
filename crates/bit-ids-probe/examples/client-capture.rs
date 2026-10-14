@@ -193,6 +193,10 @@ fn main() {
     for endpoint in lab.endpoints() {
         println!("endpoint {} {}", endpoint.name(), endpoint.address());
     }
+    // ⛔ THE OBSERVER'S OWN VERSION, so a record's connector entry is measured
+    // rather than written by the assembler. It is the crate's, which is what
+    // built this binary; the attestation's digest says which build.
+    println!("observer-version {}", env!("CARGO_PKG_VERSION"));
     println!("announce-url {announce_url}");
     println!("torrent {torrent_path}");
     println!("info-hash {}", hex(torrent.info_hash()));

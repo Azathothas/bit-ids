@@ -3841,6 +3841,63 @@ needs beside it, so `E-CRP-01` refuses both, and nothing uploads the `bundle`
 artifact the publisher reads. Those are this entry's residuals and now the
 whole of what stands between a capture and a publication.
 
+### ⛔ The run manifest a pair needs, and the two facts it cannot state yet. 2026-10-14
+
+Surveyed field by field against run 37's four artifacts: what a `RunManifest`
+needs, where each value exists today, and what writes it.
+
+⭐ **Most of it is a producer change, and none is invented.** The assembler can
+take the target, the build tuple, the kernel and architecture, the network
+isolation, the end of the run, the sampling plan, the routes, their sources and
+digests, and every evidence row from what the run already uploads. What it
+cannot take is written nowhere yet:
+
+| missing | the smallest producer that writes it |
+| --- | --- |
+| the runner image, the operating system, whether the host is GitHub's own, and an uptime at claim | `assert-disposable.sh --claim` writes them into the claim marker, and `capture-client.sh` uploads the marker |
+| a monotonic span | an uptime at claim and one at finish |
+| the connector's and the observer's versions | `capture-client.sh` keeps the version the connector's `--describe` prints and drops today; the observer prints its own |
+| each route's byte count, retrieval time and signature status | `install-client.sh` writes them beside the digest |
+| each evidence row's kind, producer and phase | `client-capture` prints them on the rows it already prints |
+
+⚠ **And the profile carries one invented value today**: both connectors at
+version `0.0.0`. For the observer it happens to equal the crate's version; for
+`cpython-stdlib` it is nobody's measurement. A manifest that copied it would
+bind for no reason, so it is repaired first.
+
+⛔ **Two facts a dispatch produces do not fit the manifest's model, and they are
+the operator's to decide.**
+
+1. **One host or two.** Each route installs on its own runner, and a manifest
+   carries one host, one isolation and one pair of clocks while `E-MAN-10`
+   requires both routes in it. Either the manifest describes the watched host
+   and the other route contributes its acquisition and evidence, or the schema
+   carries a host per route.
+2. **The phases overlap across hosts.** `E-MAN-03` puts both routes' installs
+   before the observation, and run 37's release lane observed from 09:36:22 to
+   09:37:07, before the source route finished installing at 09:43:40 on
+   another machine. So `cap-release` cannot have a truthful manifest under the
+   present state machine. The options are phase spans read as milestones with
+   the release record refused, a workflow barrier so every lane waits for every
+   install, or a state machine that lets one route be observed before the other
+   is installed.
+
+⭐ **Both settled by the operator on 2026-10-14**: a workflow barrier, so every
+lane's capture waits for every route's install, and a manifest that describes
+the watched host. The order of work: the invented connector version first, then
+the producers above, then the barrier, then the assembler writing the manifest
+and reading it back into the corpus check.
+
+⭐ **Step 1, the invented version, is done.** `client-capture` prints
+`observer-version`, `capture-client.sh` keeps the connector's own described
+version, both land in the attestation as `observer_version` and
+`connector_version`, and `assemble-capture` reads each connector's version from
+there and refuses a lane without one. `check-assemble` 54 of 54 and
+`check-capture-client` 131 of 131; a plant writing `0.0.0` again was refused by
+three cases, and one dropping the attestation key by one. ⚠ Run 37's artifacts
+predate the keys, so they assemble no longer: that is the refusal working, and
+the next dispatch carries them.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05

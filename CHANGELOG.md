@@ -5,6 +5,16 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T10:53:52Z
+
+- ⛔ **A RECORD'S CONNECTOR VERSIONS ARE MEASURED.** Both were `0.0.0`, written
+  by the assembler, and for the second connector nobody's measurement. The
+  observer prints its version, the connector's described version is kept, and a
+  lane whose attestation carries neither is refused.
+- ⭐ The operator settled how a run manifest fits a two-runner dispatch: a
+  workflow barrier, and the watched host. `CI-09` carries the plan.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-09`. No version bump and no deploy.
+
 ### 2026-10-14T10:23:06Z
 
 - ⭐ **THE FIRST PUBLISHABLE PAIR FROM A STOCK CLIENT.** `capture-client` run

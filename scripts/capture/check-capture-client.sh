@@ -597,6 +597,18 @@ else
   fail "the attestation declares the second connector by the name it filed under"
 fi
 
+# ⛔ AND EACH CONNECTOR'S VERSION, MEASURED. The record carried `0.0.0` for both
+# until 2026-10-14; the observer prints its crate's version and the connector
+# describes its own, and the attestation is where the assembler reads them.
+_want_connector=$(python3 -I "$ROOT/scripts/capture/connectors/cpython-stdlib.py" --describe |
+  awk -F= '$1 == "version" { print $2; exit }')
+if grep -q -x -E 'observer_version=[0-9]+\.[0-9]+\.[0-9]+' "$CONTROL_OUT/attestation.txt" &&
+  grep -q -x -F -e "connector_version=$_want_connector" "$CONTROL_OUT/attestation.txt"; then
+  pass "the attestation carries the observer's and the connector's own versions"
+else
+  fail "the attestation carries the observer's and the connector's own versions"
+fi
+
 # ⛔ AND THE REPORT IS COVERED BY THE DOCUMENT THAT COVERS THE BUNDLE. Exactly
 # one published file may be covered by neither of a publication's two documents;
 # a capture bundle carrying a second uncovered file is a downloader verifying

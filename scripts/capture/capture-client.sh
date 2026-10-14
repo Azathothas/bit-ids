@@ -589,6 +589,13 @@ CONNECTOR_ID=$(timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" \
   awk -F= '$1 == "id" { sub(/^[^=]*=/, ""); print; exit }')
 [ -n "$CONNECTOR_ID" ] ||
   cannot "the connector did not describe its own identifier"
+# ⛔ AND ITS VERSION, which this file dropped until 2026-10-14 while the record
+# carried `0.0.0` for it, a value nobody measured.
+CONNECTOR_VERSION=$(timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" \
+  python3 "$CONNECTOR" --describe </dev/null 2>>"$OUT/connector.err" |
+  awk -F= '$1 == "version" { sub(/^[^=]*=/, ""); print; exit }')
+[ -n "$CONNECTOR_VERSION" ] ||
+  cannot "the connector did not describe its own version"
 case "$CONNECTOR_ID" in
   -* | *- | *--* | *[!a-z0-9-]*)
     cannot "the connector named itself [$CONNECTOR_ID], which is not a slug"
@@ -712,6 +719,7 @@ PEER_DIALLED=$(awk '$1 == "peer-dialled" { $1 = ""; sub(/^ /, ""); print; exit }
   printf 'egress_source=%s\n' "$EGRESS_SOURCE"
   printf 'observer=%s\n' "$OBSERVER"
   printf 'observer_sha256=%s\n' "$OBSERVER_DIGEST"
+  printf 'observer_version=%s\n' "$(awk '$1 == "observer-version" { print $2; exit }' "$LOG")"
   # ⛔ `connectors=` IS THE KEY `assemble-capture` READS, and it lists the ones
   # BESIDE the observer: the observer is already named above and the assembler
   # adds it, so a list naming it twice would declare two connectors where one
@@ -720,6 +728,7 @@ PEER_DIALLED=$(awk '$1 == "peer-dialled" { $1 = ""; sub(/^ /, ""); print; exit }
   printf 'connectors=%s\n' "$CONNECTOR_ID"
   printf 'connector=%s\n' "$CONNECTOR"
   printf 'connector_sha256=%s\n' "$CONNECTOR_DIGEST"
+  printf 'connector_version=%s\n' "$CONNECTOR_VERSION"
   printf 'connector_peer_id=%s\n' "$CONNECTOR_PEER_ID"
   printf 'announce_url=%s\n' "$ANNOUNCE_URL"
   printf 'info_hash=%s\n' "$INFO_HASH"

@@ -193,6 +193,11 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
     # ⛔ `E-CAP-01` NEEDS TWO CONNECTORS AT THE VALIDITY GATE, so a lane with no
     # eighth argument is run 14's shape and cannot become a record at all.
     [ -z "${8:-}" ] || printf 'connectors=fixture-oracle\n'
+    # ⚠ Each connector's version, as the real attestation carries it since
+    # 2026-10-14. `ASSEMBLE_DROP` names a key a case leaves out.
+    [ "${ASSEMBLE_DROP:-}" = observer_version ] || printf 'observer_version=0.0.0\n'
+    [ -z "${8:-}" ] || [ "${ASSEMBLE_DROP:-}" = connector_version ] ||
+      printf 'connector_version=9.8.7\n'
   } >"$_cap/capture/attestation.txt"
 
   # The second connector's own report, which is the contract `OBS-07` fills.
@@ -361,6 +366,30 @@ else
   fail "a pair whose observations agree reaches build_equivalent"
   [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/good.out" | head -6
 fi
+
+# -- ⛔ A CONNECTOR'S VERSION IS MEASURED, NEVER WRITTEN HERE ------------------
+#
+# Both were `0.0.0` in every record until 2026-10-14, for the second connector a
+# value nobody measured. The attestation's own versions are what a record says.
+_rec=$(find "$WORK/store-good/profiles" -name 'cap-release.json' -type f | head -1)
+if [ -n "$_rec" ] && python3 -I -c 'import json,sys
+d=json.load(open(sys.argv[1]))
+v={c["id"]:c["version"] for c in d["capture"]["connectors"]}
+sys.exit(0 if v=={"bit-ids-probe":"0.0.0","fixture-oracle":"9.8.7"} else 1)' "$_rec"; then
+  pass "versions  each connector's version is the one its attestation carries"
+else
+  fail "versions  each connector's version is the one its attestation carries"
+  [ "$JSON" = "1" ] || printf '          record %s: %s\n' "${_rec:-none}" \
+    "$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["capture"]["connectors"])' "$_rec" 2>&1)"
+fi
+for _drop in observer_version connector_version; do
+  ASSEMBLE_DROP=$_drop
+  write_lane drop-release release "$GH" "" "$DIGEST_A" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+  ASSEMBLE_DROP=""
+  write_lane drop-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+  case_is 1 "$_drop" "a lane whose attestation records no $_drop is refused, naming it" \
+    "drop-$_drop" drop-release drop-source
+done
 
 # -- ⛔ AND WHAT IT WROTE IS NOT A VALID CORPUS, WHICH NOTHING USED TO SAY -----
 #
