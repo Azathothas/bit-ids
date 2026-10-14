@@ -117,9 +117,9 @@ still open is a host that never reached it.
    capture's processes. The orphaned-subprocess residual and the `sh -c` and
    `bash -e` split are closed.
 3. **`OBS-10`**, which needs a second platform, so it follows the captures.
-4. **`CI-07`**, whose premise `CI-10` changed: a declared Windows row closes by
-   its harness joining `bit-check`, so the entry's Approach and Prove need
-   rewriting to that route first.
+4. **`CI-07`**: its Approach and Prove were rewritten on 2026-10-14 to the route
+   `CI-10` made. The first work is porting a portable-subject harness into
+   `bit-check`, `check-corpus` first.
 5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
 6. The remaining client and engine breadth, then refinements.

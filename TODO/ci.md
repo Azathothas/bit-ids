@@ -1323,11 +1323,34 @@ its own fix says in as many words that no count of them is written into prose
 anywhere. One had survived here. The number is gone rather than corrected,
 because correcting it only resets the clock.
 
-Approach: Write the missing halves, starting with the ones whose subject is not
-platform-specific at all. ⚠ `check-store` plants a symbolic link and a named
-pipe, which an unprivileged Windows session cannot create; that one needs its
-plant set reconsidered rather than translated, and a half that silently skipped
-two plants would report a smaller pass under the same name.
+Approach: ⛔ **Rewritten 2026-10-14, because `CI-10` changed the route.** A
+row closes by the event its own reason names, and the rows are kinds rather
+than one population:
+
+| kind | rows, as `check-gate.ps1` declares them | closes when |
+| --- | --- | --- |
+| a portable subject | `check-assemble`, `check-connector`, `check-corpus`, `check-formats`, `check-indexes`, `check-release`, `check-staleness`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
+| class B | `check-store` | its plants are reconsidered for Windows: a symbolic link and a named pipe cannot be made by an unprivileged Windows session, and a half that skipped them would report a smaller pass under the same name |
+| class C, an `sh` subject | `check-access`, `check-bundle`, `check-publish`, `check-transmission` | the subject gains a Windows half; not this entry's to close |
+| an `sh` subject not yet classed | `check-capture-client`, `check-release-route`, `check-source-route` | class C as well: each subject is an `sh` script; their reasons say so in the next change to them |
+| class D, nothing to write | `check-capture`, `check-examples`, `check-gate-rows`, `check-handbook`, `check-public-row`, `check-step-bodies` | never: each reason says why there is no half |
+| another entry's | `check-rootless` (`ACQ-06`), `check-shell` (`CI-08`) | that entry |
+
+⚠ The table is a reading of `check-gate.ps1` on 2026-10-14, and that file is the
+list: a row added there is in this entry without being added here.
+
+Prove: ⛔ **Rewritten with the Approach.** Every portable-subject row is a
+`bit-check` row on the Windows lane, each port compared against its `sh` half
+before that half is deleted. `check-store` runs on Windows with a plant set
+whose every plant is made there. Every row still declared names an event in its
+reason that `check-gate-rows` can read.
+
+⚠ **Superseded, kept for the record:** *Write the missing halves, starting with
+the ones whose subject is not platform-specific at all. ⚠ `check-store` plants a
+symbolic link and a named pipe, which an unprivileged Windows session cannot
+create; that one needs its plant set reconsidered rather than translated, and a
+half that silently skipped two plants would report a smaller pass under the
+same name.*
 
 ### ⭐ The first step is ONE library, not fifteen harnesses. Found 2026-09-09
 

@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T19:25:50Z
+
+- ⚠ `CI-07`'s Approach and Prove are rewritten to the route `CI-10` made: a
+  declared Windows row whose subject is portable closes by its harness joining
+  `bit-check`, and the other rows close by the event each one names.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-07`. No version bump and no deploy.
+
 ### 2026-10-14T19:14:26Z
 
 - ⛔ **The install step ends what an install leaves in its session.** Nested
