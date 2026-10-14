@@ -154,7 +154,7 @@ ME=check-workflow
 # shellcheck source=scripts/corpus/store-lib.sh
 . "$ROOT/scripts/corpus/store-lib.sh"
 
-store_require git cargo awk tar sha256sum
+store_require git cargo awk tar sha256sum bash
 
 WORKFLOW="$ROOT/.github/workflows/ci.yml"
 [ -f "$WORKFLOW" ] || {
@@ -453,12 +453,22 @@ input_default() { # workflow input
 # ⛔ 127 MEANS THE WORKFLOW HAS NO SUCH STEP, and it is reported separately from
 # every other status. A missing step read as a refusal would let deleting a
 # whole CI step register as the guard working.
+#
+# ⛔ THE BODY RUNS AS GITHUB RUNS IT, `bash -e`, NOT `sh -c`. A default `run:`
+# on a Linux runner is `bash -e {0}`, so a failing line ends the step there.
+# Under `sh -c` it did not, and a step whose first command failed and whose
+# last succeeded was red on the lane and green here. `CI-08` filed it on
+# 2026-10-11 and closed it on 2026-10-14; the probe below hands this shell a
+# body of exactly that shape.
+step_shell() { # body
+  bash --noprofile --norc -e -c "$1"
+}
 run_step() { # job step
   _cmd=$(step_command "$WORKFLOW" "$1" "$2")
   [ -n "$_cmd" ] || return 127
   (
     cd "$TREE" || exit 2
-    CARGO_TARGET_DIR="$CARGOTGT" sh -c "$_cmd"
+    CARGO_TARGET_DIR="$CARGOTGT" step_shell "$_cmd"
   ) >"$LOG" 2>&1
 }
 
@@ -606,6 +616,23 @@ append_once() { # file text
 }
 
 # -- the probe's own guards ---------------------------------------------------
+# ⛔ AND THE STEP SHELL STOPS WHERE GITHUB'S DOES. A body that fails and then
+# succeeds is the shape `sh -c` passed.
+if always step-shell; then
+  if step_shell 'false
+true' >/dev/null 2>&1; then
+    fail "probe    the step shell carried on past a failing line, which GitHub's does not"
+  else
+    pass "probe    the step shell stops at a failing line, as GitHub's bash -e does"
+  fi
+  if step_shell 'true
+true' >/dev/null 2>&1; then
+    pass "probe    and it accepts a body whose every line succeeds"
+  else
+    fail "probe    the step shell refused a body whose every line succeeds"
+  fi
+fi
+
 if always probe-guards; then
   store_probe_guards "$TREE/README.md" \
     "A dated, provenance-carrying catalogue" "bit-ids"

@@ -5,6 +5,18 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T18:19:57Z
+
+- ⛔ **`check-workflow` runs a step as GitHub does, under `bash -e`.** Under
+  `sh -c` a step that failed on one line and succeeded on its last was red on
+  the lane and green in the harness. A probe hands the shell that shape.
+- ⭐ **Transmission 4.1.3's release route captured on a runner**, with its
+  evidence uploaded: 8 announces over 2 sessions, 2 peer streams, and peer IDs
+  starting `-TR4130-`. `CLIENT-06`.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-08`,
+  [`TODO/clients.md`](TODO/clients.md) `CLIENT-06`. No version bump and no
+  deploy.
+
 ### 2026-10-14T16:51:01Z
 
 - ⭐ **`capture.yml`'s Linux job no longer cuts the runner's route.** Its guard

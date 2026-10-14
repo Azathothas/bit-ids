@@ -111,12 +111,11 @@ still open is a host that never reached it.
    through both change the version ordering; the operator's choice is under its
    entry in [`clients.md`](clients.md). ⛔ `CLIENT-01` has no second Linux route
    for 5.2.3 on this runner image.
-2. **`CI-08`**: `capture.yml`'s Linux job runs in `contained.sh` since
-   2026-10-14 and needs a dispatch to prove it on a runner. Its Windows job
-   still cuts the host's route and needs a different containment, such as a
-   firewall rule scoped to the capture's processes. Then
-   the orphaned-subprocess residual, and `check-workflow` running a step as
-   `sh -c` where GitHub runs `bash -e`.
+2. **`CI-08`**: `capture.yml`'s Linux job runs in `contained.sh`, proved on
+   `capture` run 38612214714. Its Windows job still cuts the host's route and
+   needs a different containment, such as a firewall rule scoped to the
+   capture's processes. Then the orphaned-subprocess residual; the `sh -c`
+   and `bash -e` split is closed.
 3. **`OBS-10`**, which needs a second platform, so it follows the captures.
 4. **`CI-07`**, whose premise `CI-10` changed: a declared Windows row closes by
    its harness joining `bit-check`, so the entry's Approach and Prove need

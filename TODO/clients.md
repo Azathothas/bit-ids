@@ -1142,6 +1142,16 @@ the key is gone, the file is valid JSON, and `scan-bundle.sh` passes.
 14. Two plants were each refused: not deleting the key, and keeping the file
 when `jq` is absent.
 
+⭐ **Proved on a runner: `capture-client` run 38612218902 on `038e12c`,
+`["release"]` alone, `success`, with its evidence uploaded.** The capture ran
+in its namespace with `egress=closed`. The daemon announced 8 times over 2
+sessions and answered 2 peer streams. Every peer ID starts `-TR4130-`, hex
+`2d5452343133302d`, and each session's tail is its own random one. The second
+connector read the same six peer IDs. The bundle passed `scan-bundle.sh` with
+the verifier gone from `settings.json`. ⚠ One route is not a record:
+`E-ACQ-01` needs two, and the source route waits on the resolution decision
+above.
+
 ## CLIENT-07: Deluge capture adapter
 
 Source: operator scope and upstream project

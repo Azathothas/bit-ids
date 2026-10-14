@@ -3098,8 +3098,19 @@ the Windows job, which still cuts.
 
 ⛔ **Still open:** the Windows job's containment, which needs something other
 than a namespace, such as a firewall rule scoped to the capture's processes.
-So are the orphaned-subprocess residual and `check-workflow` running a step as
-`sh -c` where GitHub runs `bash -e`. A dispatch of `capture.yml` on this
+So is the orphaned-subprocess residual.
+
+⭐ **Proved on a runner: `capture` run 38612214714 on `038e12c`, both jobs
+`success`.** The Linux job's guard and fixture capture ran in the namespace
+and never cut the host's route.
+
+⭐ **`check-workflow` runs a step body as GitHub does now**, through one
+`step_shell`: `bash --noprofile --norc -e -c`. Under `sh -c` a body whose first
+command failed and whose last succeeded was red on the lane and green in the
+harness. A new probe unit, `step-shell`, hands the shell exactly that body and
+one where every line succeeds. Measured: `sh -c` answers 0 on the first, which
+is the defect, and `bash -e` answers 1. `check-shards` 14 of 14 with the new
+unit. A dispatch of `capture.yml` on this
 commit is what proves the Linux half on a runner.
 
 ## CI-09: The capture-to-publisher path, end to end
