@@ -5,6 +5,28 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T16:51:01Z
+
+- ⭐ **`capture.yml`'s Linux job no longer cuts the runner's route.** Its guard
+  and fixture capture run in a network namespace, as `capture-client.yml`'s do;
+  cutting the route severed the runner agent. The Windows job still cuts.
+- ⛔ **A lane that failed before its install now arrives at the barrier**, as
+  a failure, so the other lanes stop waiting at once. Before, it posted
+  nothing, and they waited out the full bound.
+- ⛔ **Transmission 4.1.3 writes an RPC verifier into its settings on exit**,
+  which rule 12's scan refused to ship. The adapter's `stop` now deletes it.
+  The release route installed on a runner in 562 seconds.
+- ⛔ Transmission's source route fails closed: git refs carry no dates, and
+  112 of the repository's historical tags are unorderable under its scheme.
+  The two ways through change the version ordering and are the operator's to
+  choose. `CLIENT-06`.
+- ⛔ qBittorrent 5.2.3 has no second Linux route on this runner image: its
+  build needs Qt 6.6 and noble ships 6.4.2. `CLIENT-01` records the four
+  candidates.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-08`,
+  [`TODO/clients.md`](TODO/clients.md) `CLIENT-01`. No version bump and no
+  deploy.
+
 ### 2026-10-14T15:52:24Z
 
 - ⭐ **TRANSMISSION 4.1.3 BUILDS ON BOTH ROUTES WITHOUT ROOT.** The release

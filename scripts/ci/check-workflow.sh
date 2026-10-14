@@ -872,6 +872,18 @@ if unit capture-fork; then
         order_case "$job" "Read whether this route compiles" "Install the client"
       fi
 
+      # ⛔ AND EVERY LANE ARRIVES. An arrival conditioned on the install having
+      # run leaves a lane that failed earlier silent, and silence is what the
+      # others wait the whole bound for. Measured on `capture-client` run
+      # 38600252161, 2026-10-14. `CLIENT-06`.
+      _arrive=$(step_block "$CAPWF" "$job" "Arrive at the install barrier")
+      if [ -n "$_arrive" ]; then
+        case "$(printf '%s\n' "$_arrive" | sed -n 's/^ *if: *//p' | head -1)" in
+          'always()') pass "workflow  $CAPNAME $job: every lane arrives at the barrier, installed or not" ;;
+          *) fail "workflow  $CAPNAME $job: the barrier arrival is conditioned, so a lane that failed early is silent" ;;
+        esac
+      fi
+
       if [ -n "$(step_index "$CAPWF" "$job" "Wait at the install barrier")" ]; then
         order_case "$job" "Install the client" "Wait at the install barrier"
         order_case "$job" "Wait at the install barrier" "Capture"
@@ -1026,8 +1038,10 @@ if unit static-readers; then
     if cmp -s "$CAPONE" "$MUTWF"; then
       fail "probe    the ordering mutation did not change the workflow"
     else
-      _a=$(step_index "$MUTWF" linux "Build the observer")
-      _b=$(step_index "$MUTWF" linux "Cut the route off this host")
+      # ⚠ The Windows job, because it is the one that still cuts: the Linux
+      # job has contained its capture in a namespace since 2026-10-14.
+      _a=$(step_index "$MUTWF" windows "Build the observer")
+      _b=$(step_index "$MUTWF" windows "Cut the route off this host")
       if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
         pass "probe    the order reader sees a build moved after the route is cut"
       else

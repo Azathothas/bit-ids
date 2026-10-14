@@ -3076,6 +3076,32 @@ load-dependent, and `LEAK_SECONDS=4` still passes on an idle host. ⛔ Which is
 also why the guard compares the two bounds: the relation is what matters, and a
 number that happens to work today is what went stale.
 
+### ⭐ `capture.yml`'s Linux job contains its capture in a namespace. 2026-10-14
+
+The Linux job deleted the runner's default routes, captured, and restored
+them. `capture-client` measured on 2026-10-11 that the same cut severs the
+runner agent. The job now runs *Assert containment* and *Capture* through
+`contained.sh`, and *Cut the route off this host* and *Restore the route* are
+gone from it. `check-workflow` already held a job to one shape or the other,
+so it now holds this job to the namespace shape.
+
+Driven on the session host first: the egress guard inside the namespace read
+*no route off this host*, and `capture-run.sh` wrote 2 segments and 2
+artifacts, verified by `sha256sum`. ⚠ This host has no `ip`, so the drive gave
+`contained.sh` a one-command shim that brings loopback up by ioctl; a runner
+has `iproute2`.
+
+⚠ **Two checks moved with it.** `check-step-bodies`' three `sh` cases over the
+Linux *Restore the route* body retired with the step, 36 of 36 now; the Windows
+ones stay. `check-workflow`'s probe that moves a build after the cut now reads
+the Windows job, which still cuts.
+
+⛔ **Still open:** the Windows job's containment, which needs something other
+than a namespace, such as a firewall rule scoped to the capture's processes.
+So are the orphaned-subprocess residual and `check-workflow` running a step as
+`sh -c` where GitHub runs `bash -e`. A dispatch of `capture.yml` on this
+commit is what proves the Linux half on a runner.
+
 ## CI-09: The capture-to-publisher path, end to end
 
 Source: two workflows that have each never run, joined by an artifact

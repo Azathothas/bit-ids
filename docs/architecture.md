@@ -1259,8 +1259,9 @@ non-injective layout section 4 describes, in a second place.
 - Windows packet corroboration needs a route that works on hosted runners or a
   disposable self-hosted runner; `OBS-07` owns the independent-control
   decision. `CI-03` closed the runner question: a hosted runner is a fresh
-  virtual machine per job. `capture.yml` deletes its default routes before a
-  fixture capture; `capture-client.yml` contains the capture in a namespace.
+  virtual machine per job. `capture.yml`'s Linux job and `capture-client.yml`
+  contain the capture in a namespace; `capture.yml`'s Windows job still deletes
+  its default routes before a fixture capture.
 - Proprietary clients may have only one legitimate acquisition route. Such a
   target remains open until a second independent route is verified; the rule
   is not weakened.

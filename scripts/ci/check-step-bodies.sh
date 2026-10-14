@@ -412,22 +412,10 @@ export BIT_IDS_STATE_DIR
 # refuses the *Restore the route* block as it stood on capture run 1 and accepts
 # it as it stands, and until now that had been done once by hand in a session
 # scratch directory - which is evidence rather than a control.
-if lift "$CAPTURE_WF" linux "Restore the route" "$WORK/restore.sh"; then
-  guard_says 1
-  run_body "$WORK/restore.sh" default "$TREE"
-  ended "sh       restore accepts a guard that REFUSES, which is the route back" 0
-
-  guard_says 0
-  run_body "$WORK/restore.sh" default "$TREE"
-  ended "sh       restore refuses a guard that PASSES, which is a route still cut" 1
-
-  guard_says 2
-  run_body "$WORK/restore.sh" default "$TREE"
-  ended "sh       restore refuses a guard that COULD NOT RUN" 1
-else
-  fail "sh       capture.yml has no linux step named Restore the route (exit $?)"
-fi
-
+# ⚠ THE `sh` HALF RETIRED WITH ITS STEP on 2026-10-14: the Linux job contains
+# its capture in a namespace and has no route to restore. `check-workflow`
+# holds that job to `contained.sh` instead. The Windows job still cuts, so its
+# half stays.
 if [ "$HAVE_PWSH" = 1 ]; then
   if lift "$CAPTURE_WF" windows "Restore the route" "$WORK/restore.ps1"; then
     guard_ps_says 1
@@ -1009,6 +997,6 @@ case "$?" in
   *) fail "probe    an action step answered $? rather than 1" ;;
 esac
 
-store_probe_guards "$WORK/restore.sh" 'egress=0' 'exit 1'
+store_probe_guards "$WORK/install.sh" 'rc=0' 'rc'
 
 store_report check-step-bodies/1 cases "$JSON"

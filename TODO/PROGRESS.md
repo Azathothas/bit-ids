@@ -106,13 +106,15 @@ still open is a host that never reached it.
 
 1. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
    `CLIENT-06`'s two 4.1.3 routes build without root and answer 4.1.3, driven
-   as an unprivileged user on 2026-10-14, and a compiling route is bounded as a
-   build. What is left is the dispatch and the assembly, under its entry in
-   [`clients.md`](clients.md).
-2. **`CI-08`**: `capture.yml` still contains its fixture captures by cutting the
-   host's routes, the shape that severed the runner agent in `capture-client`.
-   Its Linux job can move to `contained.sh`; its Windows job needs a different
-   containment, such as a firewall rule scoped to the capture's processes. Then
+   as an unprivileged user on 2026-10-14. ⛔ The source route's resolution fails
+   closed over 112 historical tags git refs cannot date, and the two ways
+   through both change the version ordering; the operator's choice is under its
+   entry in [`clients.md`](clients.md). ⛔ `CLIENT-01` has no second Linux route
+   for 5.2.3 on this runner image.
+2. **`CI-08`**: `capture.yml`'s Linux job runs in `contained.sh` since
+   2026-10-14 and needs a dispatch to prove it on a runner. Its Windows job
+   still cuts the host's route and needs a different containment, such as a
+   firewall rule scoped to the capture's processes. Then
    the orphaned-subprocess residual, and `check-workflow` running a step as
    `sh -c` where GitHub runs `bash -e`.
 3. **`OBS-10`**, which needs a second platform, so it follows the captures.
@@ -121,7 +123,7 @@ still open is a host that never reached it.
    rewriting to that route first.
 5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
-7. The remaining client and engine breadth, then refinements.
+6. The remaining client and engine breadth, then refinements.
 
 ## Settled decisions
 

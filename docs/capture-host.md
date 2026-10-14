@@ -232,9 +232,11 @@ running until cancelled, with no log and no artifact, over a step that had
 finished in seconds. `TODO/ci.md` under `CI-08` carries the runs that showed it.
 [`../scripts/ci/check-workflow.sh`](../scripts/ci/check-workflow.sh) refuses a
 job that neither cuts a route nor runs its guard and capture through
-`contained.sh`. ⚠ [`../.github/workflows/capture.yml`](../.github/workflows/capture.yml)
-still cuts the route, and the same rule holds it to building before the cut and
-uploading after the restore.
+`contained.sh`. ⭐ [`../.github/workflows/capture.yml`](../.github/workflows/capture.yml)'s
+Linux job runs through `contained.sh` since 2026-10-14. ⚠ Its Windows job still
+cuts the route, because Windows has no network namespace to run a process in,
+and the same rule holds it to building before the cut and uploading after the
+restore.
 
 ⛔ **The evidence upload is fatal and the install-logs upload is not, and the
 asymmetry is enforced.** A capture that measured a build and uploaded nothing

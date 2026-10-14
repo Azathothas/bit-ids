@@ -24,8 +24,9 @@ permissions:
   contents: read
 
 # ⛔ NEVER CANCELLED IN FLIGHT, for a sharper reason than the publisher's.
-# Between *Cut the route* and *Restore the route* this host has no way off
-# itself. A cancellation in that window leaves the runner unable to report, the
+# Between the Windows job's *Cut the route* and *Restore the route* that host
+# has no way off itself; the Linux job contains its capture in a namespace and
+# never cuts. A cancellation in that window leaves the runner unable to report, the
 # evidence unuploaded, and the marker written, so the host is spent and its
 # capture is lost. Two dispatches queue instead.
 concurrency:
@@ -70,86 +71,31 @@ jobs:
       - name: Build the observer
         run: cargo build -p bit-ids-lab --locked --example evidence-bundle
 
-      # ⛔ BOTH ADDRESS FAMILIES. A host with IPv4 unplugged and IPv6 up still
-      # reaches the internet, and deleting only the first would leave a capture
-      # that looks contained and is not.
+      # ⛔ CONTAINED IN A NETWORK NAMESPACE, NOT BY CUTTING THE HOST'S ROUTE.
+      # This job deleted the runner's default routes and restored them after the
+      # capture until 2026-10-14. `capture-client` measured on 2026-10-11 that
+      # the same cut severs the runner agent from GitHub, which is what ran
+      # thirty-two dispatches into the ground; `contained.sh` gives the guard
+      # and the capture a namespace with loopback alone, and the host keeps its
+      # route throughout. `CI-08`. ⚠ The Windows job below still cuts, because
+      # Windows has no namespace to run a process in, and it needs a different
+      # containment.
       #
-      # ⚠ The routes are SAVED before they are deleted, because the evidence has
-      # to be uploaded afterwards and a runner with no way off itself cannot
-      # report anything at all, including its own failure.
-      - name: Cut the route off this host
-        run: |
-          set -eu
-          ip route show default >"$RUNNER_TEMP/routes-v4"
-          # ⚠ A host with IPv6 disabled makes this fail rather than print
-          # nothing, and under set -e that would end the step before a single
-          # route was deleted. An empty file is the right answer there.
-          ip -6 route show default >"$RUNNER_TEMP/routes-v6" 2>/dev/null || : >"$RUNNER_TEMP/routes-v6"
-          while ip route show default | grep -q .; do sudo ip route del default; done
-          while ip -6 route show default 2>/dev/null | grep -q .; do sudo ip -6 route del default; done
-          printf 'saved %s v4 and %s v6 default route(s)\n' \
-            "$(wc -l <"$RUNNER_TEMP/routes-v4")" "$(wc -l <"$RUNNER_TEMP/routes-v6")"
-
-      # ⛔ THE GUARD MUST NOW PASS, AND IT READS THE KERNEL RATHER THAN THE STEP
-      # ABOVE. The deletion is a command that was run; this is the routing table
-      # as it now stands. They are two facts and only the second is evidence.
+      # ⛔ THE GUARD MUST PASS, AND IT READS THE KERNEL OF THE NAMESPACE THE
+      # CAPTURE RUNS IN, which is the routing table that matters.
       - name: Assert containment
-        run: sh scripts/acquisition/assert-disposable.sh --egress
+        run: sh scripts/capture/contained.sh -- sh scripts/acquisition/assert-disposable.sh --egress
 
       - name: Capture
         env:
           RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-linux
           SECONDS_TO_SERVE: ${{ inputs.seconds }}
         run: |
-          sh scripts/capture/capture-run.sh \
+          sh scripts/capture/contained.sh -- sh scripts/capture/capture-run.sh \
             --run-id "$RUN_ID" \
             --out "$RUNNER_TEMP/capture" \
             --observer "$GITHUB_WORKSPACE/target/debug/examples/evidence-bundle" \
             --seconds "$SECONDS_TO_SERVE"
-
-      # ⚠ ONLY TO UPLOAD, AND ONLY AFTER THE MEASUREMENT IS FINISHED. The host is
-      # destroyed either way, so the window this opens is between a capture that
-      # has already been written to disk and a job that has ended.
-      #
-      # ⭐ THE RESTORE IS VERIFIED BY THE SAME GUARD, INVERTED: a host that can
-      # reach the network again is one the egress guard REFUSES, so a guard that
-      # still passes here means the route never came back and the upload below
-      # would have failed with a network error naming nothing.
-      - name: Restore the route
-        run: |
-          set -eu
-          # ⛔ AN ADD THAT FAILS IS REPORTED AND DOES NOT END THE STEP, and that
-          # is not leniency. Under set -e the first refused `ip route add` would
-          # end this step, the upload below would be skipped as a consequence of
-          # the failure, and a finished capture would be thrown away because of
-          # a route. ⭐ THE GUARD BELOW IS THE VERDICT: an add is an attempt and
-          # the routing table is the fact.
-          while IFS= read -r route; do
-            [ -n "$route" ] || continue
-            # shellcheck disable=SC2086
-            sudo ip route add $route || echo "could not restore: $route" >&2
-          done <"$RUNNER_TEMP/routes-v4"
-          while IFS= read -r route; do
-            [ -n "$route" ] || continue
-            # shellcheck disable=SC2086
-            sudo ip -6 route add $route || echo "could not restore: $route" >&2
-          done <"$RUNNER_TEMP/routes-v6"
-          # ⛔ THE GUARD HAS THREE CODES AND THIS READS ALL THREE. 0 is the
-          # guard passing, which here means the route never came back; 1 is it
-          # refusing over a public route, which is the restore proved by the
-          # routing table; and 2 is `could not run`, which says nothing either
-          # way. ⚠ An `if` would fold 1 and 2 together and upload from a host
-          # nothing established was reachable.
-          sh scripts/acquisition/assert-disposable.sh --egress && egress=0 || egress=$?
-          if [ "$egress" = 0 ]; then
-            echo 'the default route was not restored; the upload cannot work' >&2
-            exit 1
-          fi
-          if [ "$egress" != 1 ]; then
-            echo "the egress guard could not run (exit $egress)" >&2
-            exit 1
-          fi
-          exit 0
 
       # ⛔ if-no-files-found IS `error`. An upload that found nothing and exited
       # 0 is the "step that exits 0 having done nothing it was asked to do" row

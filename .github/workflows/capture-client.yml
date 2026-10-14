@@ -320,8 +320,15 @@ jobs:
       # ⚠ Neither step fails the job: a route that cannot be satisfied fails its
       # own lane, and the others' measurements stay intact with a verdict that
       # says why their order is not proven.
+      # ⛔ EVERY LANE ARRIVES, INSTALLED OR NOT. This read `always() &&
+      # steps.install.outcome != 'skipped'` until 2026-10-14, so a lane that
+      # failed BEFORE its install posted nothing, and the others waited out the
+      # whole bound for it: `capture-client` run 38600252161's source lane
+      # failed resolving its tag and the release lane sat at the barrier. A
+      # skipped install arrives as `failure`, which ends every wait at once and
+      # names the route. `CLIENT-06`.
       - name: Arrive at the install barrier
-        if: always() && steps.install.outcome != 'skipped'
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           BARRIER_RUN: ${{ github.run_id }}-${{ github.run_attempt }}

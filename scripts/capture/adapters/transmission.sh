@@ -498,19 +498,52 @@ case "$COMMAND" in
   stop)
     [ $# -ge 1 ] || cannot "stop takes <workdir>"
     WORKDIR="$1"
-    [ -f "$WORKDIR/pid" ] || exit 0
+    # ⛔ THE DAEMON WRITES AN RPC VERIFIER INTO ITS SETTINGS ON EXIT, AND RULE 12
+    # KEEPS IT OFF THE BUNDLE. Measured on `capture-client` run 38600252161,
+    # 2026-10-14: 4.1.3 saves `"rpc-password": "{<salted hash>"` even with
+    # authentication off, and `scan-bundle.sh` refused the capture for it. So
+    # once the process is gone, that key is deleted, and if `jq` is absent the
+    # whole file is, rather than a line edit that could leave invalid JSON.
+    # ⚠ Every exit below runs it, because each is a daemon no longer running.
+    forget_verifier() {
+      _settings="$WORKDIR/config/settings.json"
+      [ -f "$_settings" ] || return 0
+      if command -v jq >/dev/null 2>&1 &&
+        jq 'del(."rpc-password")' "$_settings" >"$_settings.new" 2>/dev/null; then
+        mv "$_settings.new" "$_settings"
+      else
+        rm -f "$_settings.new" "$_settings"
+      fi
+    }
+    if [ ! -f "$WORKDIR/pid" ]; then
+      forget_verifier
+      exit 0
+    fi
     PID=$(cat "$WORKDIR/pid")
     case "$PID" in
-      '' | *[!0-9]*) exit 0 ;;
+      '' | *[!0-9]*)
+        forget_verifier
+        exit 0
+        ;;
     esac
-    kill "$PID" 2>/dev/null || exit 0
+    if ! kill "$PID" 2>/dev/null; then
+      forget_verifier
+      exit 0
+    fi
     WAITED=0
     while [ "$WAITED" -lt 8 ]; do
-      kill -0 "$PID" 2>/dev/null || exit 0
+      if ! kill -0 "$PID" 2>/dev/null; then
+        forget_verifier
+        exit 0
+      fi
       sleep 1
       WAITED=$((WAITED + 1))
     done
     kill -9 "$PID" 2>/dev/null
+    # ⚠ A killed process cannot write, but one being killed might still be; a
+    # moment for the kernel to take it down before the file is read.
+    sleep 1
+    forget_verifier
     exit 0
     ;;
 

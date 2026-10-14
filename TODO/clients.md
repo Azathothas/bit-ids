@@ -210,6 +210,24 @@ first invocation passes.
 discovery settings into the profile and nothing reads back what the running
 build applied; `CLIENT-06` carries it with Transmission's.
 
+### ⛔ No second Linux route for 5.2.3 builds on this runner image. 2026-10-14
+
+Measured on 2026-10-14 while looking for the pair `CLIENT-06` found for
+Transmission:
+
+| candidate | what it carries | why it is not a half |
+| --- | --- | --- |
+| Ubuntu noble's package | `qbittorrent-nox 4.6.3-1build2`, read from noble's own index | another version; `AGENTS.md` rule 5 forbids backfilling |
+| the qBittorrent team's stable PPA | `4.6.7.99~202504281220…` for noble, read from Launchpad's API | a development snapshot of 4.6, not 5.2.3 |
+| the `release-5.2.3` tag, built | needs Qt 6.6.0 or newer, by its own `CMakeLists.txt`; noble's `qt6-base-dev` is `6.4.2+dfsg-21.1build5` | the build cannot configure against the distribution's Qt, and building Qt first is a second product's build |
+| the `_lt20` AppImage | the same vendor, listing and delivery as the unsuffixed one | `E-ACQ-07` and `E-ACQ-08` call it the same route |
+
+⛔ **So the Linux pair for this target waits on a host whose distribution
+carries Qt 6.6 or newer, or on a decision to build Qt as part of the route.**
+That decision belongs to the operator. The Prove's Windows half, the vendor's
+`x64_setup.exe` against a package manager's, is the other way to a pair. It
+needs a Windows lane in `capture-client.yml`, which has only a Linux job today.
+
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository
@@ -1070,6 +1088,59 @@ real adapter with `apt-get`, `cmake` and `git` stubbed and a real `.deb` and
 On a runner the builds are probably slower than 1013 and 1078 seconds; the
 1500-second bound is what that dispatch tests. The discovery read-back residual
 above is unchanged.
+
+### ⛔ Run 38600252161: the source route fails closed on the repository's history. 2026-10-14
+
+The first dispatch on `b7486b3` stopped the source lane in *Resolve the source
+tag*, before any install. Read from its install artifact's `resolution.json`:
+132 refs, and 112 of them `unorderable` under the declared three-component
+scheme. 99 are two-component tags such as `0.71` and `2.94`, and 13 are old
+betas such as `1.80b5`. An unorderable candidate blocks the resolution, and
+`git_refs` says why that is correct: refs carry no date, so nothing rules out
+that the unreadable tag is the newest. The release listing never met this.
+Its 51 old candidates carry a publication date before the winner's, and
+`predates_selection` releases them.
+
+⚠ Widening the scheme to two components would not be enough. `3.00` and
+`1.00` are refused for their leading zero, and `1.80b5` reads as neither a
+number nor a prerelease marker.
+
+⛔ **The two ways through are both changes to the project's one version
+ordering, so they are the operator's to choose:**
+
+1. Give refs a date. A treeless bare clone fetches the tags and commits with
+   no file contents, and `git for-each-ref` reads each tag's creation date.
+   ⚠ That date is written by whoever made the tag, which is weaker than a
+   release listing's publication time, set by the server.
+2. Let a scheme declare a floor below which tags are not this scheme's, for
+   example `4`, with the record saying so.
+
+⛔ **And the barrier waited for a lane that could not arrive.** *Arrive at the
+install barrier* ran only when the install had run, so a lane that failed
+earlier posted nothing, and the release lane waited out the bound. Every lane
+arrives now, as `failure` when its install was skipped, which ends the others'
+wait at once and names the route. `check-workflow` holds the arrival to
+`if: always()`, and its reader was driven on the clean workflow and on one
+carrying the old condition.
+
+⭐ **The release route installed on a runner in 562 seconds**, 16:42:14 to
+16:51:36, faster than the session host's 1013 and well under the 1500-second
+bound. The record names
+`installed_binary=/home/runner/.local/share/bit-ids/bin/transmission-daemon`,
+4404456 bytes, `reported_version=4.1.3`.
+
+⛔ **And rule 12 refused its capture, rightly.** After 1506 seconds at the
+barrier, with `verdict=timeout`, the capture ran in its namespace and the
+daemon took the torrent. On exit 4.1.3 writes `"rpc-password":
+"{<salted hash>"` into `settings.json`, with authentication off, and
+`scan-bundle.sh` refused the bundle naming that file. Nothing was uploaded.
+Reproduced on the session host's build. The adapter's `stop` now deletes that
+one key with `jq` once the daemon has gone, or the whole file if `jq` is
+absent, and every exit path of `stop` runs it. Driven on the real daemon:
+the key is gone, the file is valid JSON, and `scan-bundle.sh` passes.
+`check-transmission` adds a stub daemon that writes the key on SIGTERM, 14 of
+14. Two plants were each refused: not deleting the key, and keeping the file
+when `jq` is absent.
 
 ## CLIENT-07: Deluge capture adapter
 

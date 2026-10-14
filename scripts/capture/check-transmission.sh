@@ -49,7 +49,7 @@ ME=check-transmission
 # shellcheck source=scripts/corpus/store-lib.sh
 . "$ROOT/scripts/corpus/store-lib.sh"
 
-store_require dpkg-deb tar xz sha256sum ninja c++
+store_require dpkg-deb tar xz sha256sum ninja c++ jq
 ADAPTER="$ROOT/scripts/capture/adapters/transmission.sh"
 
 WORK=$(store_workdir checktransmission) || exit 2
@@ -232,6 +232,51 @@ if [ "$RC" = 2 ] && grep -q -F 'needs BIT_IDS_SOURCE_TAG' "$WORK/notag.err" && n
   pass "source   a source route with no resolved tag cannot run"
 else
   fail "source   exit $RC: $(tail -1 "$WORK/notag.err")"
+fi
+
+# -- stop forgets the RPC verifier the daemon writes on exit ---------------------
+#
+# ⛔ MEASURED ON `capture-client` RUN 38600252161: 4.1.3 saves a salted
+# `rpc-password` into its settings when it exits, with authentication off, and
+# rule 12's scan refused the bundle for it. This stub daemon does the same on
+# SIGTERM, which is the signal `stop` sends.
+cat >"$WORK/fake-daemon.sh" <<'FAKE'
+#!/bin/sh
+trap 'printf "{\n  \"dht-enabled\": false,\n  \"rpc-password\": \"{0123456789abcdef0123456789abcdef01234567saltsalt\",\n  \"rpc-port\": 9091\n}\n" >"$1/settings.json"; exit 0' TERM
+while :; do sleep 1; done
+FAKE
+stop_case() { # name path-for-stop
+  _wd="$WORK/stop-$1"
+  rm -rf "$_wd"
+  mkdir -p "$_wd/config" || return 1
+  printf '{"rpc-port": 9091}\n' >"$_wd/config/settings.json"
+  sh "$WORK/fake-daemon.sh" "$_wd/config" &
+  printf '%s\n' "$!" >"$_wd/pid"
+  sleep 1
+  env PATH="$2" sh "$ADAPTER" stop "$_wd" >"$WORK/stop-$1.out" 2>&1
+  RC=$?
+}
+stop_case jq "$PATH"
+if [ "$RC" = 0 ] && [ -f "$WORK/stop-jq/config/settings.json" ] &&
+  ! grep -q rpc-password "$WORK/stop-jq/config/settings.json" &&
+  jq -e '."rpc-port" == 9091' "$WORK/stop-jq/config/settings.json" >/dev/null 2>&1; then
+  pass "stop     the verifier the daemon wrote on exit is deleted and the rest is kept"
+else
+  fail "stop     exit $RC; settings: $(tr '\n' ' ' <"$WORK/stop-jq/config/settings.json" 2>/dev/null)"
+fi
+
+# ⚠ A PATH with every tool the stop needs and no `jq`.
+NOJQ="$WORK/nojq-bin"
+mkdir -p "$NOJQ" || exit 2
+for _t in sh cat kill sleep rm mv command; do
+  _p=$(command -v "$_t" 2>/dev/null) || continue
+  case "$_p" in /*) ln -s "$_p" "$NOJQ/$_t" 2>/dev/null || : ;; esac
+done
+stop_case nojq "$NOJQ"
+if [ "$RC" = 0 ] && [ ! -e "$WORK/stop-nojq/config/settings.json" ]; then
+  pass "stop     with no jq the whole settings file goes rather than a line edit"
+else
+  fail "stop     exit $RC with no jq, and the settings file is still there"
 fi
 
 store_report check-transmission/1 cases "$JSON"
