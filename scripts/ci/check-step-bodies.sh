@@ -340,6 +340,10 @@ cp "$ROOT/scripts/acquisition/install-step.sh" "$TREE/scripts/acquisition/" || e
 # scratch tree without it would make both install cases fail on a missing file
 # rather than on what they are about.
 cp "$ROOT/scripts/ci/report-holders.sh" "$TREE/scripts/ci/" || exit 2
+# ⚠ AND THE RULE-12 SCAN `install-client.sh` ASKS, for the same reason: it left
+# that file for `scan-bundle.sh` on 2026-10-14, and without it every install case
+# here answered 2, which is the scan saying it could not run.
+cp "$ROOT/scripts/capture/scan-bundle.sh" "$TREE/scripts/capture/" || exit 2
 
 # ⚠ A `sudo` THAT IS NOT sudo. The RESTORE blocks run `sudo ip route add`, and
 # this session is not a place to ask for privilege; dropping the flags and
@@ -611,6 +615,165 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   ended "sh       a product slower than one tick and inside the bound survives" 0
 else
   fail "sh       capture-client.yml has no linux step named Install the client (exit $?)"
+fi
+
+# -- 4b. the flight recorder, started and stopped the way a job does ---------
+#
+# ⛔ NOTHING CLOSED ITS CHECK RUN UNTIL 2026-10-14. The recorder ran to a limit no
+# job reaches and the runner killed it with the job, so every run it opened
+# stayed `in_progress` - the silence it exists to give meaning to, produced by a
+# job that ended cleanly. ⭐ These cases run the workflow's own *Start* and *Stop*
+# bodies against a stub `curl` that answers the way the checks API does.
+#
+# ⚠ THE STUB IS ON ITS OWN PATH ENTRY, prepended only while these cases run, so no
+# other body in this file can reach a `curl` that answers nothing true.
+RECBIN="$WORK/recbin"
+mkdir -p "$RECBIN" "$TREE/scripts/ci" || exit 2
+cp "$ROOT/scripts/ci/flight-recorder.sh" "$TREE/scripts/ci/" || exit 2
+cat >"$RECBIN/curl" <<'STUBCURL'
+#!/bin/sh
+# Answers the checks API's create and update, and logs what each call asked for.
+set -u
+method=GET
+url=""
+body=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -X) method=$2; shift ;;
+    --data-binary) body=${2#@}; shift ;;
+    -o | -w | -H | --max-time) shift ;;
+    http*) url=$1 ;;
+  esac
+  shift
+done
+status=none
+[ -z "$body" ] || status=$(jq -r '.status // "none"' "$body" 2>/dev/null)
+printf '%s %s %s\n' "$method" "$url" "$status" >>"$STUB_CURL_LOG"
+case "$method" in
+  POST) printf '{"id": 7, "status": "in_progress"}\n' ;;
+  PATCH)
+    # ⚠ A completion the API refused answers the run's old status, which is the
+    # read-back the recorder has to notice.
+    if [ "$status" = completed ] && [ "${STUB_CURL_REFUSE:-}" = yes ]; then
+      printf '{"id": 7, "status": "in_progress"}\n'
+    else
+      printf '{"id": 7, "status": "%s"}\n' "$([ "$status" = none ] && printf in_progress || printf '%s' "$status")"
+    fi
+    ;;
+  *) printf '200 in 0.001s\n' ;;
+esac
+STUBCURL
+chmod +x "$RECBIN/curl"
+
+RECLABEL="step-bodies-recorder-$$"
+GH_TOKEN=stub-token
+GITHUB_API_URL=http://127.0.0.1:9
+GITHUB_REPOSITORY=fixture-owner/fixture-repo
+GITHUB_SHA=0000000
+LABEL=$RECLABEL
+BIT_IDS_RECORDER_INTERVAL=1
+BIT_IDS_RECORDER_LIMIT=120
+STUB_CURL_LOG="$WORK/curl.log"
+STUB_CURL_REFUSE=""
+export GH_TOKEN GITHUB_API_URL GITHUB_REPOSITORY GITHUB_SHA LABEL \
+  BIT_IDS_RECORDER_INTERVAL BIT_IDS_RECORDER_LIMIT STUB_CURL_LOG STUB_CURL_REFUSE
+
+# ⛔ `[f]light`, NOT `flight`. The pattern is a regular expression matched against
+# every command line, including that of a shell carrying the pattern as an
+# argument; written plainly, the bounded wait below matched its own `sh -c` and
+# reported a recorder that had exited as still running. The bracket matches the
+# recorder and cannot match its own spelling.
+recorder_running() {
+  pgrep -f "[f]light-recorder.sh $RECLABEL" >/dev/null 2>&1
+}
+
+# ⚠ The done file is written a moment before the recorder exits, so "gone" is
+# asked with a bound rather than at one instant.
+recorder_gone() {
+  # shellcheck disable=SC2016
+  timeout 5 sh -c 'while pgrep -f "$1" >/dev/null 2>&1; do sleep 1; done' sh \
+    "[f]light-recorder.sh $RECLABEL"
+}
+
+# One start, a wait, and one stop, through the lifted bodies.
+record_once() { # temp-dir
+  RUNNER_TEMP=$1
+  rm -rf "$RUNNER_TEMP" "$STUB_CURL_LOG"
+  mkdir -p "$RUNNER_TEMP" || return 2
+  _path=$PATH
+  PATH="$RECBIN:$PATH"
+  run_body "$WORK/rec-start.sh" default "$TREE"
+  PATH=$_path
+}
+
+if lift "$CLIENT_WF" linux "Start the flight recorder" "$WORK/rec-start.sh" &&
+  lift "$CLIENT_WF" linux "Stop the flight recorder" "$WORK/rec-stop.sh"; then
+  record_once "$WORK/rec-temp"
+  ended "sh       the recorder's start step ends while the recorder runs on" 0
+  if recorder_running && grep -q '^POST ' "$STUB_CURL_LOG" 2>/dev/null; then
+    pass "sh       the recorder opened its check run and is still posting"
+  else
+    fail "sh       the recorder opened its check run and is still posting"
+  fi
+
+  # ⛔ THE DEFECT, SHOWN RATHER THAN ASSUMED: with nothing to stop it, three of
+  # its intervals later the run is still open. Without this the case below passes
+  # equally over a recorder that closes itself at once and posts nothing.
+  sleep 3
+  if recorder_running && ! grep -q ' completed$' "$STUB_CURL_LOG"; then
+    pass "sh       with nothing to stop it, the recorder's check run stays open"
+  else
+    fail "sh       with nothing to stop it, the recorder's check run stays open"
+  fi
+
+  run_body "$WORK/rec-stop.sh" default "$TREE"
+  ended "sh       the stop step ends" 0
+  if [ "$(tail -1 "$STUB_CURL_LOG")" = "PATCH $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/check-runs/7 completed" ] &&
+    grep -q -F -e 'completed: the job reached its last step' "$RUNNER_TEMP/flight-recorder.done" 2>/dev/null &&
+    recorder_gone; then
+    pass "sh       the stop step closes the check run, reads it back, and the recorder is gone"
+  else
+    fail "sh       the stop step closes the check run, reads it back, and the recorder is gone"
+    [ "$JSON" = "1" ] || tail -3 "$STUB_CURL_LOG" 2>/dev/null | sed 's/^/          /'
+  fi
+
+  # ⛔ AND A COMPLETION THE API DID NOT ACCEPT IS NOT REPORTED AS ONE. A recorder
+  # that wrote `completed` because it had sent the request would be a claim about
+  # a check run nobody read back.
+  STUB_CURL_REFUSE=yes
+  record_once "$WORK/rec-refused"
+  run_body "$WORK/rec-stop.sh" default "$TREE"
+  STUB_CURL_REFUSE=""
+  if [ "$BODY_RC" = 0 ] &&
+    grep -q -F -e 'not confirmed' "$RUNNER_TEMP/flight-recorder.done" 2>/dev/null; then
+    pass "sh       a completion the API did not accept is reported as not confirmed"
+  else
+    fail "sh       a completion the API did not accept is reported as not confirmed"
+  fi
+
+  # ⚠ AND THE STOP NEVER FAILS A JOB, because the recorder is a diagnostic. With
+  # no recorder to answer, the step waits out its bound - shortened here, which
+  # `replace_once` refuses to do silently - and still ends 0, saying so.
+  cp "$WORK/rec-stop.sh" "$WORK/rec-stop-short.sh"
+  if replace_once "$WORK/rec-stop-short.sh" 'timeout 60 ' 'timeout 2 '; then
+    RUNNER_TEMP="$WORK/rec-nobody"
+    rm -rf "$RUNNER_TEMP"
+    mkdir -p "$RUNNER_TEMP" || exit 2
+    run_body "$WORK/rec-stop-short.sh" default "$TREE"
+    if [ "$BODY_RC" = 0 ] && grep -q -F -e 'did not confirm' "$BODY_OUT"; then
+      pass "sh       a stop with no recorder answering ends 0 and says it was not confirmed"
+    else
+      fail "sh       a stop with no recorder answering ends 0 (exit $BODY_RC) and says so"
+    fi
+  else
+    fail "sh       the shortened-wait plant did not apply"
+  fi
+  RUNNER_TEMP="$TREE/temp"
+  # ⚠ A case that failed can leave a recorder posting to nothing until its
+  # limit, so whatever is left of this label's is ended here.
+  pkill -f "[f]light-recorder.sh $RECLABEL" 2>/dev/null || true
+else
+  fail "sh       capture-client.yml has no linux step named Start or Stop the flight recorder"
 fi
 
 # -- 5. a step this harness names and the workflow does not have --------------

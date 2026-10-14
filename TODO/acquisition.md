@@ -539,6 +539,12 @@ so the shape was invisible until `E-ACQ-07`'s repair made the source lane real.
 the workdir's top level. `grep -r` descends exactly as `find` did, so fixing one
 would be the gate-on-one-path shape this guard was added to close.
 
+⚠ **Amended 2026-10-14: the two rules are one file now.** They were copied into
+`install-client.sh` from `capture-client.sh` and kept identical by a comment;
+both call [`../scripts/capture/scan-bundle.sh`](../scripts/capture/scan-bundle.sh),
+this one with `--top-level`, which is the scope this section settled stated as
+one flag over both rules. `CI-09` carries why a third caller needed it.
+
 ⚠ **Narrowing is not weakening, and the direction says so.** Rule 12 is about
 what REACHES a remote. What ships from that directory is `*.log` and `*.err` at
 its top level; the scan still reads EVERY file at that level, which is wider than

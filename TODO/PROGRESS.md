@@ -93,19 +93,23 @@ the caller implements.
 
 ⛔ **A hang is measured from off the host before it is bounded.** `TODO/RULES.md`
 owns the rule and `docs/AGENTS.md` absolute 16 restates it.
-`scripts/ci/flight-recorder.sh` is the instrument.
+`scripts/ci/flight-recorder.sh` is the instrument, and its check run is closed by
+the job's last step, so one still open is a host that never reached it.
+
+⛔ **Rule 12 is asked of everything a capture uploads, success or refusal.**
+`scripts/capture/scan-bundle.sh` is its one home.
 
 ## Work order
 
 ⛔ **Nothing here is blocked.** Take these in order.
 
-1. **A capture that refuses uploads no evidence.** *Upload the evidence bundle*
-   runs on success only, so the two contained runs of 2026-10-11 left job logs
-   and no bytes. ⛔ Uploading on failure must not bypass the rule-12 scan, which
-   `capture-client.sh` runs only on its success path. Then dispatch
-   `capture-client` and assemble what it uploads: the second connector reports
-   every sample since 2026-10-14, so a peer ID that moves between sessions no
-   longer refuses the capture. `CI-09` owns the path.
+1. **Dispatch `capture-client` and assemble what it uploads.** Since
+   2026-10-14 the second connector reports every sample, so a peer ID that
+   moves between sessions no longer refuses the capture; a capture that does
+   refuse uploads its bundle once `scan-bundle.sh` has passed over it; and the
+   flight recorder closes its check run at the job's end, so a run left open is
+   a host that lost contact. Debug the dispatch from that check run. `CI-09`
+   owns the path, `CI-08` the recorder.
 2. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
    `CLIENT-06` has a same-version pair for Transmission 4.1.3 that needs no new
    route, under its entry in [`clients.md`](clients.md); its source build needs

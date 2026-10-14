@@ -13,6 +13,17 @@
 # posting is alive and the snapshot says what is stuck; a runner whose posts STOP
 # lost contact at that instant, and the last snapshot is the state it lost it in.
 #
+# ⛔ AND A JOB THAT ENDED IN CONTACT SAYS SO, WHICH IT DID NOT UNTIL 2026-10-14.
+# The loop ran to a 3000-second limit no job reaches, so the runner killed the
+# recorder at the end of every job and every check run it had opened stayed
+# `in_progress` forever: a host that lost contact and one that finished cleanly
+# looked the same, and the two contained dispatches of 2026-10-11 still showed
+# three of them three days later. ⭐ The job's last step touches
+# `<log-dir>/flight-recorder.stop`; the recorder posts a final snapshot,
+# completes its check run, reads the answer back, and writes
+# `<log-dir>/flight-recorder.done`. A check run still `in_progress` after its job
+# ended is now a host that never reached that step.
+#
 # ⚠ IT READS NOTHING THAT CAN BLOCK IT. `ps` is asked for `stat` and `wchan`,
 # which come from `/proc/<pid>/stat` and `wchan`; never for `args`, because
 # reading a process's command line takes its memory lock and a reader can hang
@@ -32,7 +43,8 @@
 # BIT_IDS_RECORDER_INTERVAL (seconds, default 15) and BIT_IDS_RECORDER_LIMIT
 # (seconds, default 3000) bound how often and how long it posts.
 #
-# Exit codes: 0 it ran to its limit, 2 it could not start.
+# Exit codes: 0 it ran until the job's last step or its limit, 2 it could not
+# start.
 
 set -u
 
@@ -138,23 +150,56 @@ ID=$(api POST "$API" "$SCRATCH/create.json" | jq -r '.id // empty')
 }
 printf 'flight-recorder: posting to check run %s every %ss\n' "$ID" "$INTERVAL"
 
+STOPFILE="$LOGDIR/flight-recorder.stop"
+DONEFILE="$LOGDIR/flight-recorder.done"
+
+# One snapshot, posted as the check run's output.
+post() { # title-prefix elapsed
+  snapshot "$2" >"$SCRATCH/snap.txt" 2>&1
+  # ⚠ The output text is capped well under the API's 65535 characters, keeping
+  # the TAIL, because the newest lines are the ones a hang is about.
+  tail -c 60000 "$SCRATCH/snap.txt" >"$SCRATCH/text.txt"
+  jq -n --rawfile text "$SCRATCH/text.txt" --arg title "$1 at +${2}s" \
+    '{output: {title: $title, summary: $title, text: $text}}' >"$SCRATCH/update.json"
+  api PATCH "$API/$ID" "$SCRATCH/update.json" >/dev/null
+}
+
 START=$(date +%s)
 N=0
+ENDING="the limit of ${LIMIT}s was reached"
 while :; do
   NOW=$(date +%s)
   ELAPSED=$((NOW - START))
   [ "$ELAPSED" -lt "$LIMIT" ] || break
+  if [ -e "$STOPFILE" ]; then
+    ENDING="the job reached its last step"
+    break
+  fi
   N=$((N + 1))
-  snapshot "$ELAPSED" >"$SCRATCH/snap.txt" 2>&1
-  # ⚠ The output text is capped well under the API's 65535 characters, keeping
-  # the TAIL, because the newest lines are the ones a hang is about.
-  tail -c 60000 "$SCRATCH/snap.txt" >"$SCRATCH/text.txt"
-  jq -n --rawfile text "$SCRATCH/text.txt" --arg title "snapshot $N at +${ELAPSED}s" \
-    '{output: {title: $title, summary: $title, text: $text}}' >"$SCRATCH/update.json"
-  api PATCH "$API/$ID" "$SCRATCH/update.json" >/dev/null
-  sleep "$INTERVAL"
+  post "snapshot $N" "$ELAPSED"
+  # ⚠ ONE SECOND AT A TIME, so the stop is seen within a second rather than an
+  # interval: the job's last step waits on this, and a host torn down while it
+  # waited would leave the check run open over a job that ended in contact.
+  _slept=0
+  while [ "$_slept" -lt "$INTERVAL" ] && [ ! -e "$STOPFILE" ]; do
+    sleep 1
+    _slept=$((_slept + 1))
+  done
 done
 
-jq -n '{status: "completed", conclusion: "neutral"}' >"$SCRATCH/done.json"
-api PATCH "$API/$ID" "$SCRATCH/done.json" >/dev/null
+# ⭐ THE LAST SNAPSHOT AND THE COMPLETION, AND THE COMPLETION IS READ BACK. A
+# PATCH that was refused leaves the run `in_progress`, which is the silence this
+# file says means lost contact; so the answer is what the done file reports, and
+# a run the API did not confirm says that rather than claiming it closed.
+post "$ENDING" "$(($(date +%s) - START))"
+jq -n --arg title "$ENDING" \
+  '{status: "completed", conclusion: "neutral", output: {title: $title, summary: $title}}' \
+  >"$SCRATCH/done.json"
+ANSWER=$(api PATCH "$API/$ID" "$SCRATCH/done.json" | jq -r '.status // empty' 2>/dev/null)
+if [ "$ANSWER" = completed ]; then
+  printf 'completed: %s\n' "$ENDING" >"$DONEFILE"
+else
+  printf 'not confirmed: the check run answered [%s]\n' "$ANSWER" >"$DONEFILE"
+fi
+cat "$DONEFILE"
 exit 0

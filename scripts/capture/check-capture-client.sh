@@ -639,6 +639,70 @@ BIT_IDS_STUB_DROP_NAMED=tokenizer.log
 run_case 0 "" "a file whose name merely contains the word is not refused"
 BIT_IDS_STUB_DROP_NAMED=""
 
+# -- ⛔ THE SCAN ITSELF, ASKED DIRECTLY ---------------------------------------
+#
+# ⛔ `scan-bundle.sh` IS THE ONE HOME FOR BOTH RULES, and three callers ask it:
+# this runner, `install-client`, and the workflow step that scans a REFUSED
+# capture before its evidence is uploaded. That third caller reaches it with no
+# runner around it, so what it answers alone is what these cases hold.
+SCAN="$ROOT/scripts/capture/scan-bundle.sh"
+SCANDIR="$WORK/scan"
+rm -rf "$SCANDIR"
+mkdir -p "$SCANDIR/deep/er" || exit 2
+printf 'nothing here\n' >"$SCANDIR/observer.log"
+
+sh "$SCAN" "$SCANDIR" >/dev/null 2>"$WORK/scan.err"
+_clean=$?
+if [ "$_clean" = 0 ]; then
+  pass "scan      a directory holding nothing rule 12 forbids is clean"
+else
+  fail "scan      a directory holding nothing rule 12 forbids is clean"
+fi
+
+# ⛔ A PATH THAT IS NOT THERE IS COULD-NOT-RUN. A scan over nothing finds
+# nothing, and a workflow reading 0 would upload whatever a mistyped path did not
+# name.
+sh "$SCAN" "$WORK/there-is-no-bundle-here" >/dev/null 2>"$WORK/scan.err"
+if [ $? = 2 ] && grep -q -F -e 'is not a directory' "$WORK/scan.err"; then
+  pass "scan      a directory that is not there is could-not-run, not clean"
+else
+  fail "scan      a directory that is not there is could-not-run, not clean"
+fi
+
+# ⚠ BOTH RULES ARE ASKED AND BOTH ARE REPORTED. A scan that stopped at the first
+# would cost a dispatch per secret.
+od -An -tx1 -N16 /dev/urandom | tr -d ' \n' >"$SCANDIR/rpc-token"
+printf '{"rpc-secret":"%s"}\n' "$(od -An -tx1 -N12 /dev/urandom | tr -d ' \n')" \
+  >"$SCANDIR/options.json"
+sh "$SCAN" "$SCANDIR" >/dev/null 2>"$WORK/scan.err"
+if [ $? = 1 ] && grep -q -F -e 'name says it holds a credential' "$WORK/scan.err" &&
+  grep -q -F -e 'carrying a secret-shaped value' "$WORK/scan.err"; then
+  pass "scan      a credential-named file and a secret-shaped value are both reported"
+else
+  fail "scan      a credential-named file and a secret-shaped value are both reported"
+fi
+# ⛔ AND THE VALUE IS NEVER PRINTED. The file is named; what is in it is not.
+if grep -q -F -e "$(cut -d'"' -f4 "$SCANDIR/options.json")" "$WORK/scan.err"; then
+  fail "scan      the secret-shaped value is named by its file and not printed"
+else
+  pass "scan      the secret-shaped value is named by its file and not printed"
+fi
+rm -f "$SCANDIR/rpc-token" "$SCANDIR/options.json"
+
+# ⚠ THE SCOPE IS THE CALLER'S, in both directions. A bundle ships whole and is
+# scanned whole; an install workdir ships its top level, and `--top-level` must
+# stop reading below it and only below it.
+od -An -tx1 -N16 /dev/urandom | tr -d ' \n' >"$SCANDIR/deep/er/server.key"
+sh "$SCAN" "$SCANDIR" >/dev/null 2>"$WORK/scan.err"
+_whole=$?
+sh "$SCAN" --top-level "$SCANDIR" >/dev/null 2>"$WORK/scan.err"
+_top=$?
+if [ "$_whole" = 1 ] && [ "$_top" = 0 ]; then
+  pass "scan      a file below the top level is read whole and not with --top-level"
+else
+  fail "scan      a file below the top level is read whole ($_whole) and not with --top-level ($_top)"
+fi
+
 # -- ⛔ THE CONNECTOR REFUSALS, DRIVEN THROUGH A STUB -------------------------
 #
 # ⛔ EVERY ONE OF THESE HAD NEVER FIRED. The real connector answers correctly, so
@@ -1248,10 +1312,12 @@ else
   # by walking up two levels from its own path. A copy dropped anywhere else
   # exits 2 for a missing guard, which is could-not-run and would have been read
   # as a refusal.
-  mkdir -p "$WORK/planted/scripts/acquisition"
+  # ⚠ And the rule-12 scan it asks, under the same shape, for the same reason.
+  mkdir -p "$WORK/planted/scripts/acquisition" "$WORK/planted/scripts/capture"
   sed 's/^  ACQUIRED=no$/  ACQUIRED=yes/' "$INSTALLER" \
     >"$WORK/planted/scripts/acquisition/install-client.sh"
   cp "$GUARD" "$WORK/planted/scripts/acquisition/assert-disposable.sh"
+  cp "$ROOT/scripts/capture/scan-bundle.sh" "$WORK/planted/scripts/capture/scan-bundle.sh"
   if cmp -s "$INSTALLER" "$WORK/planted/scripts/acquisition/install-client.sh"; then
     fail "the acquired-verdict plant applied to install-client"
   else

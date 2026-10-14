@@ -295,6 +295,7 @@ jobs:
       # stock build does with any torrent, so nothing about this run is a control
       # the product does not already have.
       - name: Capture
+        id: capture
         env:
           RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.adapter }}-${{ matrix.route }}
           SECONDS_TO_SERVE: ${{ inputs.seconds }}
@@ -310,9 +311,23 @@ jobs:
             --peer-port "$PEER_PORT" \
             --seconds "$SECONDS_TO_SERVE"
 
+      # ⛔ A CAPTURE THAT REFUSED IS EVIDENCE TOO, AND RULE 12 IS ASKED OF IT
+      # FIRST. The two contained runs of 2026-10-11 refused in the connector and
+      # the upload below ran on success only, so their transcripts were destroyed
+      # with the hosts and a job log was all that survived. ⚠ `capture-client.sh`
+      # scans its output on its success path alone, and a refusal is exactly the
+      # run whose adapter `stop` - which unlinks a product's RPC token - may never
+      # have been reached. So the scan runs here, and the upload follows only a
+      # success or a scan that passed.
+      - name: Scan the evidence of a refused capture
+        id: scan
+        if: failure() && steps.capture.outcome == 'failure'
+        run: sh scripts/capture/scan-bundle.sh "$RUNNER_TEMP/capture"
+
       # ⚠ ONLY AFTER THE MEASUREMENT IS FINISHED. The host never lost its route,
       # so nothing has to be restored first.
       - name: Upload the evidence bundle
+        if: always() && (steps.capture.outcome == 'success' || steps.scan.outcome == 'success')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: capture-client-${{ matrix.adapter }}-${{ matrix.route }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -415,3 +430,24 @@ jobs:
             cat "$RUNNER_TEMP/capture/attestation.txt" 2>/dev/null || echo 'no attestation'
             echo '```'
           } >>"$GITHUB_STEP_SUMMARY"
+
+      # ⛔ LAST, AND IT CLOSES THE RECORDER'S CHECK RUN, which nothing did until
+      # 2026-10-14: the recorder ran to a limit no job reaches and was killed with
+      # the job, so every check run it opened stayed `in_progress` and a host that
+      # ended in contact read exactly like one that lost it. ⭐ A run still open
+      # after its job is now a host that never reached this step.
+      # ⚠ IT NEVER FAILS THE JOB. The recorder is a diagnostic, so a run it did not
+      # confirm says so in the log and the step still ends 0; the wait is bounded
+      # on the done file the recorder writes after reading its answer back.
+      - name: Stop the flight recorder
+        if: always()
+        run: |
+          set -u
+          touch "$RUNNER_TEMP/flight-recorder.stop"
+          if timeout 60 sh -c 'until [ -e "$1" ]; do sleep 1; done' sh "$RUNNER_TEMP/flight-recorder.done"; then
+            cat "$RUNNER_TEMP/flight-recorder.done"
+          else
+            echo 'the flight recorder did not confirm within 60s; its check run may still be open'
+          fi
+          cat "$RUNNER_TEMP/flight-recorder.log" 2>/dev/null || true
+          exit 0

@@ -8,9 +8,9 @@ and why it is not the record. The work order is
 | | |
 | --- | --- |
 | the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
-| the resume point | the work order's first item: a capture that refuses uploads no evidence, then a dispatch. |
-| in flight | the connector fix is committed (every sample reported and corroborated, `CI-09`). Next: the rule-12 scan out of `capture-client.sh` into one script, so *Upload the evidence bundle* can run on a refused capture without shipping an unscanned workdir; `.github/workflows/capture-client.yml`, `scripts/capture/capture-client.sh`, `scripts/ci/check-workflow.sh`. |
-| the state of the tree | gate 40 checks, 39 passed, 1 skipped, exit 0, measured after the connector change. |
+| the resume point | dispatch `capture-client` and assemble what it uploads. |
+| in flight | `157b133` (the connector reports every sample) is pushed and CI run on it is green on all six jobs. Uncommitted: `scripts/capture/scan-bundle.sh` and a scan step so a refused capture's bundle is uploaded after rule 12, and *Stop the flight recorder* so the recorder closes its check run; `capture-client.yml`, `check-workflow.sh`, `check-step-bodies.sh`, `check-capture-client.sh`, `flight-recorder.sh`, `capture-client.sh`, `install-client.sh`. Still to run before the push: the recorder plants, the gate, and `check-workflow.sh` unsharded. |
+| the state of the tree | dirty with the work above; the harnesses it touches pass. |
 
 ## Starting, on this host
 

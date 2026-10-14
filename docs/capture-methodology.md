@@ -108,3 +108,10 @@ uses a monotonic clock.
 
 Exit 2 is not a pass and does not publish. Partial evidence is retained as a
 workflow artifact with the reason.
+
+⚠ **A client capture's partial evidence is retained after rule 12 is asked of
+it.** `capture-client.yml` uploads a refused capture's bundle once
+`scripts/capture/scan-bundle.sh` has passed over it, because the runner's own
+scan is on its success path and a refusal is the run whose cleanup may not have
+happened. ⛔ `capture.yml`'s fixture captures still upload on success alone, so
+this sentence is not yet true of them.

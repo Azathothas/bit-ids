@@ -439,9 +439,10 @@ fi
 # `docs/methodology/reviews.md` names as the easiest place to get a scope wrong:
 # every reading agrees on every file. The guard is written for the shape.
 #
-# ⛔ THE RULES ARE `capture-client`'s, DELIBERATELY IDENTICAL. Two spellings of
-# "what a credential looks like" would drift, and the day they did, the one a
-# reader trusts would be whichever they saw first.
+# ⛔ THE RULES ARE `capture-client`'s, AND SINCE 2026-10-14 THEY ARE ONE FILE.
+# Two spellings of "what a credential looks like" would drift, and the day they
+# did, the one a reader trusts would be whichever they saw first; this carried a
+# copy written to be identical until `scan-bundle.sh` took both.
 #
 # -- ⛔ AND THE SCOPE IS THIS DIRECTORY'S TOP LEVEL, NOT THE TREE BELOW IT ----
 #
@@ -470,30 +471,18 @@ fi
 # ⛔ THE DANGEROUS DIRECTION IS THE OTHER ONE, and it is filed rather than
 # guarded: an upload path that gained a `**` would ship a subtree this no longer
 # reads. `TODO/acquisition.md` carries it with the command that would settle it.
-SECRET_NAMED=$(find "$WORKDIR" -maxdepth 1 -type f 2>/dev/null | awk -F/ '
-  {
-    name = tolower($NF)
-    if (name ~ /(^|[^a-z])(token|secret|passwd|password|credential)([^a-z]|$)/ ||
-        name ~ /\.(pem|key|p12|pfx|jks|keystore)$/ ||
-        name ~ /^id_(rsa|ed25519|ecdsa)/ ||
-        name ~ /^\.env/) print
-  }')
-[ -z "$SECRET_NAMED" ] || {
-  printf '%s\n' "$SECRET_NAMED" | sed 's/^/          /' >&2
-  refuse "the install would ship a file whose name says it holds a credential; rule 12"
-}
-
-# ⚠ THE SAME SCOPE, FOR THE SAME REASON. `grep -r` descends and this one did
-# too, so a source tree's own test configuration was in scope for a scan over
-# documents that ship. ⛔ Both halves of the rule had the defect; fixing one and
-# leaving the other is the gate-on-one-path shape this guard was added to close.
-SECRET_VALUED=$(find "$WORKDIR" -maxdepth 1 -type f -exec grep -IlE \
-  '"[A-Za-z0-9_-]*(secret|token|password)[A-Za-z0-9_-]*"[[:space:]]*:[[:space:]]*"[^"]{8,}"|--[A-Za-z0-9-]*(secret|token|password)[A-Za-z0-9-]*=[^[:space:]"]{8,}' \
-  {} + 2>/dev/null)
-[ -z "$SECRET_VALUED" ] || {
-  printf '%s\n' "$SECRET_VALUED" | sed 's/^/          /' >&2
-  refuse "the install would ship a document carrying a secret-shaped value; rule 12"
-}
+#
+# ⚠ THE SAME SCOPE FOR BOTH RULES, for the same reason. `grep -r` descends and
+# the value rule here did too, so a source tree's own test configuration was in
+# scope for a scan over documents that ship; both halves had the defect, and
+# `--top-level` is one flag over both now rather than a fix applied twice.
+sh "$ROOT/scripts/capture/scan-bundle.sh" --top-level "$WORKDIR"
+SCAN_RC=$?
+case "$SCAN_RC" in
+  0) : ;;
+  1) refuse "the install would ship what rule 12 forbids, named above" ;;
+  *) cannot "the rule-12 scan could not run (exit $SCAN_RC)" ;;
+esac
 
 # ⚠ Key=value, the shape every other document in this directory uses. ⛔ It
 # records the route and the version SEPARATELY per call, because `ACQ-03`

@@ -5,6 +5,23 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T03:48:10Z
+
+- ⛔ **A REFUSED CAPTURE UPLOADS ITS EVIDENCE, AFTER RULE 12.** The two
+  contained runs of 2026-10-11 left job logs and no bytes, because *Upload the
+  evidence bundle* ran on success only. `if: always()` would have shipped a
+  bundle the credential scan, which runs on the capture's success path, had
+  never read; a scan step now runs on a refused capture and the upload follows a
+  success or a scan that passed. `check-workflow` refuses an ungated upload.
+- ⭐ `scripts/capture/scan-bundle.sh` is the one home for both rule-12 rules,
+  which `capture-client.sh` and `install-client.sh` each carried a copy of.
+- ⛔ **THE FLIGHT RECORDER CLOSES ITS CHECK RUN.** It ran to a limit no job
+  reaches, so every run it opened stayed `in_progress` - the silence it reads as
+  lost contact, from jobs that ended cleanly. The job's last step stops it, and
+  it reads the closure back.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-09` and `CI-08`. No version bump and
+  no deploy.
+
 ### 2026-10-14T02:55:53Z
 
 - ⛔ **THE SECOND CONNECTOR NO LONGER REFUSES A BUILD THAT VARIES.** Both

@@ -2835,6 +2835,61 @@ next thing this entry should move. Windows has no network namespace, so its job
 needs a different containment, such as a firewall rule scoped to the capture's
 processes.
 
+#### ⛔ The recorder never closed its check run, so its silence meant nothing. 2026-10-14
+
+⛔ **Every check run the recorder opened is still `in_progress`.** Read back on
+2026-10-14 through rule 8's route: the three `flight-recorder (...)` runs of
+dispatches 38109299467 and 38111442119 had no conclusion three days after their
+jobs ended. The loop ran to a 3000-second limit no job reaches, so the runner
+killed it with the job and the final `completed` was never sent. ⚠ That is the
+signal this instrument is built on - *posts that stop mean the host lost
+contact* - produced by jobs that ended cleanly.
+
+⭐ **The job's last step stops it.** *Stop the flight recorder* runs on every
+outcome and touches `$RUNNER_TEMP/flight-recorder.stop`; the recorder, which now
+waits a second at a time, posts a final snapshot, completes the run, reads the
+API's answer back and writes `flight-recorder.done`, which the step waits on for
+at most 60 seconds and prints. ⚠ It never fails the job, because the recorder is
+a diagnostic. A run still open after its job is now a host that never reached
+the step.
+
+| measured on this host, 2026-10-14, by `check-step-bodies` against a stub `curl` | result |
+| --- | --- |
+| the workflow's own *Start* body | ends, output closed, while the recorder posts on |
+| nothing stopping it, three intervals later | the run is still open - the defect, shown |
+| the workflow's own *Stop* body | ends 0; the last request is the completion; the done file says `completed`; the recorder is gone |
+| a completion the API answers as still `in_progress` | `not confirmed`, never `completed` |
+| a stop with no recorder answering | ends 0 after its bound and says the run was not confirmed |
+
+⛔ **The harness found a defect in itself first.** Its "the recorder is gone"
+wait ran `pgrep -f` inside a `sh -c` whose own arguments carried the pattern, so
+it matched itself and reported an exited recorder as running. `[f]light` matches
+the recorder and cannot match its own spelling.
+
+`check-workflow` refuses a job that starts the recorder and whose last step is
+not *Stop the flight recorder* on `always()`, touching the file the recorder
+watches; refuted by deleting the step and by narrowing it to `success()`.
+
+Guard mutation, five plants into `flight-recorder.sh` in a scratch copy of the
+tree, each replaced exactly once and verified to have changed the file, run
+through `check-step-bodies`, clean control either side:
+
+| plant | verdict |
+| --- | --- |
+| the stop file is never looked for at the top of the loop | ⭐ refused, 2 cases |
+| the API's answer to the completion is not read | ⭐ refused, by the refused-completion case |
+| the completion is never sent | ⭐ refused, 2 cases |
+| no done file is written | ⭐ refused, by the stop case |
+| the wait between snapshots ignores the stop file | ⚠ **survived** |
+
+⚠ **The survivor is equivalent at the harness's interval and is kept.** The
+harness posts every second, so a wait that sleeps the whole interval and one
+that looks every second see the stop at the same moment. What the second buys is
+latency: a stop seen within a second rather than within an interval, which only
+matters against the step's 60-second bound once the interval approaches it. A
+case timing it would be the load-sensitive row this entry already carries one of,
+so it is recorded rather than turned into one.
+
 #### ⛔ AND THE PROBES ARE DELETED, 2026-09-17, BECAUSE `ACQ-06` LANDED
 
 ⭐ **Ten diagnostic steps stood in `capture-client.yml` and they are gone.** Their
@@ -3488,6 +3543,60 @@ read unpiped, clean control either side:
 ⚠ **Unproved on a runner.** No dispatch has taken this connector, so whether
 `aria2-next` regenerates its peer ID per session, and whether the pair then
 reaches `build_equivalent`, is the next dispatch's to say.
+
+### ⛔ A refused capture uploaded nothing, and the obvious fix would have shipped an unscanned bundle. 2026-10-14
+
+⛔ **The bytes above were lost because *Upload the evidence bundle* ran on
+success only.** A capture that refuses is evidence: `capture-methodology.md`
+says partial evidence is retained with the reason, and for `capture-client.yml`
+that sentence was false.
+
+⛔ **`if: always()` was the shortcut, and it was a rule-12 hole.** The
+credential scan lives in `capture-client.sh` on its SUCCESS path, after the
+connector, so a refusal anywhere before it leaves a bundle nothing has read -
+and a refusal is the run whose adapter `stop`, which unlinks `aria2-next`'s RPC
+token, may never have been reached. That token shipping inside an upload is what
+run 11 measured.
+
+| where | what changed |
+| --- | --- |
+| [`scan-bundle.sh`](../scripts/capture/scan-bundle.sh) | the two rule-12 rules, out of `capture-client.sh` and `install-client.sh` - which carried copies a comment kept identical - into one file, with `--top-level` for the install workdir's scope; a missing directory is exit 2, never clean, and both rules are reported when both fire |
+| `capture-client.yml` | *Scan the evidence of a refused capture* runs only when *Capture* failed, and *Upload the evidence bundle* runs on a capture that succeeded or a scan that passed |
+| `check-workflow` | an evidence upload carrying an `if:` must name the scan's outcome, and the scan step must carry its id, run `scan-bundle.sh` over the bundle, and sit between the capture and the upload; refuted by an upload on `always()` and a scan step that runs `true` |
+
+⚠ **A door this found in two harnesses.** `check-step-bodies` and
+`check-capture-client` each build a partial tree to run `install-client.sh` in,
+and both answered 2 the first time: the scan the script now asks was not in
+either tree. ⭐ That is the scan's could-not-run doing its job rather than
+reading a missing file as clean.
+
+| measured on this host, 2026-10-14 | result |
+| --- | --- |
+| `sh scripts/capture/check-capture-client.sh` | 130 cases, 130 passed, five of them asking `scan-bundle.sh` directly |
+| `sh scripts/ci/check-step-bodies.sh` | 31 cases, 31 passed, with `scan-bundle.sh` in its tree; seven of them are `CI-08`'s recorder cases |
+| `sh scripts/acquisition/check-rootless.sh` | 26 cases, 26 passed |
+| `sh scripts/ci/check-workflow.sh`, unsharded | 111 cases, 111 passed, three probes each for the rule-12 gate and the recorder-stop rule among them |
+| `sh scripts/common/check-gate.sh` | 40 checks, 39 passed, 1 skipped |
+
+Guard mutation, seven plants into `scan-bundle.sh` in a scratch copy of the
+tree, each replaced exactly once and verified to have changed the file, run
+through `check-capture-client` with its exit code read unpiped, clean control
+either side:
+
+| plant | verdict |
+| --- | --- |
+| a missing directory answers clean | ⭐ refused, by the case written for it |
+| the scan stops at the first rule that fires | ⭐ refused, by the case that plants both |
+| `--top-level` is ignored, so the install scan descends | ⭐ refused, 2 cases: run 15's vendored certificate is refused again |
+| the whole-tree scan stops descending | ⭐ refused, 3 cases, both capture-path refusals among them |
+| a substring rather than a word, so `tokenizer` is a token | ⭐ refused, 2 cases, one per caller |
+| the value is printed rather than its file named | ⭐ refused, by the case written for it |
+| the scan always answers clean | ⭐ refused, 6 cases: two through the capture runner, two through `install-client`, two asking the scan directly |
+
+⚠ **`capture.yml` still uploads on success alone**, and its fixture captures are
+not scanned at all: `capture-run.sh` installs nothing and writes no product
+output. `docs/capture-methodology.md` says so beside the sentence this makes
+true for client captures.
 
 ## CI-05: Acceptance commands that cannot pass over nothing
 

@@ -29,6 +29,11 @@ instances in one day, all in the capture path. Ask what actually ships.
 ⛔ **A guard that sees ONE SPELLING of the thing it forbids reports clean over
 the others.**
 
+⛔ **An upload widened to the failure path inherits none of the success path's
+guards.** The obvious fix for a refused capture uploading nothing was `if:
+always()`, and it would have shipped a bundle the rule-12 scan, which runs only
+when a capture succeeds, had never read. Ask what the path being added skips.
+
 ⛔ **A rule against CHOOSING one value grew into a rule against REPORTING two.**
 The second connector refused two announces that differed, so a build whose peer
 ID moves between sessions - a shape the record already models - turned two

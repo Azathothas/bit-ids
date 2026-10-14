@@ -648,51 +648,17 @@ EVIDENCE=$(grep -c . "$SUMS")
 # -- rule 12, at the choke point rather than in each adapter -------------------
 #
 # ⛔ A CAPTURE'S OUTPUT DIRECTORY IS ITS EVIDENCE BUNDLE, AND A PRODUCT THIS
-# PROJECT DID NOT WRITE HAS BEEN WRITING INTO IT. Measured on `capture-client`
-# run 11 by downloading the artifact and listing it: `aria2-next` generated a
-# per-run RPC token, wrote it to `<workdir>/rpc-token` so `stop` could use it,
-# and this script packed that directory - so the token shipped inside the upload.
-# ⚠ Neither step was wrong alone and no reading found it. `check-no-secrets`
-# structurally cannot: the bundle is not in the tree it scans.
-#
-# ⛔ THE ADAPTER'S OWN FIX WAS A GATE ON ONE PATH. `aria2-next` unlinks the token
-# in `stop`, which is correct and depends on every adapter remembering, on `stop`
-# being reached, and on `stop` succeeding - and a non-zero `stop` is RECORDED
-# here rather than refused. So the guard belongs at the choke point every capture
-# passes through, which is this line.
-#
-# ⛔ TWO RULES, BECAUSE THE TWO FAILURES LOOK NOTHING ALIKE. A file whose NAME
-# says it holds a credential is the run's own state; a secret-shaped MEMBER
-# inside a document the product answered with is the product handing one back.
-# ⚠ The second is the one no filename rule reaches: an options dump names its own
-# `rpc-secret`, and whether this product's does is a question the next dispatch
-# answers rather than one this comment settles.
-#
-# ⚠ A WORD BOUNDARY, NOT A SUBSTRING. `tokenizer` is not a token, and a rule that
-# refused it would be one somebody switches off.
-SECRET_NAMED=$(find "$OUT" -type f 2>/dev/null | awk -F/ '
-  {
-    name = tolower($NF)
-    if (name ~ /(^|[^a-z])(token|secret|passwd|password|credential)([^a-z]|$)/ ||
-        name ~ /\.(pem|key|p12|pfx|jks|keystore)$/ ||
-        name ~ /^id_(rsa|ed25519|ecdsa)/ ||
-        name ~ /^\.env/) print
-  }')
-[ -z "$SECRET_NAMED" ] || {
-  printf '%s\n' "$SECRET_NAMED" | sed 's/^/          /' >&2
-  refuse "the capture would ship a file whose name says it holds a credential; rule 12"
-}
-
-# ⚠ `-I` SKIPS BINARY, so the generated torrent and any artifact bytes are not
-# scanned as text. `-l` names the file and never prints the value, because a
-# guard that echoed the secret it found would put it in the run log.
-SECRET_VALUED=$(grep -rIlE \
-  '"[A-Za-z0-9_-]*(secret|token|password)[A-Za-z0-9_-]*"[[:space:]]*:[[:space:]]*"[^"]{8,}"|--[A-Za-z0-9-]*(secret|token|password)[A-Za-z0-9-]*=[^[:space:]"]{8,}' \
-  "$OUT" 2>/dev/null)
-[ -z "$SECRET_VALUED" ] || {
-  printf '%s\n' "$SECRET_VALUED" | sed 's/^/          /' >&2
-  refuse "the capture would ship a document carrying a secret-shaped value; rule 12"
-}
+# PROJECT DID NOT WRITE HAS BEEN WRITING INTO IT: `aria2-next` once left its
+# per-run RPC token there and it shipped. `scan-bundle.sh` carries the measurement
+# and both rules; it is the one home for them, and the workflow asks it again
+# about a capture that refused before reaching this line.
+sh "$ROOT/scripts/capture/scan-bundle.sh" "$OUT"
+SCAN_RC=$?
+case "$SCAN_RC" in
+  0) : ;;
+  1) refuse "the capture would ship what rule 12 forbids, named above" ;;
+  *) cannot "the rule-12 scan could not run (exit $SCAN_RC)" ;;
+esac
 
 FINISHED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 OBSERVER_DIGEST=$(sha256sum "$OBSERVER" | cut -d' ' -f1)

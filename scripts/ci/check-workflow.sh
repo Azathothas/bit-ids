@@ -364,6 +364,74 @@ step_block() { # workflow job step
   ' "$1"
 }
 
+# Whether an evidence upload that can run on a refused capture is gated on the
+# rule-12 scan. Prints nothing when it is, and the reason when it is not.
+#
+# ⛔ `capture-client.sh` SCANS ITS OUTPUT ON ITS SUCCESS PATH ALONE, so an upload
+# that also runs after a refusal ships a directory nothing has read for a
+# credential - and a refusal is the run whose adapter `stop`, which unlinks a
+# product's RPC token, may never have been reached. ⚠ The upload's own `if:` is
+# the input, read by the caller off the step, so an upload with no condition is
+# success-only and never asks this.
+SCAN_STEP="Scan the evidence of a refused capture"
+scan_gate() { # workflow job upload-if
+  case "$3" in
+    *"steps.scan.outcome == 'success'"*) : ;;
+    *)
+      printf 'the evidence upload runs on [%s] with no rule-12 scan gating it' "$3"
+      return
+      ;;
+  esac
+  if ! step_block "$1" "$2" "$SCAN_STEP" | grep -q -E '^ *(- )?id:[ ]*scan[ ]*$'; then
+    printf 'no step named [%s] carries the id the upload names' "$SCAN_STEP"
+    return
+  fi
+  # shellcheck disable=SC2016
+  case "$(step_command "$1" "$2" "$SCAN_STEP")" in
+    *'scripts/capture/scan-bundle.sh "$RUNNER_TEMP/capture"'*) : ;;
+    *)
+      printf '[%s] does not run scan-bundle.sh over the bundle' "$SCAN_STEP"
+      return
+      ;;
+  esac
+  _sc=$(step_index "$1" "$2" Capture)
+  _ss=$(step_index "$1" "$2" "$SCAN_STEP")
+  _su=$(step_index "$1" "$2" "Upload the evidence bundle")
+  if [ -z "$_sc" ] || [ -z "$_su" ] || [ "$_sc" -ge "$_ss" ] || [ "$_ss" -ge "$_su" ]; then
+    printf '[%s] does not sit between the capture and the upload' "$SCAN_STEP"
+  fi
+}
+
+# Whether a job that starts the flight recorder ends by stopping it. Prints
+# nothing when it does, and the reason when it does not.
+#
+# ⛔ A RECORDER NOBODY STOPS LEAVES ITS CHECK RUN OPEN FOREVER, and an open run is
+# what this project reads as a host that lost contact. So the stop is the LAST
+# step, runs on every outcome, and touches the file the recorder watches.
+recorder_stopped() { # workflow job
+  [ -n "$(step_index "$1" "$2" "Start the flight recorder")" ] || return 0
+  if [ "$(job_steps "$1" "$2" | tail -1)" != "Stop the flight recorder" ]; then
+    printf 'the job starts the flight recorder and its last step is not [Stop the flight recorder]'
+    return
+  fi
+  if [ "$(step_if "$1" "$2" "Stop the flight recorder")" != "always()" ]; then
+    printf '[Stop the flight recorder] does not run on every outcome'
+    return
+  fi
+  # shellcheck disable=SC2016
+  case "$(step_command "$1" "$2" "Stop the flight recorder")" in
+    *'touch "$RUNNER_TEMP/flight-recorder.stop"'*) : ;;
+    *) printf '[Stop the flight recorder] does not touch the file the recorder watches' ;;
+  esac
+}
+
+# The `if:` of one step, or nothing when it has none.
+step_if() { # workflow job step
+  step_block "$1" "$2" "$3" | awk '
+    { line = $0; sub(/\r$/, "", line); sub(/^ +/, "", line); sub(/^- /, "", line) }
+    line ~ /^if:/ { sub(/^if:[ \t]*/, "", line); print line; exit }'
+}
+
 # The declared default of one workflow_dispatch input.
 input_default() { # workflow input
   awk -v WANT="$2" '
@@ -830,6 +898,33 @@ if unit capture-fork; then
         else
           pass "workflow  $CAPNAME $job: the evidence upload cannot be skipped over"
         fi
+        # ⛔ AND AN UPLOAD THAT RUNS ON A REFUSED CAPTURE IS GATED ON RULE 12.
+        # A refused capture is evidence and is uploaded since 2026-10-14; the
+        # runner's own scan is on its success path, so a second asking has to
+        # stand between a refusal and the upload.
+        _upload_if=$(step_if "$CAPWF" "$job" "Upload the evidence bundle")
+        if [ -z "$_upload_if" ]; then
+          pass "workflow  $CAPNAME $job: the evidence upload runs on success alone"
+        else
+          _gate=$(scan_gate "$CAPWF" "$job" "$_upload_if")
+          if [ -z "$_gate" ]; then
+            pass "workflow  $CAPNAME $job: a refused capture is uploaded only after the rule-12 scan passes"
+          else
+            fail "workflow  $CAPNAME $job: $_gate"
+          fi
+        fi
+      fi
+
+      # ⛔ AND A JOB THAT STARTS THE FLIGHT RECORDER ENDS BY STOPPING IT. An
+      # open check run reads as a host that lost contact, so one left open by a
+      # job that ended cleanly is the recorder lying about the host.
+      if [ -n "$(step_index "$CAPWF" "$job" "Start the flight recorder")" ]; then
+        _stopped=$(recorder_stopped "$CAPWF" "$job")
+        if [ -z "$_stopped" ]; then
+          pass "workflow  $CAPNAME $job: the flight recorder is stopped by the job's last step"
+        else
+          fail "workflow  $CAPNAME $job: $_stopped"
+        fi
       fi
     done
   done
@@ -1050,6 +1145,67 @@ if unit static-readers; then
       pass "probe    the evidence-upload reader sees an added continue-on-error"
     else
       fail "probe    the evidence-upload reader missed an added continue-on-error"
+    fi
+
+    # ⛔ THE RULE-12 GATE, REFUTED BOTH WAYS IT CAN BE LOST. An upload that runs
+    # on any outcome with no scan named is the shortcut; a scan step that runs
+    # something else keeps the shape and drops the reading. ⚠ And the control is
+    # the workflow as it stands, because a gate reader answering "ungated" over
+    # everything would pass both plants.
+    _probe_if=$(step_if "$CLIENTWF" linux "Upload the evidence bundle")
+    if [ -n "$_probe_if" ] && [ -z "$(scan_gate "$CLIENTWF" linux "$_probe_if")" ]; then
+      pass "probe    the rule-12 gate reader accepts the upload as it stands"
+    else
+      fail "probe    the rule-12 gate reader refuses the upload as it stands: $(scan_gate "$CLIENTWF" linux "$_probe_if")"
+    fi
+    awk '/- name: Upload the evidence bundle/ { print; getline; if ($1 == "if:") print "        if: always()"; else print; next } { print }' \
+      "$CLIENTWF" >"$MUTWF"
+    _probe_if=$(step_if "$MUTWF" linux "Upload the evidence bundle")
+    if [ "$_probe_if" != "always()" ]; then
+      fail "probe    the always() mutation did not reach the upload's if (read [$_probe_if])"
+    elif [ -n "$(scan_gate "$MUTWF" linux "$_probe_if")" ]; then
+      pass "probe    the rule-12 gate reader refuses an upload on always() with no scan"
+    else
+      fail "probe    the rule-12 gate reader accepted an upload on always() with no scan"
+    fi
+    # shellcheck disable=SC2016
+    sed 's|run: sh scripts/capture/scan-bundle.sh "$RUNNER_TEMP/capture"|run: "true"|' \
+      "$CLIENTWF" >"$MUTWF"
+    _probe_if=$(step_if "$MUTWF" linux "Upload the evidence bundle")
+    if cmp -s "$CLIENTWF" "$MUTWF"; then
+      fail "probe    the scan-command mutation did not change the workflow"
+    elif [ -n "$(scan_gate "$MUTWF" linux "$_probe_if")" ]; then
+      pass "probe    the rule-12 gate reader refuses a scan step that scans nothing"
+    else
+      fail "probe    the rule-12 gate reader accepted a scan step that scans nothing"
+    fi
+
+    # ⛔ THE RECORDER-STOP READER, REFUTED BY THE TWO WAYS A STOP IS LOST: the
+    # step deleted, and the step kept while it no longer runs on a failure. The
+    # workflow as it stands is the control, for the reason the gate's is.
+    if [ -z "$(recorder_stopped "$CLIENTWF" linux)" ]; then
+      pass "probe    the recorder-stop reader accepts the workflow as it stands"
+    else
+      fail "probe    the recorder-stop reader refuses the workflow as it stands: $(recorder_stopped "$CLIENTWF" linux)"
+    fi
+    awk '/- name: Stop the flight recorder/ { skip = 1; next }
+         skip && /^      - name:/ { skip = 0 }
+         !skip { print }' "$CLIENTWF" >"$MUTWF"
+    if cmp -s "$CLIENTWF" "$MUTWF"; then
+      fail "probe    the stop-step removal did not change the workflow"
+    elif [ -n "$(recorder_stopped "$MUTWF" linux)" ]; then
+      pass "probe    the recorder-stop reader refuses a job that never stops the recorder"
+    else
+      fail "probe    the recorder-stop reader accepted a job that never stops the recorder"
+    fi
+    awk '/- name: Stop the flight recorder/ { print; getline; if ($1 == "if:") print "        if: success()"; else print; next } { print }' \
+      "$CLIENTWF" >"$MUTWF"
+    if cmp -s "$CLIENTWF" "$MUTWF"; then
+      fail "probe    the stop-step condition mutation did not change the workflow"
+    elif [ -n "$(recorder_stopped "$MUTWF" linux)" ]; then
+      pass "probe    the recorder-stop reader refuses a stop that skips a failed job"
+    else
+      fail "probe    the recorder-stop reader accepted a stop that skips a failed job"
     fi
   fi
 

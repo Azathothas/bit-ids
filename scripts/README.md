@@ -130,6 +130,14 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   build was measured rather than assumed: an announce must carry a peer ID this
   observer did not generate, and the raw transcript on disk must hold those
   exact bytes.
+- [`capture/scan-bundle.sh`](capture/scan-bundle.sh) is rule 12 over a
+  directory about to be uploaded: a file whose name says it holds a credential,
+  and a document carrying a secret-shaped value, both always asked. ⛔ It is the
+  one home for both rules, and three callers ask it: `capture-client.sh` over its
+  bundle, `install-client.sh` over its workdir's top level with `--top-level`,
+  and `capture-client.yml`'s *Scan the evidence of a refused capture*, without
+  which a refused capture's bundle would be uploaded unscanned. ⚠ A directory
+  that is not there is exit 2, never clean.
 - [`capture/adapters/`](capture/adapters/) holds one file per target and is the
   only place that knows how a particular product is installed, asked its
   version, started and stopped. Its [README](capture/adapters/README.md) carries
@@ -259,6 +267,13 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   measure `capture-client.yml`'s install block ending over a product that leaks
   one process - with a planted `3>&1` bringing the hang straight back, which is
   what says the redirection is doing the work rather than the case being easy.
+- [`ci/flight-recorder.sh`](ci/flight-recorder.sh) posts a runner's state to a
+  check run on the commit every few seconds while a capture job runs, so the
+  evidence leaves the host as it is taken. ⭐ Posts that stop mean the host lost
+  contact at that moment. ⛔ The job's last step, *Stop the flight recorder*,
+  closes the check run and the recorder reads the closure back, so a run still
+  open after its job is a host that never reached that step. `check-step-bodies`
+  drives both steps against a stub `curl`.
 - [`ci/report-holders.sh`](ci/report-holders.sh) names the processes still
   holding an open descriptor on a file, and prints the process table beside them.
   ⚠ It reports and never refuses: a step that went red because its diagnostic
