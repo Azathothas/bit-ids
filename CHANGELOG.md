@@ -5,6 +5,12 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T19:51:14Z
+
+- ⭐ **`check-indexes` runs on the Windows lane too**, ported and compared the
+  same way as `check-corpus`, over two plants in the index builder.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-07`. No version bump and no deploy.
+
 ### 2026-10-14T19:37:05Z
 
 - ⭐ **`check-corpus` runs on the Windows lane.** It is `bit-check check-corpus`

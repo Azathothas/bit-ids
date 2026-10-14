@@ -35,7 +35,7 @@ fn slug(text: &str) -> Slug {
 /// ⛔ **The shipped fixture's version is `0.0.0-fixture`, which no numeric
 /// scheme orders**, so a latest view over it is refused under `E-VIW-02`. That
 /// is the fixture doing its job for the fail-closed path and being useless for
-/// the ordering one, which is the same reason `check-indexes.sh` asks
+/// the ordering one, which is the same reason `check-indexes` asks
 /// `build-store` for versions rather than using the shipped record.
 ///
 /// ⚠ Every route's reported version moves with it, because `E-ACQ-04` refuses a

@@ -247,6 +247,9 @@ Invoke-Ported 'check-catalogue'
 # against that half before it was deleted. CI-07.
 Invoke-Ported 'check-corpus'
 
+# ⭐ AND check-indexes, THE SAME DAY AND THE SAME WAY. CI-07.
+Invoke-Ported 'check-indexes'
+
 # ⭐ AND THE LAST `common/` TWIN THIS LANE RAN, 2026-09-29. This row ran
 # `check-remote-items.ps1`, compared case for case against both halves before
 # they were deleted. ⚠ It NEEDS gh AND THE NETWORK, so it exits 2 on a machine
@@ -290,7 +293,6 @@ else {
 # one, because --strict permits it forever on the strength of a sentence nobody
 # re-read. Found by a claim audit while CI-03 was being closed.
 Add-Unavailable 'check-store' 'its plants are a symlink and a named pipe; reconsider them, do not translate; CI-07 class B'
-Add-Unavailable 'check-indexes' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
 Add-Unavailable 'check-release' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
 Add-Unavailable 'check-formats' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
 Add-Unavailable 'check-publish' 'its subject publish-data.sh has no PowerShell half; CI-07 class C'

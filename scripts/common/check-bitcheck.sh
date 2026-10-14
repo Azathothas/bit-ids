@@ -801,6 +801,43 @@ else
 fi
 
 # ============================================================================
+# check-indexes
+# ============================================================================
+#
+# ⭐ PORTED 2026-10-14, after `check-corpus`, and its plants go into the index
+# builder it drives. One keeps a superseded record in the views, which the
+# correction rows exist to see; one renames the refusal a version the scheme
+# cannot order is given, which only that case may notice.
+if [ "$HARNESSES" = "0" ]; then
+  printf 'check-bitcheck: the check-indexes cases were NOT run; --harnesses or --compare runs them\n' >&2
+else
+  agree "indexes clean tree" check-indexes corpus/check-indexes 0
+  go_said "indexes clean tree" '{"schema":"check-indexes/1","total":17,"passed":17,"failed":0}'
+
+  IDX="$TREE/crates/bit-ids/src/index.rs"
+  cp "$IDX" "$WORK/index.orig" || exit 2
+  if replace_once "$IDX" 'if graph.succeeds.contains_key(&profile.id) {' 'if false && graph.succeeds.contains_key(&profile.id) {'; then
+    agree "indexes a builder that keeps a superseded record in the views" check-indexes corpus/check-indexes 1
+    # ⚠ Three rows, and they are the correction rows: the superseded count, the
+    # latest view's answer, and the corrected record still named in it.
+    go_said "indexes a builder that keeps a superseded record in the views" '{"schema":"check-indexes/1","total":17,"passed":14,"failed":3}'
+  else
+    fail "indexes a builder that keeps a superseded record in the views: NOT PLANTED"
+  fi
+  cp "$WORK/index.orig" "$IDX"
+
+  if replace_once "$IDX" '"E-VIW-02",' '"E-VIW-0X",'; then
+    agree "indexes a builder that names the unorderable refusal wrongly" check-indexes corpus/check-indexes 1
+    go_said "indexes a builder that names the unorderable refusal wrongly" '{"schema":"check-indexes/1","total":17,"passed":16,"failed":1}'
+  else
+    fail "indexes a builder that names the unorderable refusal wrongly: NOT PLANTED"
+  fi
+  cp "$WORK/index.orig" "$IDX"
+
+  agree "indexes clean tree again" check-indexes corpus/check-indexes 0
+fi
+
+# ============================================================================
 # check-catalogue
 # ============================================================================
 #

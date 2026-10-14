@@ -118,8 +118,8 @@ still open is a host that never reached it.
    `bash -e` split are closed.
 3. **`OBS-10`**, which needs a second platform, so it follows the captures.
 4. **`CI-07`**: its Approach and Prove were rewritten on 2026-10-14 to the route
-   `CI-10` made. `check-corpus` is ported and runs on both lanes; the other
-   portable-subject harnesses follow, `check-indexes` next.
+   `CI-10` made. `check-corpus` and `check-indexes` are ported and run on both
+   lanes; the other portable-subject harnesses follow, `check-release` next.
 5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
 6. The remaining client and engine breadth, then refinements.

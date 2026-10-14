@@ -101,6 +101,46 @@ func copyFile(from, to string) error {
 	return out.Close()
 }
 
+// plantCase is the shell halves' `begin_case` and `end_case`: build the store,
+// plant, prove the plant moved the tree, ask the subject, read the refusal it
+// was meant to give, and prove a rebuilt store is clean again.
+//
+// ⛔ A PLANT THAT DID NOT LAND IS A FAILURE, NOT A REFUSAL THAT DID NOT COME.
+// Both the mutation's own answer and the tree's digest are asked.
+func plantCase(h *harness, name, code, store string, build, mutate func() bool,
+	check func() int, output func() []string) {
+	if !build() {
+		h.bad(name + "  could not build the store")
+		return
+	}
+	before := treeDigest(store)
+	if !mutate() {
+		h.bad(name + "  NOT-PLANTED (the mutation reported it did not apply)")
+		return
+	}
+	if before == treeDigest(store) {
+		h.bad(name + "  NOT-PLANTED (the tree digest did not move)")
+		return
+	}
+	if rc := check(); rc != 1 {
+		h.bad(fmt.Sprintf("%s  expected exit 1, got %d", name, rc))
+		return
+	}
+	if out := output(); !anyContains(out, code) {
+		h.bad(fmt.Sprintf("%s  refused, but not as %s: %s", name, code, headJoin(out, 3)))
+		return
+	}
+	if !build() {
+		h.bad(name + "  could not restore the store")
+		return
+	}
+	if rc := check(); rc != 0 {
+		h.bad(fmt.Sprintf("%s  the restored store is not clean (exit %d)", name, rc))
+		return
+	}
+	h.ok(code + "  " + name)
+}
+
 func checkCorpus(r *repo) (verdict, error) {
 	h := &harness{me: "check-corpus"}
 	fixtures := filepath.Join(r.root, "crates", "bit-ids", "tests", "fixtures")
@@ -190,37 +230,7 @@ func checkCorpus(r *repo) (verdict, error) {
 	}
 
 	plant := func(name, code string, mutate func() bool) {
-		if !buildStore() {
-			h.bad(name + "  could not build the store")
-			return
-		}
-		before := treeDigest(store)
-		if !mutate() {
-			h.bad(name + "  NOT-PLANTED (the mutation reported it did not apply)")
-			return
-		}
-		if before == treeDigest(store) {
-			h.bad(name + "  NOT-PLANTED (the tree digest did not move)")
-			return
-		}
-		rc := runCheck()
-		if rc != 1 {
-			h.bad(fmt.Sprintf("%s  expected exit 1, got %d", name, rc))
-			return
-		}
-		if !anyContains(out, code) {
-			h.bad(fmt.Sprintf("%s  refused, but not as %s: %s", name, code, headJoin(out, 3)))
-			return
-		}
-		if !buildStore() {
-			h.bad(name + "  could not restore the store")
-			return
-		}
-		if rc := runCheck(); rc != 0 {
-			h.bad(fmt.Sprintf("%s  the restored store is not clean (exit %d)", name, rc))
-			return
-		}
-		h.ok(code + "  " + name)
+		plantCase(h, name, code, store, buildStore, mutate, runCheck, func() []string { return out })
 	}
 	remove := func(rel string) func() bool {
 		return func() bool { return os.Remove(inStore(rel)) == nil }

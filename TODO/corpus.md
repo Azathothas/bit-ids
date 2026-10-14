@@ -358,7 +358,7 @@ refuses. An unbounded walk would hang rather than report. `E-VIW-04`.
 ⭐ **The retention half needed two stores rather than one.** Reading the
 corrected store and finding the original still there proves it was written, not
 that it was left alone. `build-store --correct V` writes the correction beside
-the record it corrects, and `check-indexes.sh` compares that record's bytes
+the record it corrects, and `check-indexes` compares that record's bytes
 between the two stores, which is the only comparison that can see a correction
 that edited what it corrected.
 

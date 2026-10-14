@@ -71,10 +71,12 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   against a store `build-store` wrote. ⭐ It was `corpus/check-corpus.sh` until
   2026-10-14, compared case for case against it before that half was deleted,
   so the Windows lane runs it too. `CI-07`.
-- [`corpus/check-indexes.sh`](corpus/check-indexes.sh) proves the three things a
-  derived file owes: byte-identical clean builds, rows that resolve back to the
-  records they came from, and a corrected record that has left the views while
-  its bytes are still filed where they were.
+- `bit-check check-indexes` proves the three things a derived file owes:
+  byte-identical clean builds, rows that resolve back to the records they came
+  from, and a corrected record that has left the views while its bytes are
+  still filed where they were. ⭐ It was `corpus/check-indexes.sh` until
+  2026-10-14, compared case for case against it before that half was deleted.
+  `CI-07`.
 - [`publishing/check-release.sh`](publishing/check-release.sh) assembles a
   release twice, compares the bytes, and hands the checksum file to `sha256sum
   -c`, which is a reader this project did not write.

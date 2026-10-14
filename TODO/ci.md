@@ -1329,7 +1329,7 @@ than one population:
 
 | kind | rows, as `check-gate.ps1` declares them | closes when |
 | --- | --- | --- |
-| a portable subject | `check-assemble`, `check-connector`, `check-formats`, `check-indexes`, `check-release`, `check-staleness`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
+| a portable subject | `check-assemble`, `check-connector`, `check-formats`, `check-release`, `check-staleness`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
 | class B | `check-store` | its plants are reconsidered for Windows: a symbolic link and a named pipe cannot be made by an unprivileged Windows session, and a half that skipped them would report a smaller pass under the same name |
 | class C, an `sh` subject | `check-access`, `check-bundle`, `check-publish`, `check-transmission` | the subject gains a Windows half; not this entry's to close |
 | an `sh` subject not yet classed | `check-capture-client`, `check-release-route`, `check-source-route` | class C as well: each subject is an `sh` script; their reasons say so in the next change to them |
@@ -1349,6 +1349,17 @@ stopped sweeping undeclared files, and each failed exactly its own row, 15 of
 runners call `bit-check check-corpus`, so the Windows lane runs it. ⚠
 `check-gate-rows`' dropped-prover plant had removed `corpus/check-corpus` from
 the `sh` list; it removes `corpus/check-indexes` now.
+
+⭐ **And `check-indexes` the second, the same day.**
+[`../tools/check/indexes.go`](../tools/check/indexes.go) ports its 17 rows,
+sharing `plantCase` with `check-corpus`. Two plants went into the index builder,
+and both halves agreed on each. One kept a superseded record in the views, which
+failed the three correction rows, 14 of 17. The other renamed `E-VIW-02`, which
+failed that case alone, 16 of 17. ⚠ The first port read the `latest` section
+until the exact line `  ]`; the `sh` half's `sed` range ends at any line
+starting `  ]`, so the port read on into the next section and found the
+corrected record there. It reads as `sed` does now. The dropped-prover plant in
+`check-gate-rows` removes `publishing/check-release` now.
 
 Prove: ⛔ **Rewritten with the Approach.** Every portable-subject row is a
 `bit-check` row on the Windows lane, each port compared against its `sh` half

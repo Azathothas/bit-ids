@@ -157,7 +157,7 @@ else
 fi
 
 cp "$SH_GATE" "$WORK/gate.sh" || exit 2
-if replace_once "$WORK/gate.sh" 'corpus/check-indexes ' ''; then
+if replace_once "$WORK/gate.sh" 'publishing/check-release ' ''; then
   rows_sh "$WORK/gate.sh" "$WORK/sh.plant"
   compare "sh       a prover dropped from the sh list alone is caught" \
     "$WORK/sh.plant" "$WORK/ps.rows" differ
