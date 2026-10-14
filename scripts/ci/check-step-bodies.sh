@@ -613,6 +613,22 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
   run_body "$WORK/install.sh" default "$TREE"
   ended "sh       a product slower than one tick and inside the bound survives" 0
+
+  # ⛔ AND A REFUSED INSTALL'S DIAGNOSIS REACHES THE STEP'S OUTPUT. The body
+  # carried the exit code as `rc=$?` on the line after the install, and the
+  # runner runs a body as `bash -e`: a failing install ended the shell on its own
+  # line and the `cat` after it never ran. Measured on `capture-client` run 35,
+  # whose source lane failed to compile and whose job log printed none of it.
+  # ⚠ The exit code is asked too, because a body that printed the log and then
+  # ended 0 would pass the half of this case that reads the output.
+  stub_adapter 'printf "stub refused its install\n" >&2; exit 1'
+  rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
+  run_body "$WORK/install.sh" default "$TREE"
+  if ! grep -q -F -e 'stub refused its install' "$BODY_OUT" 2>/dev/null; then
+    fail "sh       a refused install's diagnosis never reached the step's output (exit $BODY_RC)"
+  else
+    ended "sh       a refused install ends 1 and its diagnosis reaches the step's output" 1
+  fi
 else
   fail "sh       capture-client.yml has no linux step named Install the client (exit $?)"
 fi
@@ -649,12 +665,34 @@ done
 status=none
 [ -z "$body" ] || status=$(jq -r '.status // "none"' "$body" 2>/dev/null)
 printf '%s %s %s\n' "$method" "$url" "$status" >>"$STUB_CURL_LOG"
+# Every request that asks to close the run is kept whole and in order, so a case
+# can read what the first one said and whether a second was sent.
+if [ "$status" = completed ]; then
+  _n=1
+  while [ -e "$STUB_CURL_LOG.completion.$_n" ]; do _n=$((_n + 1)); done
+  cp "$body" "$STUB_CURL_LOG.completion.$_n"
+fi
+conclusion=$([ -z "$body" ] || jq -r '.conclusion // "none"' "$body" 2>/dev/null)
+# ⚠ A request that never got an answer prints nothing and exits 28, which is
+# what curl does when `--max-time` ends it; `STUB_CURL_SILENT` stands for that.
+if [ "$status" = completed ] && [ "${STUB_CURL_SILENT:-}" = yes ]; then
+  exit 28
+fi
 case "$method" in
   POST) printf '{"id": 7, "status": "in_progress"}\n' ;;
   PATCH)
+    # ⚠ THE API'S OWN REFUSALS. A completion with no conclusion it knows is a
+    # 422 with a message and no status, and so is a text it will not take,
+    # which `STUB_CURL_REFUSE_TEXT` stands for.
+    if [ "$status" = completed ] && ! printf '%s\n' "$conclusion" |
+      grep -q -x -E 'action_required|cancelled|failure|neutral|success|skipped|timed_out'; then
+      printf '{"message": "Invalid request. conclusion is required"}\n'
+    elif [ "${STUB_CURL_REFUSE_TEXT:-}" = yes ] && jq -e '.output.text' "$body" >/dev/null 2>&1 &&
+      [ "$status" = completed ]; then
+      printf '{"message": "Validation Failed"}\n'
     # ⚠ A completion the API refused answers the run's old status, which is the
     # read-back the recorder has to notice.
-    if [ "$status" = completed ] && [ "${STUB_CURL_REFUSE:-}" = yes ]; then
+    elif [ "$status" = completed ] && [ "${STUB_CURL_REFUSE:-}" = yes ]; then
       printf '{"id": 7, "status": "in_progress"}\n'
     else
       printf '{"id": 7, "status": "%s"}\n' "$([ "$status" = none ] && printf in_progress || printf '%s' "$status")"
@@ -675,8 +713,11 @@ BIT_IDS_RECORDER_INTERVAL=1
 BIT_IDS_RECORDER_LIMIT=120
 STUB_CURL_LOG="$WORK/curl.log"
 STUB_CURL_REFUSE=""
+STUB_CURL_REFUSE_TEXT=""
+STUB_CURL_SILENT=""
 export GH_TOKEN GITHUB_API_URL GITHUB_REPOSITORY GITHUB_SHA LABEL \
-  BIT_IDS_RECORDER_INTERVAL BIT_IDS_RECORDER_LIMIT STUB_CURL_LOG STUB_CURL_REFUSE
+  BIT_IDS_RECORDER_INTERVAL BIT_IDS_RECORDER_LIMIT STUB_CURL_LOG STUB_CURL_REFUSE \
+  STUB_CURL_REFUSE_TEXT STUB_CURL_SILENT
 
 # ⛔ `[f]light`, NOT `flight`. The pattern is a regular expression matched against
 # every command line, including that of a shell carrying the pattern as an
@@ -698,7 +739,7 @@ recorder_gone() {
 # One start, a wait, and one stop, through the lifted bodies.
 record_once() { # temp-dir
   RUNNER_TEMP=$1
-  rm -rf "$RUNNER_TEMP" "$STUB_CURL_LOG"
+  rm -rf "$RUNNER_TEMP" "$STUB_CURL_LOG" "$STUB_CURL_LOG".completion.*
   mkdir -p "$RUNNER_TEMP" || return 2
   _path=$PATH
   PATH="$RECBIN:$PATH"
@@ -737,6 +778,22 @@ if lift "$CLIENT_WF" linux "Start the flight recorder" "$WORK/rec-start.sh" &&
     [ "$JSON" = "1" ] || tail -3 "$STUB_CURL_LOG" 2>/dev/null | sed 's/^/          /'
   fi
 
+  # ⛔ AND THE CLOSED RUN STILL SHOWS THE STATE THE JOB ENDED IN. Measured on
+  # `capture-client` run 35: the completion went up as a second request with a
+  # title and no `text`, and both check runs that closed cleanly showed an empty
+  # one. ⚠ `route to the API` is the section every snapshot ends with, so a text
+  # that carries it carries a whole snapshot rather than a title; the title is
+  # the ending's, so it is the LAST snapshot rather than a loop's left over; and
+  # one request closed it, so nothing was retried.
+  if jq -e '(.output.text | test("### route to the API")) and
+      (.output.title | startswith("the job reached its last step at +")) and
+      .conclusion == "neutral"' "$STUB_CURL_LOG.completion.1" >/dev/null 2>&1 &&
+    [ ! -e "$STUB_CURL_LOG.completion.2" ]; then
+    pass "sh       one request closes the check run, carrying the last snapshot"
+  else
+    fail "sh       one request closes the check run, carrying the last snapshot"
+  fi
+
   # ⛔ AND A COMPLETION THE API DID NOT ACCEPT IS NOT REPORTED AS ONE. A recorder
   # that wrote `completed` because it had sent the request would be a claim about
   # a check run nobody read back.
@@ -749,6 +806,36 @@ if lift "$CLIENT_WF" linux "Start the flight recorder" "$WORK/rec-start.sh" &&
     pass "sh       a completion the API did not accept is reported as not confirmed"
   else
     fail "sh       a completion the API did not accept is reported as not confirmed"
+  fi
+
+  # ⚠ AND A LAST SNAPSHOT THE API REFUSES DOES NOT KEEP THE RUN OPEN. One
+  # request carries the text and the completion, so a text the API would not
+  # take would refuse both; the recorder asks again with no `output`.
+  STUB_CURL_REFUSE_TEXT=yes
+  record_once "$WORK/rec-text-refused"
+  run_body "$WORK/rec-stop.sh" default "$TREE"
+  STUB_CURL_REFUSE_TEXT=""
+  if [ "$BODY_RC" = 0 ] &&
+    grep -q -F -e 'completed: the job reached its last step' "$RUNNER_TEMP/flight-recorder.done" 2>/dev/null &&
+    jq -e 'has("output") | not' "$STUB_CURL_LOG.completion.2" >/dev/null 2>&1; then
+    pass "sh       a last snapshot the API refuses still closes the run, without it"
+  else
+    fail "sh       a last snapshot the API refuses still closes the run, without it"
+  fi
+
+  # ⚠ AND A CLOSING REQUEST THAT GOT NO ANSWER IS NOT SENT AGAIN. Nothing came
+  # back to say the text was refused, and a second request would spend the wait
+  # the job's last step gives the recorder.
+  STUB_CURL_SILENT=yes
+  record_once "$WORK/rec-silent"
+  run_body "$WORK/rec-stop.sh" default "$TREE"
+  STUB_CURL_SILENT=""
+  if [ "$BODY_RC" = 0 ] &&
+    grep -q -F -e 'not confirmed' "$RUNNER_TEMP/flight-recorder.done" 2>/dev/null &&
+    [ -e "$STUB_CURL_LOG.completion.1" ] && [ ! -e "$STUB_CURL_LOG.completion.2" ]; then
+    pass "sh       a closing request that got no answer is not sent again"
+  else
+    fail "sh       a closing request that got no answer is not sent again"
   fi
 
   # ⚠ AND THE STOP NEVER FAILS A JOB, because the recorder is a diagnostic. With

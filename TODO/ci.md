@@ -2890,6 +2890,94 @@ matters against the step's 60-second bound once the interval approaches it. A
 case timing it would be the load-sensitive row this entry already carries one of,
 so it is recorded rather than turned into one.
 
+#### ⛔ A closed run showed no snapshot, and a failed install printed nothing. 2026-10-14
+
+⭐ **The stop works on a runner.** `capture-client` run 35, on `a39d933`, closed
+both of its recorder runs `completed`/`neutral`, *the job reached its last
+step*, each one second after its job's last step began.
+
+⛔ **And both closed runs carried a title over an empty text.** The last
+snapshot went up first and the completion after it, as a second request whose
+`output` had a title and no `text`; a check run's output is replaced by the
+update that carries one. ⚠ The source lane's last state was the compile it
+failed in, and it was gone from the one place this entry says a dispatch is
+read. ⭐ The recorder now closes the run in the request that posts the final
+snapshot. ⚠ That couples the two, so a text the API refuses would refuse the
+completion with it; a refusal that came back is asked once more with no
+`output`, which keeps the last snapshot the run accepted, and a request that got
+no answer is not sent again, because a second would spend the stop step's wait.
+
+⛔ **The job log had nothing either.** *Install the client* carried its exit
+code as `rc=$?` on the line after the install, and the runner runs a body as
+`bash -e`: the failing install ended the shell on its own line, so the `cat`
+that prints `install-step.log` never ran, on any failure, since that body was
+written. ⚠ `check-step-bodies` runs this body under `bash -e` and asked its
+exit code and whether its output closed, which are the same either way. ⭐ It is
+`rc=0` and `|| rc=$?` now,
+and the install artifact, which carried the log throughout, is what said why.
+
+| measured on this host, 2026-10-14, by `check-step-bodies` | result |
+| --- | --- |
+| the request that closes the check run | one request, `neutral`, titled with the ending, carrying the last snapshot through to its `route to the API` section |
+| a closing snapshot the stub refuses as the API would | the run still closes, by a second request with no `output` |
+| a closing request the stub never answers | `not confirmed`, and no second request |
+| *Install the client* over a stub that refuses | before the fix: exit 1 and none of the stub's refusal in the output, run 35 reproduced; after it: exit 1, the refusal printed, the output closed |
+| the harness | 35 cases, 35 passed |
+
+⚠ **The stub now answers a completion the way the API does**: one with no
+conclusion it knows is a 422 with a message and no status. It accepted that
+before, which the review of this change showed by planting it.
+
+Guard mutation, each plant replaced exactly once in a scratch copy of the tree
+and verified to have changed the file, run through `check-step-bodies`, clean
+control either side:
+
+| plant | verdict |
+| --- | --- |
+| `flight-recorder.sh`: the completion as a second request with a title and no text, the shape run 35 measured | ⭐ refused, 2 cases: the snapshot case and the refused-text case |
+| `flight-recorder.sh`: the text emptied in the closing request only | ⭐ refused, by the snapshot case |
+| `flight-recorder.sh`: the closing request reuses the loop's last snapshot | ⭐ refused, by the snapshot case, on its title |
+| `flight-recorder.sh`: the closing request carries no conclusion | ⭐ refused, by the snapshot case |
+| `flight-recorder.sh`: a refused closing snapshot is not asked again | ⭐ refused, by the refused-text case |
+| `flight-recorder.sh`: a closing request that got no answer is asked again | ⭐ refused, by the no-answer case; it survived until that case was written |
+| the workflow: `rc=$?` back on the line after the install | ⭐ refused, by the refusal case |
+| the workflow: the log printed and the step ended 0 | ⭐ refused, 2 cases: the refusal case and the step's own bound |
+
+⛔ **The door sweep of the same change found the shape once more**, in
+`ci.yml`'s *Shell syntax and style*: `shellcheck` and `shfmt` on two bare lines,
+so on the runner a shellcheck finding ended the block before shfmt's diff
+printed, and under `check-workflow`'s `sh -c` a finding only shellcheck makes was
+answered by shfmt's exit 0. Driven over a tree with an SC2086 line appended,
+which shfmt leaves alone: the old body exited 0 under `sh` and 123 under
+`bash -e`; the fixed body exits 123 under both and 0 on the clean tree.
+`check-workflow` plants that line now, beside its parse-error plant, which
+passed either way.
+
+Residuals from that sweep:
+
+- ⚠ **The bound chain is stated in comments and checked by nothing.**
+  `check-workflow` asks only that `timeout-minutes` exists. Every source-lane
+  value moved by 600 seconds together on 2026-10-14, and one moving alone would
+  have passed. Acceptance: a `check-workflow` case that reads each lane's
+  `BIT_IDS_INSTALL_TIMEOUT`, `BIT_IDS_STEP_TIMEOUT`, `OUTER_TIMEOUT`, the step's
+  `timeout-minutes` and the job's, and refuses a chain that does not nest,
+  refuted by moving one value alone.
+- ⚠ **The stop step waits 60 seconds for a final snapshot that grows with every
+  blocked task**, and asks `[ -e ]` of a done file the recorder writes in two
+  steps. Past 60 seconds the job ends with its run open, which reads as lost
+  contact. Acceptance: the done file is written by rename, and a
+  `check-step-bodies` case whose final snapshot outlasts the wait says so.
+- ⚠ **The `rc=$?` shape has now shipped twice and nothing refuses it by
+  reading.** `2608ce0` fixed it in two probe steps on 2026-09-16 and wrote the
+  rule into `docs/conventions/shell.md`, four and a half hours after `4b6c33d`
+  wrote this body with it. The cases here guard two bodies, not the shape. Acceptance:
+  `check-project` refuses a line `NAME=$?` standing alone in a workflow `run:`
+  body that is not `pwsh` and has no `set +e` before it, refuted by a plant of
+  the old *Install the client* body; `check-bitcheck --harnesses` holds.
+- ⚠ **The job's `timeout-minutes` is one number for both lanes**, so the release
+  lane's rose to 45 minutes with the source lane's. It is the bound that should
+  never fire, and a release lane ends in minutes.
+
 #### ⛔ AND THE PROBES ARE DELETED, 2026-09-17, BECAUSE `ACQ-06` LANDED
 
 ⭐ **Ten diagnostic steps stood in `capture-client.yml` and they are gone.** Their
@@ -3597,6 +3685,73 @@ either side:
 not scanned at all: `capture-run.sh` installs nothing and writes no product
 output. `docs/capture-methodology.md` says so beside the sentence this makes
 true for client captures.
+
+### ⛔ Run 35: the evidence came back, and `3.0.2` stopped both lanes. 2026-10-14
+
+`capture-client` run 35, id 38511515697, dispatched on `a39d933` with the
+defaults: `aria2-next` over release and source. Read from its two
+`flight-recorder (...)` check runs, its job steps and its three artifacts.
+
+| | release | source |
+| --- | --- | --- |
+| resolved | `3.0.2`, its asset `OK` against the vendor's checksums | `v3.0.2` from the repository's refs, commit `d518e905…` |
+| *Install the client* | 6 seconds, `acquired=yes` | failed after 508 seconds, in the compile |
+| *Capture* | ⛔ refused at the adapter's `start`: *reports enable-dht6 is not false* | not reached |
+| evidence | ⭐ *Scan the evidence of a refused capture* passed and the bundle uploaded, carrying the options dump that says why | the install logs |
+| the recorder | closed, `completed`/`neutral`, over an empty text | the same |
+
+⭐ **The section above held on a runner, the first time it was asked.** A
+capture refused, the scan read its bundle, and the upload followed the scan:
+without it nothing below could have been diagnosed from anything but a job log.
+
+⛔ **The release lane: a guard was right for the smaller reason.** `3.0.2` no
+longer reports `enable-dht6`, and its dump shows `ed2k-port-mapping` on by
+default, a surface the adapter never named. The adapter now switches it off and
+sweeps every reported switch of the four discovery families; driven against the
+same bytes in a namespace holding loopback alone. `CLIENT-14` in
+[`clients.md`](clients.md) carries the measurement.
+
+⛔ **Two ways the dispatch could not be read, both now fixed.** The recorder's
+closing request erased the snapshot it had just posted, and *Install the
+client*'s `rc=$?` under `bash -e` meant its log never reached the job log.
+`CI-08` carries both.
+
+⛔ **The source lane: `v3.0.2` does not compile on the capture host.**
+`src/disk/File.cc` calls `std::exchange` and never includes `<utility>`, and the
+runner's GCC 13 stops there. The vendor's CI and its Linux release jobs build on
+`ubuntu-22.04`, and the asset the release lane installed says so in its own
+`.comment` section: `GCC: (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0`. This route
+builds where the capture runs, on `ubuntu-24.04`. Reproduced on the session
+host twice: from `File.cc` and the two headers it includes, by GCC 13 and by
+clang 18 over the same libstdc++, and from the whole tag through
+`cmake --preset default`, one failure on the same line. ⚠ The vendor's `main`
+carries the same file.
+
+⭐ **Fixed in the route, with no file the vendor wrote changed.** `aria2-next.sh`
+configures with `CXXFLAGS='-include utility'`: the header the compiler's
+diagnostic names, holding a declaration the source already calls. The
+superbuild forwards `CMAKE_CXX_FLAGS` to the inner project and its seven
+CMake-built dependencies, and the flag is set rather than appended to a host's
+own; OpenSSL, FFmpeg and GPAC configure themselves and do not receive it. The
+line it ran is written to
+`source-configure.txt`, which the install artifact uploads. ⚠ The record has no
+field for it, which `ACQ-03` already says of every source route's configure
+options.
+
+| measured on the session host, 2026-10-14 | result |
+| --- | --- |
+| `v3.0.2` unmodified, `cmake --preset default` | configured, then stopped at `File.cc:207`: the runner's failure, and the only one |
+| the same tag with `CXXFLAGS='-include utility'` | configured and built every target in 870 seconds: sha256 `6743a8b2…87cd4bb`, `.comment` `GCC: (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0`, answering `aria2-next version 3.0.2` |
+| the adapter's `start` over that build, in the loopback namespace | exit 0, through every guard `CLIENT-14` describes |
+| the adapter's own `install source`, its prefix under a scratch `HOME` | exit 0 in 869 seconds: commit `d518e905…`, `elf-binary`, `version` answering `3.0.2`, and `source-configure.txt` holding the quoted line and the host's `CFLAGS`, `CPPFLAGS` and `LDFLAGS`, each `<unset>` |
+
+⚠ **The bound moved with it.** 870 seconds here sits against 900 on the runner.
+A runner has run slower than a session host - 2.7.5 took 496 seconds there
+against 366 on the host of 2026-09-09 - and faster: run 35 reached the compile
+error in 508 seconds, its clone included, where this host took 588. The
+source lane's install bound is 1500 seconds now, the step's 1860, the outer
+1980, the step's timeout 35 minutes and the job's 45; the release lane's are
+unchanged. The next dispatch measures the real number.
 
 ## CI-05: Acceptance commands that cannot pass over nothing
 

@@ -271,9 +271,10 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   check run on the commit every few seconds while a capture job runs, so the
   evidence leaves the host as it is taken. ⭐ Posts that stop mean the host lost
   contact at that moment. ⛔ The job's last step, *Stop the flight recorder*,
-  closes the check run and the recorder reads the closure back, so a run still
-  open after its job is a host that never reached that step. `check-step-bodies`
-  drives both steps against a stub `curl`.
+  closes the check run in the request that posts its last snapshot, and the
+  recorder reads the closure back, so a run still open after its job is a host
+  that never reached that step and one that closed shows the state its job ended
+  in. `check-step-bodies` drives both steps against a stub `curl`.
 - [`ci/report-holders.sh`](ci/report-holders.sh) names the processes still
   holding an open descriptor on a file, and prints the process table beside them.
   ⚠ It reports and never refuses: a step that went red because its diagnostic

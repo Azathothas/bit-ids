@@ -8,9 +8,9 @@ and why it is not the record. The work order is
 | | |
 | --- | --- |
 | the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
-| the resume point | dispatch `capture-client` and assemble what it uploads. |
-| in flight | `157b133` (the connector reports every sample) is pushed and CI run on it is green on all six jobs. Uncommitted: `scripts/capture/scan-bundle.sh` and a scan step so a refused capture's bundle is uploaded after rule 12, and *Stop the flight recorder* so the recorder closes its check run; `capture-client.yml`, `check-workflow.sh`, `check-step-bodies.sh`, `check-capture-client.sh`, `flight-recorder.sh`, `capture-client.sh`, `install-client.sh`. Still to run before the push: the recorder plants, the gate, and `check-workflow.sh` unsharded. |
-| the state of the tree | dirty with the work above; the harnesses it touches pass. |
+| the resume point | re-dispatch `capture-client` (`aria2-next`, release and source), read it from its recorder check runs, and assemble both lanes with the uploaded artifacts. `CI-09`. |
+| in flight | run 35 is read and recorded, and everything it stopped on is fixed in the change after `a39d933`: 3.0.2's discovery switches, the source tag that does not compile on GCC 13, the recorder's empty closed runs and the install log the job log never printed. `CLIENT-14`, `CI-08`, `CI-09`. |
+| the state of the tree | the source lane's bounds rose to 1500 seconds for the install and 45 minutes for the job, from a local build of 870 seconds; the runner's number is the next dispatch's to measure. |
 
 ## Starting, on this host
 
@@ -26,9 +26,10 @@ and why it is not the record. The work order is
   check run on the commit shows the host's state while the job runs.
 - ⚠ The session host is `root` and a runner is uid 1001. Drive anything that
   uses `sudo` as an unprivileged user before believing a local pass.
-- ⚠ A capture that refuses uploads no evidence bundle today, so runs 38109299467
-  and 38111442119 left only their job logs: the connector's refusal is in them,
-  the bytes are not.
+- ⭐ A capture that refuses uploads its bundle after `scan-bundle.sh` passes, which
+  is what run 35 was diagnosed from. ⚠ In that run a closed recorder check run
+  showed no text and a failed install printed nothing to the job log; both are
+  fixed since, so the next dispatch is the first to show either.
 
 ## The paste
 

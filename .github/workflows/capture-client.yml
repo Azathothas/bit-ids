@@ -75,12 +75,14 @@ jobs:
   linux:
     name: Linux client capture (${{ matrix.adapter }}, ${{ matrix.route }})
     runs-on: ubuntu-24.04
-    # ⛔ 35, BECAUSE THE BOUNDS BELOW HAVE TO FIT UNDER IT. A source lane can
-    # spend 1380s in *Install the client* before its own last resort fires, and
+    # ⛔ 45, BECAUSE THE BOUNDS BELOW HAVE TO FIT UNDER IT. A source lane can
+    # spend 1980s in *Install the client* before its own last resort fires, and
     # the steps ahead of it are a further three minutes or so; a source build of
-    # `aria2-next` took 12.5 minutes end to end on 2026-10-11. ⚠ A job cancelled
-    # by THIS number uploads nothing, so it is the bound that should never fire.
-    timeout-minutes: 35
+    # `aria2-next` took 12.5 minutes end to end on 2026-10-11, and `v3.0.2`
+    # took 870 seconds to configure and build on the session host on 2026-10-14.
+    # ⚠ A job cancelled by THIS number uploads nothing, so it is the bound that
+    # should never fire.
+    timeout-minutes: 45
     # ⛔ READ ONLY. A capture produces an artifact and never a commit.
     # ⚠ `checks: write` IS THE FLIGHT RECORDER'S AND NOTHING ELSE'S: it posts
     # this host's state as a check run's output while the job runs, which is the
@@ -252,26 +254,37 @@ jobs:
         env:
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
           ROUTE: ${{ matrix.route }}
-          # ⚠ The route's own bound: 900 seconds for a source build, which was
-          # measured at 496 on a runner, and 420 for everything else.
-          BIT_IDS_INSTALL_TIMEOUT: ${{ matrix.route == 'source' && '900' || '420' }}
+          # ⚠ The route's own bound: 1500 seconds for a source build and 420 for
+          # everything else. 2.7.5 took 496 on a runner against 366 on the
+          # session host of 2026-09-09. `v3.0.2`, whose superbuild compiles ten
+          # dependencies first, took 870 on the session host of 2026-10-14, where
+          # its failing build had reached the compile error in 588 against a
+          # runner's 508.
+          BIT_IDS_INSTALL_TIMEOUT: ${{ matrix.route == 'source' && '1500' || '420' }}
           # ⚠ Each bound outlasts the one inside it: install-client's own bounds
-          # sum to 630 seconds on a release lane and 1110 on a source one, under
+          # sum to 630 seconds on a release lane and 1710 on a source one, under
           # this, under OUTER_TIMEOUT, under the step's `timeout-minutes`, under
           # the job's.
-          BIT_IDS_STEP_TIMEOUT: ${{ matrix.route == 'source' && '1260' || '780' }}
+          BIT_IDS_STEP_TIMEOUT: ${{ matrix.route == 'source' && '1860' || '780' }}
           # ⛔ AN ENVIRONMENT VALUE, NOT AN EXPRESSION IN `run:`, because
           # `check-step-bodies` lifts that body and runs it as shell.
-          OUTER_TIMEOUT: ${{ matrix.route == 'source' && '1380' || '900' }}
-        timeout-minutes: ${{ matrix.route == 'source' && 25 || 17 }}
+          OUTER_TIMEOUT: ${{ matrix.route == 'source' && '1980' || '900' }}
+        timeout-minutes: ${{ matrix.route == 'source' && 35 || 17 }}
         # ⚠ `>file 2>&1 </dev/null` hands the whole subtree a regular file, and
         # the exit code is carried by hand because the last command is the `cat`.
         # `${OUTER_TIMEOUT:-1080}` keeps the line runnable outside a dispatch.
+        # ⛔ `|| rc=$?`, NOT `rc=$?` ON THE NEXT LINE. The runner runs this body
+        # as `bash -e`, so a failing install ended the shell on its own line and
+        # the `cat` never ran: run 35's source lane failed to compile and its job
+        # log printed none of it. `check-step-bodies` asks a refusal's output.
+        # ⚠ When the outer `timeout` fires, `install-step.sh` dies before it
+        # prints its own step log, so a 124 here prints little; the install
+        # artifact carries the rest.
         run: |
           set -u
+          rc=0
           timeout -k 30 "${OUTER_TIMEOUT:-1080}" sh scripts/acquisition/install-step.sh \
-            >"$RUNNER_TEMP/install-step.log" 2>&1 </dev/null
-          rc=$?
+            >"$RUNNER_TEMP/install-step.log" 2>&1 </dev/null || rc=$?
           cat "$RUNNER_TEMP/install-step.log" || true
           exit "$rc"
         # ⚠ The body this replaced is in that file, unchanged in what it does.

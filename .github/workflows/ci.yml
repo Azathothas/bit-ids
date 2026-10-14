@@ -72,9 +72,17 @@ jobs:
         # directory is a list, and ACQ-02 added a directory the list did not
         # have, so the new script would have gone unchecked on the lane that is
         # meant to check it.
+        # ⛔ EACH CHECK'S STATUS IS KEPT, AND BOTH RUN. On two bare lines, the
+        # runner's `bash -e` ended the block at a shellcheck finding before
+        # shfmt's diff was printed, and `check-workflow`'s `sh -c` answered a
+        # finding only shellcheck makes with shfmt's exit 0. Found on
+        # 2026-10-14 by the door sweep of the change that fixed the same shape
+        # in `capture-client.yml`.
         run: |
-          find scripts -name '*.sh' -print0 | xargs -0 shellcheck
-          find scripts -name '*.sh' -print0 | xargs -0 shfmt -d -i 2 -ci
+          rc=0
+          find scripts -name '*.sh' -print0 | xargs -0 shellcheck || rc=$?
+          find scripts -name '*.sh' -print0 | xargs -0 shfmt -d -i 2 -ci || rc=$?
+          exit "$rc"
       # ⛔ ITS OWN STEP RATHER THAN A GATE ROW, AND THE REASON IS MEASURED.
       # `check-defaults` runs five checks under six environments, which is 28
       # seconds - free beside a concurrent gate and NOT free inside

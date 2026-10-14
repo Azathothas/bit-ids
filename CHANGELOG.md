@@ -5,6 +5,34 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T05:03:32Z
+
+- ⛔ **`aria2-next` 3.0.2 IS STARTED WITH EVERY DISCOVERY SWITCH IT REPORTS OFF.**
+  `capture-client` run 35 refused it at the adapter's read-back: 3.0.2 no longer
+  reports `enable-dht6`, and the options dump its refused capture uploaded showed
+  `ed2k-port-mapping`, UPnP for its ED2K ports, on by default and named nowhere.
+  The adapter switches it off, holds every reported key of the DHT,
+  port-mapping, local-discovery and peer-exchange families to `false`, and
+  refuses any option reported `true` that it has not judged; driven against the
+  same bytes in a namespace holding loopback alone.
+- ⛔ **THE SOURCE ROUTE BUILDS `v3.0.2` ON GCC 13.** `src/disk/File.cc` calls
+  `std::exchange` without `<utility>`, which the vendor's GCC 11 tolerates. The
+  route configures with `CXXFLAGS='-include utility'`, changes no vendor file,
+  and writes the line it ran beside the build. Measured whole on the session
+  host at 870 seconds, so the source lane's bounds rose: install 1500 seconds,
+  job 45 minutes.
+- ⛔ **A CLOSED FLIGHT-RECORDER RUN SHOWS ITS LAST SNAPSHOT.** The closing request
+  carried a title and no text, which erased the snapshot posted just before it;
+  both of run 35's closed runs were empty. It is one request now, asked once
+  more without the text if the API refuses it.
+- ⛔ **A FAILED INSTALL'S LOG REACHES THE JOB LOG.** *Install the client* read
+  `rc=$?` on the line after the install, which `bash -e` never reaches on a
+  failure. `check-step-bodies` asks a refusal's output now. ⭐ `ci.yml`'s shell
+  lint had the same shape, two checks on two bare lines, and keeps both
+  statuses now; `check-workflow` plants a finding only shellcheck makes.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-14`,
+  [`TODO/ci.md`](TODO/ci.md) `CI-08` and `CI-09`. No version bump and no deploy.
+
 ### 2026-10-14T03:48:10Z
 
 - ⛔ **A REFUSED CAPTURE UPLOADS ITS EVIDENCE, AFTER RULE 12.** The two

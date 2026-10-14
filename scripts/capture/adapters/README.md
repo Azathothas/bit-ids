@@ -176,6 +176,16 @@ only if you already suspect it; the socket table names it whether or not you do.
 that this list does not cover is an open question and not a claim - nothing has
 read their sockets this way.
 
+⛔ **And a product's surfaces move with its version, which a socket table read
+once does not see.** `aria2-next` 3.0.0 added `ed2k-port-mapping`, UPnP for its
+ED2K ports, which 3.0.2 has on by default, and 3.0.2 no longer reports
+`enable-dht6`. The
+read-back refused the first 3.0.2 capture over the missing key, and the options
+dump that came back named the new switch. ⭐ So `aria2-next.sh` holds every
+switch of the four families its build reports to `false`, named in the file or
+not, beside the list it passes. `CLIENT-14` in
+[`../../../TODO/clients.md`](../../../TODO/clients.md) carries the measurement.
+
 ## The routes
 
 ⛔ **Two independent routes per target, and `E-ACQ-07`/`E-ACQ-08` are what
@@ -204,10 +214,12 @@ repository controls both. An adapter that has a real package route should prefer
 it, and one that does not should say so where the record can see it.
 
 ⚠ **A source build is minutes, not seconds, and the caller's bound has to know.**
-`aria2-next`'s took 366 seconds on a session host and **496** on a runner - about
-1.35x - so a locally measured build time is a lower bound on what a runner needs
-and never an estimate of it. The workflow raises `BIT_IDS_INSTALL_TIMEOUT` for
-`source` lanes alone.
+`aria2-next` 2.7.5's took 366 seconds on a session host and **496** on a runner,
+about 1.35x; on 2026-10-14 a runner reached `v3.0.2`'s compile error in 508
+seconds where the session host took 588. So a locally measured build time is not
+an estimate of what a runner needs in either direction, and the bound carries
+the margin. The workflow raises `BIT_IDS_INSTALL_TIMEOUT` for `source` lanes
+alone.
 
 ### The release route's artifact, declared where the target is known
 

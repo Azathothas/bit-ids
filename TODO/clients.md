@@ -206,6 +206,10 @@ minutes earlier, because the checks re-run after the edit were the ones the edit
 looked like it touched and `--public` is a second invocation of a check whose
 first invocation passes.
 
+⚠ **Residual, from the door sweep of 2026-10-14:** `qbittorrent.sh` writes its
+discovery settings into the profile and nothing reads back what the running
+build applied; `CLIENT-06` carries it with Transmission's.
+
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository
@@ -974,12 +978,27 @@ with `libcurl4-openssl-dev` added it built in **695 seconds** on four processors
 and the daemon answered `transmission-daemon 4.1.3 (838877323f)`. ⚠ The runner
 image's own package list names `libssl-dev` and `curl` and no libcurl
 development package, read from `actions/runner-images` on the same day, so a
-build lane installs that one package first. ⚠ 695 seconds here is a lower bound
-on a runner, which `CLIENT-14` measured at about 1.35 times slower, so the
-source lane's 900-second install bound would not hold it.
+build lane installs that one package first. ⚠ 695 seconds here is not an
+estimate for a runner: `CLIENT-14` measured one at about 1.35 times slower, and
+`capture-client` run 35 one faster. ⭐ The source lane's install bound rose to
+1500 seconds on 2026-10-14, for `aria2-next`'s build, and that bound is chosen by
+the route, so it holds this one too. ⛔ **The release tarball's build does not
+get it**: it is the release route, whose bound is 420 seconds, and a release
+route that compiles is a case the workflow's per-route bound does not yet know.
 
 ⭐ **And a capture host finishes an install.** The recorded hang was the route
 cut severing the runner agent, measured on 2026-10-11; `CI-08` carries it.
+
+⚠ **Residual, from the door sweep of 2026-10-14: `transmission.sh` writes its
+discovery settings and asks the running build nothing back.** `aria2-next` 3.0.2
+is what a renamed or new switch does to a list like that, and `CLIENT-14`
+carries the read-back that caught it. `qbittorrent.sh`, under `CLIENT-01`, has
+the same shape and no channel to ask through, its WebUI being off. ⚠ The same
+sweep read `"encryption": 0` in `transmission.sh` as not Transmission's default,
+which is a claim from memory until the build's own `session-get` answers it.
+Acceptance: each adapter's `start` reads what took effect - Transmission's
+`session-get` over its RPC - and refuses a discovery surface that is not off,
+refuted by a plant that leaves one on.
 
 ## CLIENT-07: Deluge capture adapter
 
@@ -1451,7 +1470,10 @@ and both still carry `rpc-add`, `rpc-options`, `rpc-shutdown` and `rpc-version`.
 ⚠ **The source install took 496 seconds against a bound of 500.** Four seconds.
 The same build was measured at **366 seconds** on the session host, so the runner
 is about **1.35x slower** - which makes a locally measured build time a lower
-bound on what a runner needs and never an estimate of it.
+bound on what a runner needs and never an estimate of it. ⚠ The lower-bound half
+was refuted on 2026-10-14: `capture-client` run 35's runner reached `v3.0.2`'s
+compile error in 508 seconds where the session host took 588. The other half
+stands in both directions.
 
 ⭐ **Raised with the measured number rather than a comfortable one:** the inner
 bound is 900 for `source` lanes and stays 420 for every other, and the step's own
@@ -1545,3 +1567,76 @@ also means an adapter failure and a product refusal arrive through one channel,
 so the adapter keeps them apart: a JSON-RPC error arrives with HTTP 200 and an
 `error` member, so a caller reading only curl's status would take a refusal for
 an answer.
+
+### ⛔ 3.0.2 stopped reporting a switch and carried a fifth surface. 2026-10-14
+
+`capture-client` run 35, on `a39d933`, resolved `3.0.2` on both lanes: the
+release asset `aria2-next-3.0.2-linux-x86_64`, sha256 `09e34467…afb0d4` and
+`OK` against the vendor's checksums, and the tag `v3.0.2` from the repository's
+refs. ⚠ The vendor published `3.0.2` at 02:10Z that day, two hours before the
+run, and `3.0.0` - a new core on libtorrent 2.1 "with qBittorrent's defaults", by
+its release notes - on 2026-10-12. The contained runs of 2026-10-11 measured
+`2.8.6`. ⛔ **The release lane was refused at `start`**, by the read-back this
+file added for `--enable-dht6`: *aria2-next reports enable-dht6 is not false; a
+discovery surface is live*.
+
+⭐ **The bundle came back, which is `CI-09`'s fix of the same day doing its job**,
+and its `rpc-options.json` says why:
+
+| option | 3.0.2, read back by run 35 |
+| --- | --- |
+| `enable-dht6` | not reported; `2.8.6` reported it `false`, or the guard would have refused those runs |
+| `enable-dht`, `bt-enable-lpd`, `enable-peer-exchange`, `bt-port-mapping` | `false` |
+| `ed2k-port-mapping` | **`true`** |
+| `ed2k-listen-port`, `ed2k-udp-listen-port` | `4662`, `4672` |
+
+`rpc-version.json` lists `ED2K` among `enabledFeatures`. ⚠ ED2K is not new:
+the `v2.8.6` tree carries `src/Ed2kCommand.cc` and `src/Ed2kKadCommand.cc`.
+`--ed2k-port-mapping` is, by `3.0.0`'s release notes - "forwards the ED2K ports
+through UPnP IGD" - which also say its ED2K was rewritten against aMule,
+"including ... Kad and server search". ⛔ **So the refusal
+was right and its reason was the smaller half.** A key the guard required had
+gone, and beside it was a UPnP switch for a second protocol, on by default, that
+nothing in this file named. Dropping `enable-dht6` from the list would have
+passed that build.
+
+| where | what changed |
+| --- | --- |
+| [`aria2-next.sh`](../scripts/capture/adapters/aria2-next.sh) `start` | passes `--ed2k-port-mapping=false`; the named list is every discovery switch the file passes, so `enable-dht6` left it and `ed2k-port-mapping` joined it |
+| the same | every KEY the build reports in the DHT, port-mapping, local-discovery or peer-exchange families must read exactly `false`, named in the file or not; a value the parse cannot read refuses |
+| the same | every option the build reports as `true` must be one of thirteen read off 3.0.2's dump and judged harmless, so a new default reported as `true` refuses whatever it is called; a surface turned on by another value, a port or `auto`, is not caught |
+| the same | `--bt-require-crypto=false` is gone: 3.0.2 maps it onto `bt-encryption` and only a value other than `false` sets anything, so it set nothing. The stock `bt-encryption` is `preferred`, under which libtorrent prefers an encrypted handshake on the connections it opens; the observer has an MSE surface, and what the next capture sees is the measurement |
+
+⭐ **Driven against those bytes on the session host**, inside a network namespace
+holding loopback alone, `start` given run 35's own torrent. Each plant was
+replaced exactly once in a scratch copy and verified to have changed it:
+
+| adapter | `start` |
+| --- | --- |
+| `a39d933`'s | exit 1, *reports enable-dht6 is not false*: the runner's refusal reproduced |
+| this change | exit 0, the torrent accepted; the build held TCP 6800 for RPC and TCP and UDP 51413 for peers, and nothing on 4662 or 4672 |
+| the flag not passed | ⭐ exit 1, by the named list |
+| the flag not passed and not named | ⭐ exit 1, by the family keys |
+| the flag not passed, not named, and the families matching nothing | ⭐ exit 1, by the `true` list: *reports ed2k-port-mapping as true, and this file has not judged it* |
+| `follow-torrent` taken off the `true` list | ⭐ exit 1, naming it: the list is read, not decorative |
+| the `true` loop fed by a pipe | ⚠ **exit 0 with the refusal printed**: `refuse` ended a subshell, which is why both loops read a here-document |
+| this change again, the control | exit 0 |
+| this change, over the source build of `v3.0.2` that `CI-09` describes, sha256 `6743a8b2…87cd4bb` | exit 0; the release asset, `09e34467…afb0d4`, driven beside it the same way, also 0 |
+
+⚠ **What the sockets do not show.** A namespace holding loopback alone gives
+libtorrent no interface to map a port from, so the absence of UDP 1900 there
+says little about the switch; the RPC read-back is the evidence. ⚠ And by the
+`v3.0.2` source, read rather than run, the ED2K network is created only by an
+ED2K download or call (`src/core/Engine.cc`) and its port mapping starts inside
+it, so in a BitTorrent capture the switch is latent rather than live. It is held
+to `false` either way.
+
+⭐ **The identity 3.0.2 defaults to is unchanged**: `bt-peer-id-prefix` is
+`-qB5230-` and `bt-user-agent` `qBittorrent/5.2.3`, read back from the same
+options dump. ⚠ That is the configured default, not a wire observation.
+
+⛔ **The source lane never reached `start`**: `v3.0.2` does not compile on the
+runner's GCC 13, because `src/disk/File.cc` calls `std::exchange` without
+`<utility>`. The route now configures with `CXXFLAGS='-include utility'` and
+changes no file the vendor wrote; `CI-09` carries the measurement and the
+bounds that moved with it.

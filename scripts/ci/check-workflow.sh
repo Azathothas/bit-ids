@@ -1314,6 +1314,24 @@ if unit shell-parse; then
   restore "$SCRIPT" || exit 2
 fi
 
+# -- 6b. a shell script that parses and fails only shellcheck ----------------
+# ⛔ THE STEP RUNS TWO CHECKS, AND EACH MUST FAIL IT ALONE. Until 2026-10-14 the
+# body ran `shellcheck` and `shfmt` on two bare lines, so under this harness's
+# `sh -c` a finding only shellcheck makes was answered by shfmt's exit 0. ⚠ The
+# case above passes either way, because shfmt also rejects a script that does
+# not parse. SC2086 is a finding shfmt does not make: the planted line is
+# already formatted as shfmt would write it.
+if unit shell-lint-only; then
+  SCRIPT="scripts/doctor/doctor.sh"
+  # shellcheck disable=SC2016
+  if keep "$SCRIPT" && append_once "$TREE/$SCRIPT" 'echo $BIT_IDS_UNQUOTED_PLANT'; then
+    refuses linux "Shell syntax and style" "a shell script only shellcheck refuses" "SC2086"
+  else
+    fail "plant    could not plant the shellcheck-only defect"
+  fi
+  restore "$SCRIPT" || exit 2
+fi
+
 # -- 7. a document whose link resolves to nothing -----------------------------
 #
 # ⚠ The pattern is the runner's FAILURE row and not the check's name. The name

@@ -116,8 +116,23 @@ the check before believing it runs. Three were found missing this way.
 ⛔ **A CAPTURE'S WORKDIR IS ITS EVIDENCE BUNDLE**, so rule 12 applies to what an
 adapter writes there - bounded by what the artifact actually ships.
 
-⚠ **GitHub runs a `run:` block as `bash -e` and `grep` exits 1 on NO MATCH**, so
-a trailing `true` is unreachable unless the status is captured on its own line.
+⚠ **GitHub runs a `run:` block as `bash -e`, so a failing command ends the block
+on its own line.** A trailing `true` after a `grep` that matched nothing is
+unreachable, and so is an `rc=$?` on the next line: until 2026-10-14 this entry
+said to capture the status on its own line, and *Install the client* did, so no
+failed install printed its log to the job log from 2026-09-16, when that body
+was written, to run 35. ⭐ Capture it in the same
+command: `rc=0`, then `cmd || rc=$?`.
+
+⛔ **An update that replaces a whole object erases what it does not carry.** The
+flight recorder posted its last snapshot and then closed the check run with an
+`output` holding a title alone, so every run that closed cleanly showed an empty
+text. Send the last state in the request that closes.
+
+⛔ **A guard that refuses may be refusing for the smaller reason.** `aria2-next`
+3.0.2 was refused over a switch it stopped reporting, and the options dump that
+came back held a discovery switch, on by default, that no guard named. Read what
+the refusal uploaded before narrowing the guard to let the build through.
 
 ---
 

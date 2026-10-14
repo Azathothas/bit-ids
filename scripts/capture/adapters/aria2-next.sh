@@ -29,6 +29,9 @@
 #      accepted and skipped is worse than one that is refused: the step succeeds
 #      and the switch it named was never set. `--enable-dht=false` covers both
 #      families, and `start` VERIFIES that over RPC rather than trusting it.
+#      ⚠ 2.8.6 still REPORTED `enable-dht6` in its options and 3.0.2 retires
+#      it, so `start` no longer requires a key the build stopped having; the
+#      family sweep would hold it to false if a build reported it again.
 #
 #   ⭐ RPC ANSWERS `version` BETTER THAN THE COMMAND LINE DOES.
 #      `aria2.getVersion` returns `{"product":"aria2-next","version":"2.7.4",...}`
@@ -278,10 +281,14 @@ no package index carries it, and installing aria2 would acquire a different prod
         # checks imply otherwise.
         #
         # ⚠ MEASURED COST: about 350 seconds for configure and build together on
-        # a four-core host, against the caller's 540-second bound. It builds the
-        # project's test binaries too, because `--preset default` is what the
-        # project's own README and CI run and a narrower target would be this
-        # repository inventing a build the vendor does not document.
+        # a four-core host for 2.7.5, and 870 for `v3.0.2` on the session host
+        # on 2026-10-14, whose superbuild compiles ten dependencies first, among
+        # them OpenSSL, curl, libtorrent, FFmpeg and GPAC.
+        # The caller's bound is `capture-client.yml`'s source-lane
+        # `BIT_IDS_INSTALL_TIMEOUT`, stated there alone. It builds the project's
+        # test binaries too, because `--preset default` is what the project's
+        # own README and CI run and a narrower target would be this repository
+        # inventing a build the vendor does not document.
         # ⛔ ITS OWN TAG, FROM ITS OWN RESOLUTION. This read
         # `BIT_IDS_RELEASE_TAG` until 2026-09-09, which is the tag the RELEASE
         # lane's listing chose - so both lanes resolved through one index and
@@ -321,8 +328,8 @@ no package index carries it, and installing aria2 would acquire a different prod
         # `--max-time`, so the bound is `timeout` around it - which is the
         # spelling `shell.md` section 9 gives for a tool that does not bound
         # itself. ⛔ 600 rather than 300: this clone is the input to a build the
-        # workflow already allows 900 seconds for, so a bound sized like the
-        # release fetch's would refuse a source lane that was working.
+        # workflow gives a source lane many minutes for, so a bound sized like
+        # the release fetch's would refuse a source lane that was working.
         # ⚠ Exit 124 is `timeout`'s verdict and is reported as a refusal naming
         # the bound, never as a clone that failed for its own reasons.
         timeout 600 git clone --depth 1 --branch "$_tag" \
@@ -345,7 +352,36 @@ no package index carries it, and installing aria2 would acquire a different prod
         # checked out what it points at, which is what was built.
         git -C "$WORKDIR/src" rev-parse HEAD >"$WORKDIR/source-commit" 2>>"$WORKDIR/install.log" ||
           refuse "the source route cloned $_tag and could not name its commit"
-        (cd "$WORKDIR/src" && cmake --preset default) \
+        # ⛔ ONE FLAG THE VENDOR DOES NOT PASS, AND IT IS A HEADER ITS SOURCE
+        # LEFT OUT. Measured on `capture-client` run 35, 2026-10-14: `v3.0.2`
+        # stops in `src/disk/File.cc`, which calls `std::exchange` and never
+        # includes `<utility>`. The vendor builds on `ubuntu-22.04`, and its
+        # release asset's `.comment` reads GCC 11.4.0; this route builds where
+        # the capture runs, on GCC 13, which refuses the file. ⚠ So it passes
+        # `-include utility`: the header the compiler's own diagnostic names,
+        # holding a declaration the source already calls, with no file the
+        # vendor wrote changed. The superbuild forwards `CMAKE_CXX_FLAGS` to
+        # the inner project and its seven CMake-built dependencies; OpenSSL,
+        # FFmpeg and GPAC configure themselves and do not receive it.
+        # ⛔ SET, NOT APPENDED TO, so the configure never carries a host's own
+        # `CXXFLAGS` into those caches. ⚠ `ACQ-03` says a source route's
+        # configure options belong to its identity and that nothing records
+        # them; the line goes into `source-configure.txt` beside the build,
+        # which the install artifact uploads, and the record still has no field
+        # for it.
+        # ⚠ The line is quoted so it replays as it ran, and the host's own C,
+        # preprocessor and linker flags are written beside it: the superbuild
+        # passes those on to its dependencies, and they come from whatever host
+        # the build is on.
+        _cxxflags='-include utility'
+        {
+          printf "CXXFLAGS='%s' cmake --preset default\n" "$_cxxflags"
+          printf 'host CFLAGS=%s\n' "${CFLAGS-<unset>}"
+          printf 'host CPPFLAGS=%s\n' "${CPPFLAGS-<unset>}"
+          printf 'host LDFLAGS=%s\n' "${LDFLAGS-<unset>}"
+        } >"$WORKDIR/source-configure.txt" ||
+          refuse "the source route could not record how it configured the build"
+        (cd "$WORKDIR/src" && CXXFLAGS="$_cxxflags" cmake --preset default) \
           </dev/null >>"$WORKDIR/install.log" 2>&1 ||
           refuse "the source route could not configure a build"
         (cd "$WORKDIR/src" && cmake --build --preset default) \
@@ -454,12 +490,27 @@ no package index carries it, and installing aria2 would acquire a different prod
     # is the one-gated-door shape the README calls the most recurring hole there
     # is, found in the file that quotes it.
     #
+    # ⛔ AND A FIFTH, ON THE SECOND PROTOCOL THIS BUILD SPEAKS. 3.0.0's release
+    # notes add `--ed2k-port-mapping`, "forwards the ED2K ports through UPnP
+    # IGD", and the options dump `capture-client` run 35 uploaded on 2026-10-14,
+    # from the bundle of a 3.0.2 capture this guard refused, has it `true`: the
+    # class `bt-port-mapping` is switched off for, on the ED2K ports. ⚠ A fixed
+    # list of switches is a guard that sees the spellings it was written with,
+    # so the read-back below also sweeps every switch of those families the
+    # build reports, named here or not.
+    #
     # ⛔ AND `--enable-dht6` IS DELIBERATELY ABSENT. Measured: this build does not
     # have that option, accepts it from the command line anyway and skips it with
     # a warning, because libtorrent uses one DHT switch for both families.
     # Passing it would put a flag in the record that set nothing.
     # `--enable-dht=false` is what covers both, and the verification below is
     # what establishes that it did rather than assuming it.
+    #
+    # ⛔ AND `--bt-require-crypto` IS GONE, BECAUSE IT SET NOTHING. 3.0.2 maps
+    # it onto `bt-encryption`, and only a value other than `false` sets it. What
+    # applies is the stock `bt-encryption`, `preferred`, under which libtorrent
+    # prefers an encrypted handshake on the connections it opens; that is the
+    # product's default and the capture's to observe, so nothing here sets it.
     #
     # ⛔ THE PEER PORT IS PASSED HERE, ON THE COMMAND LINE, and zero still means
     # "leave it": aria2 refuses a listen port of zero, so an unset peer port
@@ -476,7 +527,7 @@ no package index carries it, and installing aria2 would acquire a different prod
       --bt-enable-lpd=false \
       --enable-peer-exchange=false \
       --bt-port-mapping=false \
-      --bt-require-crypto=false \
+      --ed2k-port-mapping=false \
       --dir="$WORKDIR/downloads" \
       --seed-time=0 \
       --allow-overwrite=true \
@@ -515,10 +566,44 @@ no package index carries it, and installing aria2 would acquire a different prod
       refuse "aria2-next would not report its global options"
     ! rpc_failed "$WORKDIR/rpc-options.json" ||
       refuse "aria2-next refused to report its global options"
-    for _switch in enable-dht enable-dht6 bt-enable-lpd enable-peer-exchange bt-port-mapping; do
+    # ⛔ EVERY DISCOVERY SWITCH THIS FILE PASSES IS REPORTED, AND FALSE. A switch
+    # the build stopped reporting is one nothing here can show took effect.
+    for _switch in enable-dht bt-enable-lpd enable-peer-exchange bt-port-mapping ed2k-port-mapping; do
       grep -q "\"$_switch\":\"false\"" "$WORKDIR/rpc-options.json" ||
         refuse "aria2-next reports $_switch is not false; a discovery surface is live"
     done
+    # ⛔ AND EVERY KEY OF THOSE FAMILIES THE BUILD REPORTS, NAMED OR NOT, reads
+    # `false` too. `ed2k-port-mapping` was on in 3.0.2 and named nowhere.
+    # ⚠ The KEYS are what is taken off the dump, `"key":` whatever follows it,
+    # and each is then asked for the exact pair: a value this parse cannot read
+    # refuses rather than passing unread. ⛔ A here-document, not a pipe: a loop
+    # fed by a pipe runs in a subshell, where `refuse` would end the loop and
+    # not this adapter.
+    while read -r _key; do
+      [ -n "$_key" ] || continue
+      grep -q "\"$_key\":\"false\"" "$WORKDIR/rpc-options.json" ||
+        refuse "aria2-next reports $_key and not as false; a discovery surface is live"
+    done <<KEYS
+$(grep -o -E '"[^"]+":' "$WORKDIR/rpc-options.json" | tr -d '":' |
+      grep -E '^(enable-dht[a-z0-9-]*|[a-z0-9-]*port-mapping|[a-z0-9-]*-lpd|[a-z0-9-]*-lsd|[a-z0-9-]*peer-exchange)$')
+KEYS
+    # ⛔ AND A SWITCH THAT IS ON IS ONE THIS FILE HAS JUDGED. A family is still
+    # a set of spellings, and the next surface need not share one: libtorrent
+    # calls local discovery LSD, and 3.0.0's notes say its ED2K speaks Kad. So
+    # every option the build reports as `true` must be named below, each read
+    # off 3.0.2's own dump and none a discovery surface, and a new default
+    # reported as `true` refuses whatever it is called. ⚠ A surface a build
+    # turns on with another value, such as a port or `auto`, is not caught here.
+    _harmless=' allow-overwrite auto-file-renaming check-certificate enable-color enable-http-keep-alive enable-rpc follow-metalink follow-torrent http-accept-gzip keep-unfinished-download-result rpc-save-upload-metadata save-not-found show-console-readout '
+    while read -r _key; do
+      [ -n "$_key" ] || continue
+      case "$_harmless" in
+        *" $_key "*) ;;
+        *) refuse "aria2-next reports $_key as true, and this file has not judged it; a discovery surface may be live" ;;
+      esac
+    done <<KEYS
+$(grep -o -E '"[^"]+": *"?true' "$WORKDIR/rpc-options.json" | sed -E 's/^"([^"]+)".*/\1/')
+KEYS
 
     # ⛔ AND THE PORT THE OBSERVER IS WATCHING IS READ BACK FROM THE BUILD. A
     # peer port that silently did not take is a capture watching a port nothing

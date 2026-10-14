@@ -19,10 +19,11 @@
 # `in_progress` forever: a host that lost contact and one that finished cleanly
 # looked the same, and the two contained dispatches of 2026-10-11 still showed
 # three of them three days later. ⭐ The job's last step touches
-# `<log-dir>/flight-recorder.stop`; the recorder posts a final snapshot,
-# completes its check run, reads the answer back, and writes
+# `<log-dir>/flight-recorder.stop`; the recorder completes its check run in the
+# request that posts its final snapshot, reads the answer back, and writes
 # `<log-dir>/flight-recorder.done`. A check run still `in_progress` after its job
-# ended is now a host that never reached that step.
+# ended is now a host that never reached that step, and one that closed still
+# shows the state the job ended in.
 #
 # ⚠ IT READS NOTHING THAT CAN BLOCK IT. `ps` is asked for `stat` and `wchan`,
 # which come from `/proc/<pid>/stat` and `wchan`; never for `args`, because
@@ -153,14 +154,22 @@ printf 'flight-recorder: posting to check run %s every %ss\n' "$ID" "$INTERVAL"
 STOPFILE="$LOGDIR/flight-recorder.stop"
 DONEFILE="$LOGDIR/flight-recorder.done"
 
-# One snapshot, posted as the check run's output.
-post() { # title-prefix elapsed
+# One snapshot, as the body of a check run update. A third argument of
+# `completed` closes the run in the same request.
+update() { # title-prefix elapsed [completed]
   snapshot "$2" >"$SCRATCH/snap.txt" 2>&1
   # ⚠ The output text is capped well under the API's 65535 characters, keeping
   # the TAIL, because the newest lines are the ones a hang is about.
   tail -c 60000 "$SCRATCH/snap.txt" >"$SCRATCH/text.txt"
-  jq -n --rawfile text "$SCRATCH/text.txt" --arg title "$1 at +${2}s" \
-    '{output: {title: $title, summary: $title, text: $text}}' >"$SCRATCH/update.json"
+  jq -n --rawfile text "$SCRATCH/text.txt" --arg title "$1 at +${2}s" --arg close "${3:-}" \
+    '{output: {title: $title, summary: $title, text: $text}}
+      + (if $close == "completed" then {status: "completed", conclusion: "neutral"} else {} end)' \
+    >"$SCRATCH/update.json"
+}
+
+# One snapshot, posted as the check run's output.
+post() { # title-prefix elapsed
+  update "$1" "$2"
   api PATCH "$API/$ID" "$SCRATCH/update.json" >/dev/null
 }
 
@@ -191,11 +200,26 @@ done
 # PATCH that was refused leaves the run `in_progress`, which is the silence this
 # file says means lost contact; so the answer is what the done file reports, and
 # a run the API did not confirm says that rather than claiming it closed.
-post "$ENDING" "$(($(date +%s) - START))"
-jq -n --arg title "$ENDING" \
-  '{status: "completed", conclusion: "neutral", output: {title: $title, summary: $title}}' \
-  >"$SCRATCH/done.json"
-ANSWER=$(api PATCH "$API/$ID" "$SCRATCH/done.json" | jq -r '.status // empty' 2>/dev/null)
+#
+# ⛔ ONE REQUEST, BECAUSE TWO ERASED THE SNAPSHOT. Until 2026-10-14 the last
+# snapshot went up first and the completion after it, carrying an `output` with
+# a title and no `text`; measured on `capture-client` run 35, both check runs that
+# closed cleanly showed that title over an empty text, and the source lane's last
+# state - the compile it failed in - was gone from the one place a dispatch is
+# read. A check run's output is replaced by the update that carries one.
+update "$ENDING" "$(($(date +%s) - START))" completed
+api PATCH "$API/$ID" "$SCRATCH/update.json" >"$SCRATCH/answer.json"
+ANSWER=$(jq -r '.status // empty' "$SCRATCH/answer.json" 2>/dev/null)
+# ⚠ AND A SNAPSHOT THE API REFUSES MUST NOT KEEP THE RUN OPEN. One request
+# carries both now, so a text the API would not take would refuse the
+# completion with it. An answer that is not `completed` is asked once more with
+# no `output`, which leaves the last snapshot the run accepted. ⚠ Only when the
+# API answered: a request that timed out says nothing about its text, and a
+# second one would spend the wait the job's last step gives this.
+if [ "$ANSWER" != completed ] && [ -s "$SCRATCH/answer.json" ]; then
+  jq -n '{status: "completed", conclusion: "neutral"}' >"$SCRATCH/done.json"
+  ANSWER=$(api PATCH "$API/$ID" "$SCRATCH/done.json" | jq -r '.status // empty' 2>/dev/null)
+fi
 if [ "$ANSWER" = completed ]; then
   printf 'completed: %s\n' "$ENDING" >"$DONEFILE"
 else
