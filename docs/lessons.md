@@ -124,6 +124,12 @@ failed install printed its log to the job log from 2026-09-16, when that body
 was written, to run 35. ⭐ Capture it in the same
 command: `rc=0`, then `cmd || rc=$?`.
 
+⛔ **A push chained after a gate with `;` is a push over a red gate.**
+`e4132c8` went up on 2026-10-14 with `check-markers` and `check-bitcheck`
+failing, because the command ran the gate, then committed and pushed whatever
+it answered; `82cc37d` repaired it. ⭐ Read the gate's exit code and push only on
+0: `check-gate.sh && git push`, never `check-gate.sh; git push`.
+
 ⛔ **An update that replaces a whole object erases what it does not carry.** The
 flight recorder posted its last snapshot and then closed the check run with an
 `output` holding a title alone, so every run that closed cleanly showed an empty
