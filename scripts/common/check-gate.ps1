@@ -242,6 +242,11 @@ Invoke-Ported 'check-cache'
 # were deleted. With it gone, `store-lib.ps1` had no caller and went too.
 Invoke-Ported 'check-catalogue'
 
+# ⭐ AND A THIRD, 2026-10-14. check-corpus was declared here because its
+# harness was sh alone; it is a bit-check row now, compared case for case
+# against that half before it was deleted. CI-07.
+Invoke-Ported 'check-corpus'
+
 # ⭐ AND THE LAST `common/` TWIN THIS LANE RAN, 2026-09-29. This row ran
 # `check-remote-items.ps1`, compared case for case against both halves before
 # they were deleted. ⚠ It NEEDS gh AND THE NETWORK, so it exits 2 on a machine
@@ -273,7 +278,7 @@ else {
 
 # ⛔ DECLARED FOR THE SAME REASON. check-store plants a symbolic link and a
 # named pipe in a disposable tree, and neither is available to an unprivileged
-# Windows session; check-corpus shares its harness. ⚠ The rules they prove are
+# Windows session. ⚠ The rules they prove are
 # not Linux-only and the Rust suite exercises every one of them on both lanes;
 # what this lane does not do is plant them against a real filesystem.
 #
@@ -285,7 +290,6 @@ else {
 # one, because --strict permits it forever on the strength of a sentence nobody
 # re-read. Found by a claim audit while CI-03 was being closed.
 Add-Unavailable 'check-store' 'its plants are a symlink and a named pipe; reconsider them, do not translate; CI-07 class B'
-Add-Unavailable 'check-corpus' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
 Add-Unavailable 'check-indexes' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
 Add-Unavailable 'check-release' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
 Add-Unavailable 'check-formats' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'

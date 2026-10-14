@@ -314,13 +314,15 @@ fi
 # ⭐ AND THE HARNESSES, 2026-09-29: `check-cache` and `check-catalogue` left the
 # prover list below for this one, each compared case for case against both of
 # its halves first. They build Rust examples, which the build above has already
-# made a no-op.
+# made a no-op. ⭐ `check-corpus` followed on 2026-10-14, `CI-07`, compared
+# against its one half; it had no PowerShell twin, so this is what closed the
+# Windows lane's declared row for it.
 # ⚠ `check-remote-items` joined the same day and NEEDS gh AND THE NETWORK, so it
 # exits 2 on a machine without them and that reads as a skip rather than a pass.
 # That is correct: nothing was verified. Its logic is proved without either by
 # `check-bitcheck`, which serves it from a stub `gh` and a stub `curl`.
 for c in check-adapters check-cache check-catalogue check-changelog \
-  check-control-bytes check-docs check-ignores check-licences check-markers \
+  check-control-bytes check-corpus check-docs check-ignores check-licences check-markers \
   check-no-secrets check-one-home check-placeholders check-project \
   check-remote-items; do
   if [ -x "$GOBIN" ]; then
@@ -424,7 +426,7 @@ for spec in acquisition/check-release-route \
   acquisition/check-source-route acquisition/check-rootless \
   corpus/check-store \
   common/check-shell \
-  corpus/check-corpus corpus/check-indexes publishing/check-release \
+  corpus/check-indexes publishing/check-release \
   publishing/check-formats publishing/check-publish publishing/check-access \
   publishing/check-bundle \
   ci/check-staleness ci/check-step-bodies \

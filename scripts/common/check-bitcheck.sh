@@ -765,6 +765,42 @@ else
 fi
 
 # ============================================================================
+# check-corpus
+# ============================================================================
+#
+# ⭐ PORTED 2026-10-14, `CI-07` and `CI-10`. Its plants go into the validator it
+# drives, as `check-cache`'s go into the scenario: over the real tree every row
+# passes, so a harness's own refusal branches are exercised by nothing else.
+# ⛔ Each plant disables ONE refusal, and exactly that one row must fail, in
+# both halves alike.
+if [ "$HARNESSES" = "0" ]; then
+  printf 'check-bitcheck: the check-corpus cases were NOT run; --harnesses or --compare runs them\n' >&2
+else
+  agree "corpus clean tree" check-corpus corpus/check-corpus 0
+  go_said "corpus clean tree" '{"schema":"check-corpus/1","total":16,"passed":16,"failed":0}'
+
+  CRP="$TREE/crates/bit-ids/src/corpus.rs"
+  cp "$CRP" "$WORK/corpus.orig" || exit 2
+  if replace_once "$CRP" 'if object.sha256 != artifact.sha256 {' 'if false && object.sha256 != artifact.sha256 {'; then
+    agree "corpus a validator that stopped comparing digests" check-corpus corpus/check-corpus 1
+    go_said "corpus a validator that stopped comparing digests" '{"schema":"check-corpus/1","total":16,"passed":15,"failed":1}'
+  else
+    fail "corpus a validator that stopped comparing digests: NOT PLANTED"
+  fi
+  cp "$WORK/corpus.orig" "$CRP"
+
+  if replace_once "$CRP" 'if text.starts_with(&raw) && !accounted.contains(path) {' 'if false && text.starts_with(&raw) && !accounted.contains(path) {'; then
+    agree "corpus a validator that stopped sweeping undeclared files" check-corpus corpus/check-corpus 1
+    go_said "corpus a validator that stopped sweeping undeclared files" '{"schema":"check-corpus/1","total":16,"passed":15,"failed":1}'
+  else
+    fail "corpus a validator that stopped sweeping undeclared files: NOT PLANTED"
+  fi
+  cp "$WORK/corpus.orig" "$CRP"
+
+  agree "corpus clean tree again" check-corpus corpus/check-corpus 0
+fi
+
+# ============================================================================
 # check-catalogue
 # ============================================================================
 #

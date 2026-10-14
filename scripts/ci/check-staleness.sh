@@ -8,7 +8,7 @@
 # present. So each case writes the release list a source would answer with, runs
 # resolve-stable over it, and surveys what that decided.
 #
-# ⛔ THE INPUTS ARE PLANTED, NOT THE SOURCE. check-store.sh and check-corpus.sh
+# ⛔ THE INPUTS ARE PLANTED, NOT THE SOURCE. check-store.sh and check-corpus
 # plant into a tree because their guards are about trees. This unit's guards are
 # about a comparison, so the plant is a different store, a different release
 # list or a different tracker state, and every case declares the exit code and

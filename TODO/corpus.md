@@ -194,8 +194,10 @@ the guard could be called proved.
   so a manifest artifact no profile cites is not compared. `E-CRP-06` catches the
   file-level version of that against the store; the document-level one is
   `SCHEMA-02`'s and is left where it is.
-- ⚠ `check-corpus.sh` has no PowerShell half, for the reason `check-store.sh`
-  does not; both are named skips on that lane.
+- ⭐ `check-corpus` runs on both lanes since 2026-10-14: it is `bit-check
+  check-corpus`, ported from `check-corpus.sh` and compared case for case
+  against it before that half was deleted. `CI-07`. ⚠ `check-store.sh` is
+  still a named skip on Windows, for its symbolic-link and named-pipe plants.
 
 ## CORPUS-03: Deterministic indexes and latest views
 

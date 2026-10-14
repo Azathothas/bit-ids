@@ -3,9 +3,10 @@
 #
 # ⛔ IT IS SOURCED, NEVER RUN. It defines functions and sets nothing else, so
 # sourcing it twice is harmless and running it does nothing. `check-store.sh`
-# and `check-corpus.sh` both plant defects in a disposable tree and read the
-# refusal, and the machinery for that is identical: build the example, make a
-# scratch tree, digest a whole directory, verify a plant landed, count a row.
+# plants defects in a disposable tree and reads the refusal, and the machinery
+# for that is here: build the example, make a scratch tree, digest a whole
+# directory, verify a plant landed, count a row. ⚠ `check-corpus.sh` used it
+# too until 2026-10-14, when it became `bit-check check-corpus`.
 #
 # The alternative was a copy in each, which is the divergent-copies row in
 # docs/conventions/forbidden-patterns.md. ⚠ The copies would have diverged in the

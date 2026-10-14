@@ -1329,7 +1329,7 @@ than one population:
 
 | kind | rows, as `check-gate.ps1` declares them | closes when |
 | --- | --- | --- |
-| a portable subject | `check-assemble`, `check-connector`, `check-corpus`, `check-formats`, `check-indexes`, `check-release`, `check-staleness`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
+| a portable subject | `check-assemble`, `check-connector`, `check-formats`, `check-indexes`, `check-release`, `check-staleness`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
 | class B | `check-store` | its plants are reconsidered for Windows: a symbolic link and a named pipe cannot be made by an unprivileged Windows session, and a half that skipped them would report a smaller pass under the same name |
 | class C, an `sh` subject | `check-access`, `check-bundle`, `check-publish`, `check-transmission` | the subject gains a Windows half; not this entry's to close |
 | an `sh` subject not yet classed | `check-capture-client`, `check-release-route`, `check-source-route` | class C as well: each subject is an `sh` script; their reasons say so in the next change to them |
@@ -1338,6 +1338,17 @@ than one population:
 
 ⚠ The table is a reading of `check-gate.ps1` on 2026-10-14, and that file is the
 list: a row added there is in this entry without being added here.
+
+⭐ **`check-corpus` is the first row this rewritten route closed, 2026-10-14.**
+[`../tools/check/corpus.go`](../tools/check/corpus.go) ports it case for case:
+the same 16 rows, the same labels, the same plants into a store `build-store`
+wrote. `check-bitcheck --compare` ran both halves over the clean tree and over
+two plants in the validator they drive. One stopped comparing digests and one
+stopped sweeping undeclared files, and each failed exactly its own row, 15 of
+16, in both halves. 268 of 268. Then the `sh` half was deleted, and both gate
+runners call `bit-check check-corpus`, so the Windows lane runs it. ⚠
+`check-gate-rows`' dropped-prover plant had removed `corpus/check-corpus` from
+the `sh` list; it removes `corpus/check-indexes` now.
 
 Prove: ⛔ **Rewritten with the Approach.** Every portable-subject row is a
 `bit-check` row on the Windows lane, each port compared against its `sh` half

@@ -67,8 +67,10 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
 - [`corpus/check-store.sh`](corpus/check-store.sh) plants, in a disposable tree,
   every defect the append-only store exists to refuse, and reads each exit code
   from the process that produced it.
-- [`corpus/check-corpus.sh`](corpus/check-corpus.sh) does the same for the
-  store-level invariants, against a store `build-store` wrote.
+- `bit-check check-corpus` does the same for the store-level invariants,
+  against a store `build-store` wrote. ⭐ It was `corpus/check-corpus.sh` until
+  2026-10-14, compared case for case against it before that half was deleted,
+  so the Windows lane runs it too. `CI-07`.
 - [`corpus/check-indexes.sh`](corpus/check-indexes.sh) proves the three things a
   derived file owes: byte-identical clean builds, rows that resolve back to the
   records they came from, and a corrected record that has left the views while

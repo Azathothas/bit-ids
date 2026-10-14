@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T19:37:05Z
+
+- ⭐ **`check-corpus` runs on the Windows lane.** It is `bit-check check-corpus`
+  now, ported case for case from its `sh` half and compared against it over the
+  clean tree and two plants in the validator, before that half was deleted.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-07`. No version bump and no deploy.
+
 ### 2026-10-14T19:25:50Z
 
 - ⚠ `CI-07`'s Approach and Prove are rewritten to the route `CI-10` made: a
