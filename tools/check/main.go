@@ -105,6 +105,7 @@ var checks = map[string]check{
 	"check-control-bytes": checkControlBytes,
 	"check-corpus":        checkCorpus,
 	"check-docs":          checkDocs,
+	"check-formats":       checkFormats,
 	"check-ignores":       checkIgnores,
 	"check-indexes":       checkIndexes,
 	"check-licences":      checkLicences,

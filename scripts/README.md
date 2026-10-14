@@ -83,12 +83,14 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   row where there is not. ⭐ It was `publishing/check-release.sh` until
   2026-10-14, compared case for case against it before that half was deleted.
   `CI-07`.
-- [`publishing/check-formats.sh`](publishing/check-formats.sh) renders every
-  published format over a store that carries a correction, compares two renders
-  as bytes, checks that the corrected record is not published as a record in any
-  of them, and hands the assembled checksum file to `sha256sum -c`. ⚠ It does
-  not decode the CBOR: this project has no CBOR reader, and using its own
-  encoder to read it back would be checking the writer against itself.
+- `bit-check check-formats` renders every published format over a store that
+  carries a correction, compares two renders as bytes, checks that the
+  corrected record is not published as a record in any of them, and hands the
+  assembled checksums to `sha256sum` or `certutil` and the database to Python's
+  `sqlite3`. ⚠ It does not decode the CBOR: this project has no CBOR reader,
+  and using its own encoder to read it back would be checking the writer
+  against itself. ⭐ It was `publishing/check-formats.sh` until 2026-10-14,
+  compared case for case against it before that half was deleted. `CI-07`.
 - [`publishing/publish-data.sh`](publishing/publish-data.sh) appends an
   assembled bundle to the data branch: a bundle with no `MANIFEST.json`, no
   `SHA256SUMS` or a digest that does not match is refused before the push, the

@@ -146,8 +146,8 @@ foreign-key integrity. Raw binary evidence is never embedded into CSV.
 
 [`formats`](../crates/bit-ids/src/formats.rs) renders them and `PUB-03` owns it,
 with `cargo run -p bit-ids --example build-formats -- STORE OUT` as the driving
-surface and [`check-formats.sh`](../scripts/publishing/check-formats.sh) as its
-prover.
+surface and `bit-check check-formats`, in
+[`../tools/check/formats.go`](../tools/check/formats.go), as its prover.
 
 ⛔ **Every rendering is a function of the canonical document.** The combined
 JSON carries each record's own bytes verbatim, so slicing one out yields exactly

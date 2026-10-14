@@ -620,7 +620,7 @@ mod tests {
 
         // ⚠ The CBOR is not decoded here, because decoding it with this
         // project's own encoder would be checking the writer against itself.
-        // `check-formats.sh` hands it to `cbor2` and compares the identifiers.
+        // `cbor2` read it in `PUB-03`'s driven pass; no gate check decodes it.
         assert!(!file(CBOR_FILE).is_empty());
         assert!(!file(JSONL_FILE).is_empty());
         assert!(!file(COLUMNS_FILE).is_empty());

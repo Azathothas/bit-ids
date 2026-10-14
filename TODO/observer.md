@@ -1608,7 +1608,7 @@ means.
 ⚠ The script is not committed and that follows the tree's existing practice: a
 third-party reader needs a package install, so it belongs in an entry's driven
 pass rather than in the gate, the way `cbor2` sits in `PUB-03` and `torf` in
-`OBS-08`. `scripts/publishing/check-formats.sh` records the same argument.
+`OBS-08`. `bit-check check-formats` records the same argument.
 
 Prove, run on 2026-09-06: `cargo test -p bit-ids-wire --locked` is 48 unit cases
 and 20 corpus cases. Four plants over the codec were each refused by a named

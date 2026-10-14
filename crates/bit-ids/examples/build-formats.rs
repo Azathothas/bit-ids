@@ -21,8 +21,8 @@
 //!
 //! ⚠ The CBOR is **not** read back here, and that is deliberate rather than an
 //! omission: this project has no CBOR reader and writing one would be checking
-//! the writer against itself. `check-formats.sh` hands the file to `cbor2`,
-//! which is a reader nobody here wrote.
+//! the writer against itself. `cbor2`, a reader nobody here wrote, read it in
+//! `PUB-03`'s driven pass; no gate check decodes it.
 //!
 //! Exit codes follow `docs/capture-methodology.md`: 0 the formats were rendered
 //! and read back, 1 something was refused, 2 the route could not run.

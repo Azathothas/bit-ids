@@ -872,6 +872,40 @@ else
 fi
 
 # ============================================================================
+# check-formats
+# ============================================================================
+#
+# ⭐ PORTED 2026-10-14. Both plants go into the SQLite rendering, because that
+# is the file only the independent reader looks inside: one states a record
+# count the database does not hold, one writes no `omission` rows.
+if [ "$HARNESSES" = "0" ]; then
+  printf 'check-bitcheck: the check-formats cases were NOT run; --harnesses or --compare runs them\n' >&2
+else
+  agree "formats clean tree" check-formats publishing/check-formats 0
+  go_said "formats clean tree" '{"schema":"check-formats/1","total":28,"passed":28,"failed":0}'
+
+  SQL="$TREE/crates/bit-ids/src/sqlite.rs"
+  cp "$SQL" "$WORK/sqlite.orig" || exit 2
+  if replace_once "$SQL" 'params![records.to_string()]' 'params![(records + 1).to_string()]'; then
+    agree "formats a database that miscounts its records" check-formats publishing/check-formats 1
+    go_said "formats a database that miscounts its records" '{"schema":"check-formats/1","total":28,"passed":27,"failed":1}'
+  else
+    fail "formats a database that miscounts its records: NOT PLANTED"
+  fi
+  cp "$WORK/sqlite.orig" "$SQL"
+
+  if replace_once "$SQL" 'for (subject, reason) in OMISSIONS {' 'for (subject, reason) in OMISSIONS.iter().take(0) {'; then
+    agree "formats a database that says nothing of what it omits" check-formats publishing/check-formats 1
+    go_said "formats a database that says nothing of what it omits" '{"schema":"check-formats/1","total":28,"passed":27,"failed":1}'
+  else
+    fail "formats a database that says nothing of what it omits: NOT PLANTED"
+  fi
+  cp "$WORK/sqlite.orig" "$SQL"
+
+  agree "formats clean tree again" check-formats publishing/check-formats 0
+fi
+
+# ============================================================================
 # check-catalogue
 # ============================================================================
 #

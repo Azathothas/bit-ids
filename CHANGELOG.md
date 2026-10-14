@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T20:58:13Z
+
+- ⭐ **`check-formats` runs on the Windows lane**, ported and compared like the
+  three before it, with Python's `sqlite3` still its database reader.
+- ⚠ Two Rust comments said this check handed the CBOR to `cbor2`; it never
+  did, and they say so now.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-07`. No version bump and no deploy.
+
 ### 2026-10-14T20:24:35Z
 
 - ⭐ **`check-release` runs on the Windows lane**, ported and compared like the

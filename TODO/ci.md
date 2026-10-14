@@ -1329,7 +1329,7 @@ than one population:
 
 | kind | rows, as `check-gate.ps1` declares them | closes when |
 | --- | --- | --- |
-| a portable subject | `check-assemble`, `check-connector`, `check-formats`, `check-staleness`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
+| a portable subject | `check-assemble`, `check-connector`, `check-staleness`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
 | class B | `check-store` | its plants are reconsidered for Windows: a symbolic link and a named pipe cannot be made by an unprivileged Windows session, and a half that skipped them would report a smaller pass under the same name |
 | class C, an `sh` subject | `check-access`, `check-bundle`, `check-publish`, `check-transmission` | the subject gains a Windows half; not this entry's to close |
 | an `sh` subject not yet classed | `check-capture-client`, `check-release-route`, `check-source-route` | class C as well: each subject is an `sh` script; their reasons say so in the next change to them |
@@ -1381,6 +1381,22 @@ and failed that case alone. ⚠ Its `E-REL-02` plant makes a symbolic link, whic
 a Windows session needs privilege for; a hosted runner's user has it, and the
 next CI run is what shows it. `check-gate-rows`' dropped-prover plant removes
 `publishing/check-formats` now.
+
+⭐ **CI on `5b7c586` read `check-release` back on the Windows lane:** `✅ ok
+check-release`, 20 passed, 0 failed, 0 skipped. The symbolic-link plant and the
+checksum reader both ran there.
+
+⭐ **And `check-formats` the fourth.**
+[`../tools/check/formats.go`](../tools/check/formats.go) ports its 28 rows.
+Python's `sqlite3` is still the independent database reader, through the shell
+half's own script, embedded byte for byte. Python is looked up as `python3` or
+`python`, and must be Python 3, because a Windows runner may carry only the
+second. Two plants went into the SQLite rendering, and both halves agreed on
+each. One stated one record more than the database holds; one wrote no
+`omission` rows. Each failed one row, 27 of 28. ⛔ Two Rust comments said this
+check handed the CBOR to `cbor2`. Neither half ever did: `cbor2` read it once,
+in `PUB-03`'s driven pass. Both comments say so now. `check-gate-rows`'
+dropped-prover plant removes `publishing/check-publish` now.
 
 Prove: ⛔ **Rewritten with the Approach.** Every portable-subject row is a
 `bit-check` row on the Windows lane, each port compared against its `sh` half
