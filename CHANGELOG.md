@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T12:49:29Z
+
+- ⭐ **THE PUBLISHER'S `bundle` HAS A PRODUCER.** `assemble-bundle.yml` turns
+  one `capture-client` dispatch's artifacts into records, run manifests and a
+  publication tree, and uploads it as `bundle`. The version scheme comes from
+  each resolver's own record. Run 38's pair makes a 30-file bundle.
+- ⛔ **The publisher refuses a bundle with no `MANIFEST.json` or `SHA256SUMS`,
+  or with a digest that does not match, before it pushes.** It used to push one
+  and refuse only at the read-back.
+- ⚠ A record's version output is stored as `version.txt`, because the release
+  refused `version.err` as a file with no media type.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-09`. No version bump and no deploy;
+  nothing is appended to `data`.
+
 ### 2026-10-14T12:30:39Z
 
 - ⭐ **A CAPTURE PAIR IS A CORPUS.** `assemble-capture` writes a run manifest

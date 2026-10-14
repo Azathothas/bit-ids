@@ -584,7 +584,7 @@ fn evidence_of(lane: &Lane) -> Result<Vec<(EvidenceRef, PathBuf)>, String> {
     add(
         lane.evidence_id("installed-version"),
         EvidenceKind::ProcessOutput,
-        &format!("{}/version.err", lane.route),
+        &format!("{}/version.txt", lane.route),
         lane.version_output.clone(),
     )?;
     out.sort_by_key(|entry| entry.0.id.to_string());
@@ -1875,9 +1875,9 @@ fn independence(lanes: &[Lane]) -> Result<Vec<String>, String> {
 /// a path and took the store for one a consumer could open.
 ///
 /// ⭐ **So it is asked here, over what was actually written.** The records are
-/// the ones handed to `to_json`, and the manifests are whatever the store
-/// directory already carried - which is nothing on this path, because no step of
-/// a capture writes a `RunManifest`.
+/// the ones handed to `to_json`, and the manifests are the ones this run wrote
+/// beside them. Until `CI-09` step 5 no step of a capture wrote a `RunManifest`,
+/// so every record this reported on was `E-CRP-01`.
 ///
 /// ⛔ **The tree is READ BACK OFF THE DISK, not assembled from the records.** A
 /// first version built the corpus over an EMPTY `StoreTree`, which silently

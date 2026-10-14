@@ -83,9 +83,17 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   not decode the CBOR: this project has no CBOR reader, and using its own
   encoder to read it back would be checking the writer against itself.
 - [`publishing/publish-data.sh`](publishing/publish-data.sh) appends an
-  assembled bundle to the data branch: the append rule is checked before the
-  push, nothing re-enables force, and the branch is read back and verified
+  assembled bundle to the data branch: a bundle with no `MANIFEST.json`, no
+  `SHA256SUMS` or a digest that does not match is refused before the push, the
+  append rule is checked before the push, nothing re-enables force, and the branch is read back and verified
   before the run says it happened.
+- [`publishing/assemble-bundle.sh`](publishing/assemble-bundle.sh) composes the
+  publication tree over a store that is a valid corpus: the indexes, every
+  rendering, the licence, `MANIFEST.json` and `SHA256SUMS`. It takes each
+  target's version scheme from the resolutions it is handed, and removes a
+  half-built bundle. [`publishing/check-bundle.sh`](publishing/check-bundle.sh)
+  proves it, ending with the publisher appending its bundle to a scratch bare
+  repository.
 - [`publishing/check-publish.sh`](publishing/check-publish.sh) drives that
   publisher against a bare repository it creates in a scratch directory, so the
   push path runs for real with no network and no credential.
@@ -209,6 +217,13 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   about the assembler. ⚠ Its lanes are written by the harness rather than
   downloaded: a case that fetched a run's artifacts would go red the day that run
   expired.
+- [`capture/assemble-dispatch.sh`](capture/assemble-dispatch.sh) turns one
+  `capture-client` dispatch's downloaded artifacts into its records, their run
+  manifests and the `bundle` the publisher downloads. It pairs the lanes by
+  artifact name and refuses an adapter with one route, a capture with no install
+  beside it, two attempts, and a lane whose resolver wrote no `resolution.json`.
+  [`assemble-bundle.yml`](../.github/workflows/assemble-bundle.yml) runs it, and
+  `check-assemble` drives it.
 - [`ci/check-staleness.sh`](ci/check-staleness.sh) drives the staleness monitor
   over real stores and real resolutions: a new stable release opens one request,
   a preview and a release already measured open none, and a second run over a
@@ -290,7 +305,8 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   holding a file three root processes are holding.
 - [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by **every** mutation
   harness except `acquisition/check-runner.sh`, and by
-  `publishing/publish-data.sh`, which is not a harness. It is never run.
+  `publishing/publish-data.sh`, `publishing/assemble-bundle.sh` and
+  `capture/assemble-dispatch.sh`, which are not harnesses. It is never run.
   ⚠ The two exceptions are named rather than counted, and the count that used to
   stand here is gone on purpose: it said "twelve" and went stale the next time a
   harness was added, which is the second time a number in this file has done

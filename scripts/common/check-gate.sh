@@ -426,6 +426,7 @@ for spec in acquisition/check-release-route \
   common/check-shell \
   corpus/check-corpus corpus/check-indexes publishing/check-release \
   publishing/check-formats publishing/check-publish publishing/check-access \
+  publishing/check-bundle \
   ci/check-staleness ci/check-step-bodies \
   capture/check-assemble capture/check-connector common/check-examples \
   common/check-handbook common/check-gate-rows common/check-public-row \

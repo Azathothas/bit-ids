@@ -1210,10 +1210,11 @@ non-injective layout section 4 describes, in a second place.
   vendored C library. ⚠ It is required rather than optional: `PUB-04` derives a
   consumer's caching contract from the set of published paths, so a build that
   could omit one would publish a manifest missing a documented file.
-- ⚠ `assemble-capture` writes a store from a capture's artifacts and asks
-  `validate_corpus` about it, and two things are still missing between a capture
-  and a publication: the `RunManifest` beside each record, and an artifact named
-  `bundle`, which `publish-data.yml` downloads and no workflow uploads. `CI-09`.
+- ⭐ `assemble-capture` writes a store from a capture's artifacts, with a
+  `RunManifest` beside each record, and `assemble-bundle.yml` turns one
+  dispatch's artifacts into the `bundle` that `publish-data.yml` downloads.
+  `capture-client` run 38's pair is a valid corpus and the first bundle.
+  ⚠ Nothing has been appended to the data branch. `CI-09`.
 - ⭐ The HTTP tracker observer has been driven by stock `BitTorrent` clients, on
   2026-09-08: hosted runners installed Transmission 4.0.5 and qBittorrent 4.6.3,
   deleted their default routes, and each build announced to the lab. ⚠ Every

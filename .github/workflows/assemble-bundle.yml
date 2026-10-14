@@ -1,0 +1,86 @@
+name: Assemble bundle
+
+# ⭐ THE PRODUCER OF THE ARTIFACT `publish-data.yml` DOWNLOADS. It reads one
+# `capture-client` dispatch's artifacts, writes its records and their run
+# manifests, composes the publication tree, and uploads it as `bundle`. The
+# publisher checks its checksums before anything is pushed. `CI-09`.
+#
+# ⛔ A SEPARATE WORKFLOW, NOT A JOB IN `capture-client.yml`. Every job in a
+# capture workflow claims a disposable host, installs somebody else's binary and
+# captures, and `check-workflow` holds each one to that order. This job does
+# none of it, on a runner that never ran a client, so it inherits nothing from
+# a host that did.
+#
+# ⛔ DISPATCH ONLY. A bundle is one boolean away from the data branch, so a
+# person names the capture run it is made from, and the publisher is a second
+# dispatch whose dry run is its default.
+on:
+  workflow_dispatch:
+    inputs:
+      capture_run_id:
+        description: Run id of the capture-client dispatch to assemble
+        required: true
+        type: string
+      capture_run_attempt:
+        description: Which attempt of that run
+        required: true
+        default: "1"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assemble-bundle
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  assemble:
+    name: Assemble the records and the bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # ⛔ READ ONLY. `actions: read` is what reaches another run's artifacts; this
+    # job writes nothing but its own upload.
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Show the toolchain
+        run: rustup show active-toolchain
+
+      # ⚠ Two downloads with their prefixes, rather than one pattern over the
+      # run id, so an artifact some other step of that run uploads is not read
+      # as a lane. Each lands in a directory named for the artifact.
+      - name: Download the captures
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: capture-client-*-*-${{ inputs.capture_run_id }}-${{ inputs.capture_run_attempt }}
+          path: ${{ runner.temp }}/artifacts
+          run-id: ${{ inputs.capture_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download the installs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: install-*-*-${{ inputs.capture_run_id }}-${{ inputs.capture_run_attempt }}
+          path: ${{ runner.temp }}/artifacts
+          run-id: ${{ inputs.capture_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Assemble the bundle
+        run: sh scripts/capture/assemble-dispatch.sh "$RUNNER_TEMP/artifacts" "$RUNNER_TEMP/bundle"
+
+      # ⛔ FATAL WHEN EMPTY. A green run with no bundle is the outcome a person
+      # dispatching the publisher next would least expect.
+      - name: Upload the bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bundle
+          path: ${{ runner.temp }}/bundle
+          if-no-files-found: error
+          retention-days: 30

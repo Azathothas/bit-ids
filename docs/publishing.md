@@ -110,20 +110,28 @@ data-branch job and release job consume the same uploaded tree.
 `cargo run -p bit-ids --example assemble-release -- DIR` as its driving surface
 and [`check-release.sh`](../scripts/publishing/check-release.sh) as its prover.
 
-⛔ **What it consumes is a tree built from the STORE, and no job runs it.** This
-paragraph used to say the assembler consumes capture artifacts, and the distance
-between those two is the whole of `CI-09`: a capture bundle is evidence, a
-publication is assembled from records, and nothing yet turns the first into the
-second. Measured on 2026-09-08 - the publisher downloads an artifact named
-`bundle` and the four uploads in this tree are all capture evidence, so its first
-step cannot succeed on any run that exists or could be dispatched.
+⛔ **What it consumes is a tree built from the STORE.** A capture bundle is
+evidence and a publication is assembled from records, and the distance between
+those two was the whole of `CI-09`. ⭐ Since 2026-10-14 one dispatch closes it:
+[`assemble-bundle.yml`](../.github/workflows/assemble-bundle.yml) downloads one
+`capture-client` run's artifacts, and
+[`assemble-dispatch.sh`](../scripts/capture/assemble-dispatch.sh) writes the
+records and their run manifests with `assemble-capture`. Then
+[`assemble-bundle.sh`](../scripts/publishing/assemble-bundle.sh) refuses a store
+that is not a valid corpus and composes the indexes, the renderings, the
+licence and the two documents above. The result is uploaded as `bundle`.
+`capture-client` run 38's `aria2-next` 3.0.3 pair is the first bundle, 30
+files, with both records admitted to the published view.
 
-⚠ **The producer is absent on purpose rather than missing by accident.** Every
-record in the store today is synthetic, so a job that assembled one and uploaded
-it under that name would leave a publishable-looking artifact one boolean away
-from the data branch. `check-project` refuses a `download-artifact` whose name no
-`upload-artifact` produces, this one is declared against `CI-09` in the workflow
-itself, and the declaration is refused the moment a producer appears.
+⚠ **The producer was absent on purpose until a measured record existed.** While
+every record was synthetic, a bundle would have left a publishable-looking
+artifact one boolean away from the data branch. The publisher is still a
+separate dispatch whose dry run is its default, and it names the bundle's run.
+
+⛔ **The publisher refuses a bundle that does not describe itself before it
+pushes.** One with no `MANIFEST.json` or `SHA256SUMS`, or a digest that does not
+match, used to be pushed and refused only at the read-back. The first bundle
+assembled from a real capture found that on 2026-10-14.
 
 ⚠ `MANIFEST.json` describes every file's media type, schema and SHA-256 digest
 except its own and the checksum file's, and `SHA256SUMS` covers every file
@@ -156,7 +164,8 @@ acquisition routes and the evidence list exist.
 [`publish-data.sh`](../scripts/publishing/publish-data.sh) is the publisher and
 [`check-publish.sh`](../scripts/publishing/check-publish.sh) drives it against a
 bare repository created for the run. ⛔ It has never run against this
-repository's own remote and will not until a measured record exists to publish.
+repository's own remote. A measured record exists since 2026-10-14, and the
+first publication is the operator's call.
 
 [`publish-data.yml`](../.github/workflows/publish-data.yml) is what calls it,
 and `CI-01` wired it. ⛔ **It has no automatic trigger and its dry run is the

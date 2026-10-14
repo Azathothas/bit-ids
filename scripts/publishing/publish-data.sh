@@ -195,6 +195,23 @@ else
   git -C "$CLONE" checkout -q --orphan "$BRANCH" || exit 2
 fi
 
+# ⛔ THE BUNDLE DESCRIBES ITSELF, BEFORE ANYTHING IS COMMITTED. A bundle with no
+# `MANIFEST.json` or `SHA256SUMS` used to be pushed and only then refused at the
+# read-back, which left a published commit nothing could verify; a dry run
+# reported it clean. Found on 2026-10-14 by the first bundle assembled from a
+# real capture, before its descriptions were written. `CI-09`.
+for _doc in MANIFEST.json SHA256SUMS; do
+  [ -f "$BUNDLE/$_doc" ] || {
+    printf 'publish-data: the bundle carries no %s; assemble it before publishing\n' "$_doc" >&2
+    exit 1
+  }
+done
+if ! (cd "$BUNDLE" && sha256sum -c SHA256SUMS --quiet) >"$WORK/bundle-sums.log" 2>&1; then
+  printf "publish-data: a digest in the bundle's SHA256SUMS does not match its bytes\n" >&2
+  sed 's/^/  /' "$WORK/bundle-sums.log" >&2
+  exit 1
+fi
+
 # ⛔ THE APPEND GATE, BEFORE ANYTHING IS COMMITTED. Unpiped: the output goes to a
 # file and $? is read on the next line.
 "$CHECKER" "$WORK/prior" "$BUNDLE" >"$WORK/append.log" 2>&1

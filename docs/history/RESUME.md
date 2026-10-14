@@ -8,9 +8,9 @@ and why it is not the record. The work order is
 | | |
 | --- | --- |
 | the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
-| the resume point | `CI-09`'s last residual: an artifact named `bundle` that `publish-data.yml` downloads, then the publisher through its own checks on run 38's corpus. |
-| in flight | nothing. Run 38 assembled into a valid corpus of 2 records with 2 manifests. |
-| the state of the tree | `check-assemble` 58 of 58; `check-workflow` 115 of 115; `check-step-bodies` 39 of 39. |
+| the resume point | `CI-09`: dispatch `assemble-bundle.yml` on run 38, then `publish-data.yml` with `dry_run` true on its bundle. The first real append is the operator's call. Then `CLIENT-06`. |
+| in flight | nothing. |
+| the state of the tree | `check-assemble` 64 of 64; `check-bundle` 13 of 13; `check-publish` 19 of 19. |
 
 ## Starting, on this host
 

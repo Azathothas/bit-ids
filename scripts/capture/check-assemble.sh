@@ -499,7 +499,7 @@ if [ "$(find "$WORK/store-good/profiles" -name '*.json' -type f | grep -c .)" = 
 else
   fail "one record per lane is written, over the same two routes"
 fi
-if [ "$(find "$WORK/store-good" -name 'version.err' -type f | grep -c .)" -ge 1 ]; then
+if [ "$(find "$WORK/store-good" -name 'version.txt' -type f | grep -c .)" -ge 1 ]; then
   pass "the process output the installed version cites is copied into the store"
 else
   fail "the process output the installed version cites is copied into the store"
@@ -974,5 +974,73 @@ else
     badtrans good-release good-source
   write_lane good-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
 fi
+
+# -- ⭐ A DISPATCH'S ARTIFACTS, ALL THE WAY TO A BUNDLE ---------------------------
+#
+# ⛔ The good pair again, under the names a dispatch uploads them as, with the
+# `resolution.json` each resolver writes beside its text record. `CI-09`.
+DISPATCH="$ROOT/scripts/capture/assemble-dispatch.sh"
+artifacts() { # dir run-attempt route...
+  _dir=$1
+  _ra=$2
+  shift 2
+  rm -rf "$_dir"
+  mkdir -p "$_dir" || return 1
+  for _route in "$@"; do
+    cp -R "$WORK/good-$_route-capture" "$_dir/capture-client-fixture-client-$_route-$_ra" || return 1
+    cp -R "$WORK/good-$_route-install" "$_dir/install-fixture-client-$_route-$_ra" || return 1
+    mkdir -p "$_dir/install-fixture-client-$_route-$_ra/$_route" || return 1
+    printf '{"schema": "bit-ids/resolution/1", "target": "fixture-client", "scheme": {"tag_prefix": "v", "min_components": 3, "max_components": 3}}\n' \
+      >"$_dir/install-fixture-client-$_route-$_ra/$_route/resolution.json" || return 1
+  done
+}
+# ⛔ Unpiped: the output goes to a file and $? is read on the next line.
+dispatch_is() { # expected-rc literal name dir
+  rm -rf "$WORK/dispatch-bundle"
+  sh "$DISPATCH" "$4" "$WORK/dispatch-bundle" >"$WORK/dispatch.out" 2>&1
+  _rc=$?
+  if [ "$_rc" != "$1" ]; then
+    fail "$3 (exit $_rc, expected $1)"
+    [ "$JSON" = "1" ] || tail -4 "$WORK/dispatch.out" | sed 's/^/          /'
+  elif ! grep -q -F -e "$2" "$WORK/dispatch.out"; then
+    fail "$3 (exit $1, and it did not say '$2')"
+    [ "$JSON" = "1" ] || tail -4 "$WORK/dispatch.out" | sed 's/^/          /'
+  elif [ "$1" != 0 ] && [ -e "$WORK/dispatch-bundle" ]; then
+    fail "$3 (refused, and a bundle was left behind)"
+  else
+    pass "$3"
+  fi
+}
+
+artifacts "$WORK/arts" 7-1 release source || exit 2
+dispatch_is 0 "2 of 2 record(s) may enter a published view" \
+  "dispatch  a two-route dispatch's artifacts become a bundle a publisher can verify" "$WORK/arts"
+if [ -f "$WORK/dispatch-bundle/MANIFEST.json" ] &&
+  (cd "$WORK/dispatch-bundle" && sha256sum -c --quiet SHA256SUMS) >/dev/null 2>&1 &&
+  [ "$(find "$WORK/dispatch-bundle/raw" -name manifest.json -type f | grep -c .)" = "2" ]; then
+  pass "dispatch  the bundle carries both records' run manifests and its own checksums"
+else
+  fail "dispatch  the bundle carries both records' run manifests and its own checksums"
+fi
+
+artifacts "$WORK/arts" 7-1 release || exit 2
+dispatch_is 1 "a record needs two independent routes" \
+  "dispatch  an adapter that captured on one route is refused, not left out" "$WORK/arts"
+
+artifacts "$WORK/arts" 7-1 release source || exit 2
+rm -rf "$WORK/arts/install-fixture-client-source-7-1"
+dispatch_is 1 "has no install-fixture-client-source-7-1 beside it" \
+  "dispatch  a capture with no install artifact beside it is refused" "$WORK/arts"
+
+artifacts "$WORK/arts" 7-1 release source || exit 2
+cp -R "$WORK/arts/capture-client-fixture-client-source-7-1" "$WORK/arts/capture-client-fixture-client-source-7-2"
+cp -R "$WORK/arts/install-fixture-client-source-7-1" "$WORK/arts/install-fixture-client-source-7-2"
+dispatch_is 1 "from 2 runs or attempts" \
+  "dispatch  artifacts from two attempts of a run are refused rather than mixed" "$WORK/arts"
+
+artifacts "$WORK/arts" 7-1 release source || exit 2
+rm -f "$WORK/arts/install-fixture-client-source-7-1/source/resolution.json"
+dispatch_is 1 "source lane has no resolution.json" \
+  "dispatch  a lane whose resolver wrote no scheme is refused" "$WORK/arts"
 
 store_report check-assemble/1 cases "$JSON"

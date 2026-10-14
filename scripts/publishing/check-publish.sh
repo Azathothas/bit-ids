@@ -192,15 +192,36 @@ else
   fail "read-back  exit $RC: $(head -3 "$WORK/out" | tr '\n' ' ')"
 fi
 
-# ⛔ A published tree with nothing to verify is refused rather than reported
-# clean, because "no checksums" and "checksums all matched" are the same silence.
+# ⛔ A bundle with nothing to verify is refused BEFORE THE PUSH, because "no
+# checksums" and "checksums all matched" are the same silence. ⚠ This case used
+# to accept a refusal at the read-back, after the push had landed: the branch
+# then carried a commit nothing could verify. `CI-09`, 2026-10-14.
 fresh_remote >/dev/null 2>&1
 rm -f "$BUNDLE/SHA256SUMS"
 run_publish
-if [ "$RC" = "1" ] && grep -q 'no SHA256SUMS' "$WORK/out"; then
-  pass "read-back  a published tree with no checksum file is refused"
+if [ "$RC" = "1" ] && grep -q 'carries no SHA256SUMS' "$WORK/out" && [ "$(commits)" = "0" ]; then
+  pass "bundle   a bundle with no checksum file is refused, and nothing is pushed"
 else
-  fail "read-back  expected a refusal over the missing checksums, exit $RC: $(head -2 "$WORK/out" | tr '\n' ' ')"
+  fail "bundle   expected a refusal before the push, exit $RC, $(commits) commit(s): $(head -2 "$WORK/out" | tr '\n' ' ')"
+fi
+
+fresh_remote >/dev/null 2>&1
+rm -f "$BUNDLE/MANIFEST.json"
+run_publish
+if [ "$RC" = "1" ] && grep -q 'carries no MANIFEST.json' "$WORK/out" && [ "$(commits)" = "0" ]; then
+  pass "bundle   a bundle with no manifest is refused, and nothing is pushed"
+else
+  fail "bundle   expected a refusal before the push, exit $RC, $(commits) commit(s): $(head -2 "$WORK/out" | tr '\n' ' ')"
+fi
+
+# A byte changed after the bundle was assembled is one its own checksums name.
+fresh_remote >/dev/null 2>&1
+printf 'x' >>"$BUNDLE/LICENSE"
+run_publish
+if [ "$RC" = "1" ] && grep -q 'does not match its bytes' "$WORK/out" && [ "$(commits)" = "0" ]; then
+  pass "bundle   a bundle edited after assembly is refused, and nothing is pushed"
+else
+  fail "bundle   expected a refusal before the push, exit $RC, $(commits) commit(s): $(head -2 "$WORK/out" | tr '\n' ' ')"
 fi
 
 # ⛔ A branch name carrying a + would be the second half of a forcing refspec.

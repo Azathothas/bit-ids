@@ -681,9 +681,9 @@ fi
 
 # -- 0c. the publisher cannot fire on its own ---------------------------------
 #
-# ⛔ NOTHING HAS EVER BEEN PUBLISHED AND NOTHING MAY BE until a measured record
-# exists, because everything in the tree is synthetic. The publisher's workflow
-# is therefore dispatch-only, and its dry run is the default so that dispatching
+# ⛔ NOTHING HAS EVER BEEN PUBLISHED, and what first reaches the data branch is a
+# person's call on a bundle they named. The publisher's workflow is therefore
+# dispatch-only, and its dry run is the default so that dispatching
 # it by accident still pushes nothing. ⚠ Both are properties a reader can check,
 # which is why they are cases here rather than a sentence in the file.
 # ⛔ HOISTED OUT OF THE UNIT BELOW, because `static-readers` reads it too. A path

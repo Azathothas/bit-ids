@@ -52,12 +52,12 @@ were written by hand from published BEPs.
 | --- | --- |
 | has a stock client been put on the wire? | yes. Transmission 4.0.5 and qBittorrent 4.6.3 announced to the HTTP tracker observer on 2026-09-08, one observer, one platform, one route. `OBS-07`. |
 | has a `Profile` been assembled from a dispatch? | yes, from `capture-client` run 17's artifacts on 2026-09-15 and run 36's on 2026-10-14, each pair into a scratch store. Every record is `provisional`. `CI-09`. |
-| has a record been produced publishable? | ⭐ yes, from a stock client: `capture-client` run 37's `aria2-next` 3.0.3 pair, re-assembled on 2026-10-14 once `SCHEMA-04` stopped calling a shared random byte fixed, is `publishable` on both routes and `build_equivalent` across them. ⭐ Run 38's 3.0.3 pair, assembled with a `manifest.json` beside each record, is a valid corpus: `validate-corpus` lets 2 of 2 records into a published view. ⚠ No dispatch yet uploads it as the `bundle` the publisher downloads. `CI-09`. |
+| has a record been produced publishable? | ⭐ yes, from a stock client: `capture-client` run 37's `aria2-next` 3.0.3 pair, re-assembled on 2026-10-14 once `SCHEMA-04` stopped calling a shared random byte fixed, is `publishable` on both routes and `build_equivalent` across them. ⭐ Run 38's 3.0.3 pair, assembled with a `manifest.json` beside each record, is a valid corpus: `validate-corpus` lets 2 of 2 records into a published view. ⭐ `assemble-bundle.sh` makes it a 30-file bundle that the publisher appends to a scratch bare repository and reads back. `CI-09`. |
 | does a stock `aria2-next` cooperate? | yes, since run 37 on 2026-10-14: 3.0.3 on both routes answered both peer connections once the second came from `127.0.0.2`, and every sample was corroborated exactly. ⛔ The pair is refused over a byte two random announce tails happened to share, which the classifier calls fixed; `SCHEMA-04` owns that. `OBS-04`, `CLIENT-14`, `CI-09`. |
 | whose identity does `aria2-next` present? | qBittorrent 5.2.3's: user agent `qBittorrent/5.2.3`, peer ID prefix `-qB5230-`, corroborated by the `cpython-stdlib` connector. `CLIENT-14`. |
 | does a client install finish on a runner? | ⭐ **yes, and it always did.** The "hang" of runs 3 to 34 was *Cut the route* severing the runner agent from GitHub, measured on 2026-10-11 by a flight recorder posting off the host. The capture now runs in a network namespace; both `aria2-next` routes then completed, release in 1.5 minutes and source in 12.5, and 3.0.2's source build installed in 694 seconds on 2026-10-14. `CI-08`, `CI-09`. |
 | how many connectors does the capture path declare? | two: the Rust observer and `scripts/capture/connectors/cpython-stdlib.py`. ⚠ The second is two readings of one capture's bytes, not a second observation of the wire. ⭐ Every sample of a field is corroborated, not the first, since 2026-10-14. `OBS-07`, `CI-09`. |
-| has the publisher run against this repository's remote? | no, and it must not until a measured record exists. It cannot run at all yet: `publish-data.yml` downloads an artifact named `bundle` and no workflow uploads one. |
+| has the publisher run against this repository's remote? | no. A measured record exists since 2026-10-14 and `assemble-bundle.yml` produces the `bundle` it downloads; the first append to `data` is the operator's call. `CI-09`. |
 | has a published URL been fetched? | no. `docs/publishing.md` carries the forms and says they are unexercised. |
 | does anything schedule the staleness monitor? | no. `CI-02` built the comparison; no capture request has been opened. |
 
@@ -104,10 +104,10 @@ still open is a host that never reached it.
 
 ⛔ **Nothing here is blocked.** Take these in order.
 
-1. **`CI-09`'s last residual, which is now all that stands between a capture
-   and a publication**: an artifact named `bundle` for `publish-data.yml` to
-   download. Run 38's corpus is valid, with a manifest beside each record. Then
-   take the publisher through its own checks. `CI-09`.
+1. **`CI-09`'s dispatches**: `assemble-bundle.yml` on `capture-client` run 38,
+   then `publish-data.yml` on its bundle with `dry_run` left true. ⛔ The first
+   real append to `data` is the operator's call, not this work order's.
+   `CI-09`.
 2. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
    `CLIENT-06` has a same-version pair for Transmission 4.1.3 that needs no new
    route, under its entry in [`clients.md`](clients.md); its builds need

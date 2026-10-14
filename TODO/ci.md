@@ -3949,6 +3949,68 @@ with clean controls on both sides: accepting any runner environment, and
 reading the install's end as the capture's start. ⛔ What is left of this
 entry's residuals is the `bundle` artifact `publish-data.yml` downloads.
 
+### ⭐ The `bundle` has a producer, and the first one found two defects. 2026-10-14
+
+[`assemble-bundle.yml`](../.github/workflows/assemble-bundle.yml) is a dispatch
+that takes a `capture-client` run's id. It downloads that run's captures and
+installs, and [`assemble-dispatch.sh`](../scripts/capture/assemble-dispatch.sh)
+pairs the lanes by artifact name and runs `assemble-capture` for every adapter
+into one store. [`assemble-bundle.sh`](../scripts/publishing/assemble-bundle.sh)
+then refuses a store that is not a valid corpus. It composes the indexes, every
+rendering, the licence, `MANIFEST.json` and `SHA256SUMS`, and the job uploads
+the tree as `bundle`. ⚠ It is a workflow of its own rather than a job in
+`capture-client.yml`, because `check-workflow` holds every job in a capture
+workflow to claim, install and capture, and this one does none of them.
+
+⭐ **The version scheme is not declared a second time.** Each adapter declares
+it in `--describe`, each resolver records the scheme it ordered tags under in
+its `resolution.json`, and `assemble-bundle.sh` takes it from there. Two resolutions that order one target differently are refused.
+
+⛔ **Two defects, each found by assembling run 38 by hand before anything was
+written:**
+
+1. `assemble-release` refused the store with `E-REL-01` four times. The
+   assembler stored each route's version output as `version.err`, a name with
+   no media type. It is stored as `version.txt` now; the bytes are the same.
+2. `publish-data.sh --dry-run` reported a bundle with no `MANIFEST.json` and no
+   `SHA256SUMS` clean, and a real run would have pushed it and refused only at
+   the read-back, leaving a commit on `data` nothing could verify.
+   `check-publish` asserted that shape as a pass. The publisher now refuses
+   such a bundle, or one whose digests do not match, before anything is
+   committed, and the case asserts the branch is untouched.
+
+Driven: run 38's artifacts, under their uploaded names, became a 30-file
+bundle with release digest
+`sha256:77cb519cfa123edf8d462492ea0739a494d63b5159e0a2e57e6033865d93df0c`,
+identical across two assemblies. Both records are admitted to the published
+view. `publish-data.sh` appended it to a scratch bare repository and read it
+back. `check-bundle` 13 of 13, `check-assemble` 64 of 64 with six dispatch
+cases, `check-publish` 19 of 19.
+
+Mutation table, each plant against the case written for it:
+
+| plant | refused by |
+| --- | --- |
+| the publisher skips the `MANIFEST.json` and `SHA256SUMS` presence check | `check-publish`, 2 cases |
+| the publisher skips the bundle's checksum check | `check-publish` |
+| two schemes for one target are not compared | `check-bundle` |
+| a half-built bundle is not removed | `check-bundle` |
+| the store is not validated before the copy | `check-bundle` |
+| any top-level entry is copied | `check-bundle` |
+| an adapter with one route is accepted | `check-assemble` |
+| two attempts are mixed | `check-assemble` |
+| a capture with no install beside it is accepted | `check-assemble` |
+| a lane with no `resolution.json` is skipped | `check-assemble` |
+
+⚠ **Two read-backs were removed, not kept.** `assemble-bundle.sh` first ran
+`sha256sum -c` and `validate-corpus` over its own output. A plant disabling
+either was refused by no case, because nothing ahead of them can make them
+fire short of a broken `assemble-release`. `check-bundle` reads the bundle back
+from outside instead, and the publisher's pre-push check is proven.
+
+⛔ **Nothing has been appended to `data`.** Whether to append run 38's bundle is
+the operator's call.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05

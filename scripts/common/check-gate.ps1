@@ -297,6 +297,7 @@ Add-Unavailable 'check-publish' 'its subject publish-data.sh has no PowerShell h
 # derivation of a request identifier. Copying the row above would have recorded a
 # reason that is not this one.
 Add-Unavailable 'check-access' 'its subject publish-data.sh has no PowerShell half; CI-07 class C'
+Add-Unavailable 'check-bundle' 'its subjects assemble-bundle.sh and publish-data.sh have no PowerShell half; CI-07 class C'
 Add-Unavailable 'check-examples' 'it RUNS a document sh fenced blocks and there is no sh here; CI-07 class D'
 Add-Unavailable 'check-handbook' 'it RUNS a document sh fenced blocks and there is no sh here; CI-07 class D'
 Add-Unavailable 'check-staleness' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'

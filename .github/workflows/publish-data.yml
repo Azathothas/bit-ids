@@ -1,16 +1,16 @@
 name: Publish data
 
 # ⛔ THERE IS NO AUTOMATIC TRIGGER AND THAT IS THE POINT OF THIS FILE'S SHAPE.
-# Nothing in this repository has ever been published, and nothing may be until a
-# measured record exists: everything in the tree today is synthetic. A push or
-# schedule trigger here would be one merge away from publishing that. So a human
-# has to dispatch it, and `dry_run` defaults to true so that dispatching it by
-# accident still pushes nothing. scripts/ci/check-workflow.sh asserts both.
+# Nothing in this repository has ever been published. The first measured pair
+# exists since 2026-10-14, and what reaches the data branch is a person's call
+# on a bundle they named, not a merge's or a clock's. So a human has to dispatch
+# it, and `dry_run` defaults to true so that dispatching it by accident still
+# pushes nothing. scripts/ci/check-workflow.sh asserts both.
 on:
   workflow_dispatch:
     inputs:
       bundle_run_id:
-        description: Run id of the workflow whose artifact carries the assembled bundle
+        description: Run id of the assemble-bundle dispatch whose artifact carries the bundle
         required: true
         type: string
       dry_run:
@@ -47,17 +47,11 @@ jobs:
           fetch-depth: 0
       - name: Download the assembled bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        # ⛔ NOTHING IN THIS TREE PRODUCES AN ARTIFACT CALLED `bundle`, so this
-        # step cannot succeed on any run that exists or could be dispatched
-        # today. The four uploads here are capture evidence, and a capture bundle
-        # is not a publication: it carries no `MANIFEST.json`, its checksums sit
-        # a directory down, and the assembler that turns records into a
-        # publication has no records to read because none has been written.
-        # ⚠ The producer is deliberately absent rather than stubbed. Everything
-        # in the store today is synthetic, so a job that assembled and uploaded a
-        # bundle would put a publishable-looking artifact one boolean away from
-        # being pushed to the data branch.
-        # bit-ids:no-producer=CI-09
+        # ⭐ `assemble-bundle.yml` PRODUCES IT, since 2026-10-14. That workflow
+        # reads one `capture-client` dispatch's artifacts, writes the records
+        # and their run manifests, and composes the publication.
+        # ⚠ This was absent on purpose while every record in the store was
+        # synthetic; the first measured pair is what it waited for. `CI-09`.
         with:
           name: bundle
           path: bundle
