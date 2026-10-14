@@ -940,6 +940,41 @@ else
 fi
 
 # ============================================================================
+# check-connector
+# ============================================================================
+#
+# ⭐ PORTED 2026-10-14. Its plants go into the connector it drives, the second
+# reading of a capture: one reads the reserved bytes one byte late, one decodes
+# a bare `+` as a space, which is the query-string reading a peer ID must not
+# get.
+if [ "$HARNESSES" = "0" ]; then
+  printf 'check-bitcheck: the check-connector cases were NOT run; --harnesses or --compare runs them\n' >&2
+else
+  agree "connector clean tree" check-connector capture/check-connector 0
+  go_said "connector clean tree" '{"schema":"check-connector/1","total":51,"passed":51,"failed":0}'
+
+  CON="$TREE/scripts/capture/connectors/cpython-stdlib.py"
+  cp "$CON" "$WORK/connector.orig" || exit 2
+  if replace_once "$CON" '"peer_wire/reserved": raw[reserved_at : reserved_at + 8],' '"peer_wire/reserved": raw[reserved_at + 1 : reserved_at + 9],'; then
+    agree "connector reserved bytes read one byte late" check-connector capture/check-connector 1
+    go_said "connector reserved bytes read one byte late" '{"schema":"check-connector/1","total":51,"passed":48,"failed":3}'
+  else
+    fail "connector reserved bytes read one byte late: NOT PLANTED"
+  fi
+  cp "$WORK/connector.orig" "$CON"
+
+  if replace_once "$CON" 'decoded = urllib.parse.unquote_to_bytes(value)' 'decoded = urllib.parse.unquote_to_bytes(value.replace(b"+", b" "))'; then
+    agree "connector a bare plus decoded as a space" check-connector capture/check-connector 1
+    go_said "connector a bare plus decoded as a space" '{"schema":"check-connector/1","total":51,"passed":50,"failed":1}'
+  else
+    fail "connector a bare plus decoded as a space: NOT PLANTED"
+  fi
+  cp "$WORK/connector.orig" "$CON"
+
+  agree "connector clean tree again" check-connector capture/check-connector 0
+fi
+
+# ============================================================================
 # check-catalogue
 # ============================================================================
 #

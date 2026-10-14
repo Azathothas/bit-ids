@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-14T21:34:37Z
+
+- ⭐ **`check-connector` runs on the Windows lane**, ported and compared like
+  the five before it, with every transcript still composed by the harness and
+  never by the observer.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-07`. No version bump and no deploy.
+
 ### 2026-10-14T21:10:48Z
 
 - ⭐ **`check-staleness` runs on the Windows lane**, ported and compared like

@@ -120,7 +120,7 @@ still open is a host that never reached it.
 4. **`CI-07`**: its Approach and Prove were rewritten on 2026-10-14 to the route
    `CI-10` made. `check-corpus`, `check-indexes`, `check-release`,
    `check-formats` and `check-staleness` are ported and run on both lanes;
-   `check-connector` and `check-assemble` are left, then `check-bitcheck`.
+   `check-connector` too; `check-assemble` is left, then `check-bitcheck`.
 5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
 6. The remaining client and engine breadth, then refinements.

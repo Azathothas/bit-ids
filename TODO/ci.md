@@ -1329,7 +1329,7 @@ than one population:
 
 | kind | rows, as `check-gate.ps1` declares them | closes when |
 | --- | --- | --- |
-| a portable subject | `check-assemble`, `check-connector`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
+| a portable subject | `check-assemble`, `check-bitcheck` | its harness is ported into `bit-check` by `CI-10`'s method: written in Go, compared case for case against the `sh` half, then the `sh` half deleted |
 | class B | `check-store` | its plants are reconsidered for Windows: a symbolic link and a named pipe cannot be made by an unprivileged Windows session, and a half that skipped them would report a smaller pass under the same name |
 | class C, an `sh` subject | `check-access`, `check-bundle`, `check-publish`, `check-transmission` | the subject gains a Windows half; not this entry's to close |
 | an `sh` subject not yet classed | `check-capture-client`, `check-release-route`, `check-source-route` | class C as well: each subject is an `sh` script; their reasons say so in the next change to them |
@@ -1408,6 +1408,22 @@ identifier's domain to `capture-request/2` failed the re-derivation row alone,
 rows, 16 of 19. `check-gate-rows` anchored two plants on `check-staleness`: its
 place in the `sh` list and its declared row in the `.ps1`. They anchor on
 `check-step-bodies` and `check-assemble` now.
+
+⭐ **CI on `a276766` read `check-formats` back on the Windows lane**, so the
+runner's Python serves as the database reader: 21 passed, 0 failed, 0 skipped.
+
+⭐ **And `check-connector` the sixth.**
+[`../tools/check/connector.go`](../tools/check/connector.go) ports its 51 rows.
+Every transcript is still hex composed by the harness itself, never written by
+the observer. Two plants went into the connector, and both halves agreed on
+each. Reading the reserved bytes one byte late failed the three reserved-byte
+rows, 48 of 51. Decoding a bare `+` as a space failed the bare-plus row alone,
+50 of 51. ⚠ The first spelling of that plant replaced a `str` in a `bytes`
+value, so it crashed the connector instead of misreading it. The halves then
+disagreed, because the `sh` half's `awk` printed every missing report into its
+output; that was the plant's defect, and the halves agree over the corrected
+one. ⚠ The port's first run failed its own default-report row: it looked for
+the report before running the connector that writes it.
 
 Prove: ⛔ **Rewritten with the Approach.** Every portable-subject row is a
 `bit-check` row on the Windows lane, each port compared against its `sh` half

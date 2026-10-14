@@ -172,8 +172,9 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   order, and the assembler compares them position by position; two announces
   that differ are both reported rather than refused.
   ⚠ It names itself with `--describe`; a caller never composes the identifier.
-- [`capture/check-connector.sh`](capture/check-connector.sh) proves it, and the
-  load-bearing case is not a refusal. ⛔ A connector that echoed the observer
+- `bit-check check-connector` proves it, and the load-bearing case is not a
+  refusal. ⭐ It was `capture/check-connector.sh` until 2026-10-14, compared
+  case for case against it before that half was deleted. `CI-07`. ⛔ A connector that echoed the observer
   would agree on every field of every capture forever, so what this asserts is
   that MOVING A BYTE IN THE TRANSCRIPT MOVES THE REPORT. ⭐ Nine defects were
   planted in the connector and the last one to be caught was found by planting

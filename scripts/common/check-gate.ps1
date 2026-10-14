@@ -261,6 +261,10 @@ Invoke-Ported 'check-formats'
 # its subject never needed a POSIX feature. CI-07.
 Invoke-Ported 'check-staleness'
 
+# ⭐ AND check-connector, whose subject is stdlib Python and runs here as on
+# the Linux lane; its harness was sh alone. CI-07.
+Invoke-Ported 'check-connector'
+
 # ⭐ AND THE LAST `common/` TWIN THIS LANE RAN, 2026-09-29. This row ran
 # `check-remote-items.ps1`, compared case for case against both halves before
 # they were deleted. ⚠ It NEEDS gh AND THE NETWORK, so it exits 2 on a machine
@@ -387,15 +391,6 @@ Add-Unavailable 'check-release-route' 'an sh harness whose subject has no PowerS
 Add-Unavailable 'check-assemble' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
 Add-Unavailable 'check-transmission' 'its subject transmission.sh is an sh adapter with no PowerShell half; CI-07 class C'
 
-# ⛔ AND A FIFTH REASON, WHICH IS NEW WITH THE SECOND CONNECTOR. check-connector's
-# subject is `python3` and a file of stdlib Python: it runs here exactly as it
-# runs on the Linux lane, and a Windows runner carries a Python too. So this is
-# class A rather than class C - what has no PowerShell half is the harness that
-# writes the synthetic bundles and plants in them, and it closes by joining
-# bit-check now that `store-lib.ps1` is gone. ⚠ Recorded with its own reason
-# rather than a neighbour's, because a row whose reason names the wrong event
-# closes on the wrong day.
-Add-Unavailable 'check-connector' 'a portable python3 subject; it closes when its harness is ported into bit-check; CI-10'
 
 # ⚠ Its reason is `check-release-route`'s exactly: the decision it proves is in
 # Rust and the Rust suite exercises it on both lanes; what this lane does not
