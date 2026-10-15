@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T10:00:05Z
+
+- ⭐ **The Windows capture no longer cuts the host's route.** It blocks the
+  capture's own programs at the firewall, reads the rules back, and proves on
+  every dispatch that a blocked program cannot connect while the host can.
+  Neither capture job severs its runner from GitHub now.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-08`. No version bump and no deploy.
+
 ### 2026-10-15T08:50:30Z
 
 - ⭐ **qBittorrent 5.2.4 is published**, beside aria2-next 3.0.3 and

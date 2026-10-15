@@ -424,7 +424,8 @@ rather than warns, over every tracked text file.
 
   ⚠ **The shape that bites is an INVERTED guard**, one whose refusal is the
   proof. Measured on 2026-09-08 on the first dispatch of the capture workflow:
-  its Windows *Restore the route* step puts the default routes back and then runs
+  its Windows *Restore the route* step, retired with the route cut on
+  2026-10-15, put the default routes back and then ran
   the egress guard, which must now REFUSE, because a host that can reach the
   network again is one that guard refuses. It refused, exit 1, exactly as
   designed - and that 1 failed the step, so the evidence upload was skipped and a

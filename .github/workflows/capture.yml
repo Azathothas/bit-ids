@@ -9,8 +9,8 @@ name: Capture
 #
 # ⛔ AND NO `push` OR `schedule` EITHER. This job installs nothing today, but it
 # is the file a client installer lands in, and a capture host is a machine whose
-# route off itself has been deleted. Neither is something a merge should be able
-# to start.
+# capture programs are walled off from the network. Neither is something a merge
+# should be able to start.
 on:
   workflow_dispatch:
     inputs:
@@ -23,12 +23,12 @@ on:
 permissions:
   contents: read
 
-# ⛔ NEVER CANCELLED IN FLIGHT, for a sharper reason than the publisher's.
-# Between the Windows job's *Cut the route* and *Restore the route* that host
-# has no way off itself; the Linux job contains its capture in a namespace and
-# never cuts. A cancellation in that window leaves the runner unable to report, the
-# evidence unuploaded, and the marker written, so the host is spent and its
-# capture is lost. Two dispatches queue instead.
+# ⛔ NEVER CANCELLED IN FLIGHT. A cancellation after the claim leaves the marker
+# written and the evidence unuploaded, so the host is spent and its capture is
+# lost. Neither job cuts the host's route any more: the Linux job contains its
+# capture in a namespace and the Windows job blocks the capture's programs at
+# the firewall, so the runner keeps its way to GitHub throughout. Two dispatches
+# queue instead.
 concurrency:
   group: capture
   cancel-in-progress: false
@@ -77,9 +77,9 @@ jobs:
       # the same cut severs the runner agent from GitHub, which is what ran
       # thirty-two dispatches into the ground; `contained.sh` gives the guard
       # and the capture a namespace with loopback alone, and the host keeps its
-      # route throughout. `CI-08`. ⚠ The Windows job below still cuts, because
-      # Windows has no namespace to run a process in, and it needs a different
-      # containment.
+      # route throughout. `CI-08`. ⚠ Windows has no namespace to run a process
+      # in, so the Windows job below blocks the capture's programs at the
+      # firewall instead, and never cuts either.
       #
       # ⛔ THE GUARD MUST PASS, AND IT READS THE KERNEL OF THE NAMESPACE THE
       # CAPTURE RUNS IN, which is the routing table that matters.
@@ -157,30 +157,82 @@ jobs:
         shell: pwsh
         run: cargo build -p bit-ids-lab --locked --example evidence-bundle
 
-      # ⚠ SAVED AS OBJECTS RATHER THAN AS TEXT. New-NetRoute needs the interface
-      # index, the next hop and the metric, and re-parsing them out of a printed
-      # table is a second reading of something PowerShell already has typed.
-      - name: Cut the route off this host
+      # ⛔ THE ROUTE IS NEVER CUT ON THIS HOST. Cutting the default routes
+      # severed runners from GitHub for good on the images of 2026-09 onward
+      # (`TODO/ci.md`, `CI-08`), and Windows has no network namespace to run the
+      # capture in instead. So every executable the capture runs gets an
+      # outbound block rule and the host keeps its own way out. ⭐ The list is
+      # asked of capture-run.ps1, which is the only derivation of it, so what
+      # is blocked and what runs are one list.
+      - name: Contain the capture's programs
         shell: pwsh
+        env:
+          OBSERVER: ${{ github.workspace }}/target/debug/examples/evidence-bundle.exe
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
-          $saved = @(Get-NetRoute -ErrorAction SilentlyContinue |
-            Where-Object { $_.DestinationPrefix -in @('0.0.0.0/0', '::/0') })
-          $saved | Export-Clixml -LiteralPath "$env:RUNNER_TEMP/routes.clixml"
-          foreach ($route in $saved) {
-            Remove-NetRoute -InputObject $route -Confirm:$false
-          }
-          Write-Output ("saved and removed " + $saved.Count + " default route(s)")
+          $programs = @(& pwsh -NoProfile -File ./scripts/capture/capture-run.ps1 -Programs -Observer $env:OBSERVER)
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & pwsh -NoProfile -File ./scripts/capture/firewall-contain.ps1 -Program ($programs -join '|')
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          exit 0
 
       - name: Assert containment
         shell: pwsh
-        run: ./scripts/acquisition/assert-disposable.ps1 -Egress
+        env:
+          OBSERVER: ${{ github.workspace }}/target/debug/examples/evidence-bundle.exe
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $programs = @(& pwsh -NoProfile -File ./scripts/capture/capture-run.ps1 -Programs -Observer $env:OBSERVER)
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & pwsh -NoProfile -File ./scripts/acquisition/assert-disposable.ps1 -Egress -Program ($programs -join '|')
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          exit 0
+
+      # ⭐ AND THIS IS WHAT NO READING OF THE RULES CAN ESTABLISH: that the host
+      # enforces them. The guard above reads the active store; this has the
+      # capture's own blocked driver try to leave, and has the host itself reach
+      # the same address as the control. ⛔ Only `curl` exit 7, could not
+      # connect, is a block. A DNS failure or a timeout is something else
+      # failing, and calling it the block would pass a firewall that never
+      # refused anything. ⚠ The address is GitHub's, which this runner talks to
+      # throughout; nothing installed by this project runs before this step.
+      - name: Prove the firewall blocks
+        shell: pwsh
+        env:
+          OBSERVER: ${{ github.workspace }}/target/debug/examples/evidence-bundle.exe
+          PROBE_URL: https://api.github.com/zen
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $programs = @(& pwsh -NoProfile -File ./scripts/capture/capture-run.ps1 -Programs -Observer $env:OBSERVER)
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $driver = @($programs | Where-Object { [System.IO.Path]::GetFileName($_) -ieq 'curl.exe' })
+          if ($driver.Count -ne 1) {
+            [Console]::Error.WriteLine('the capture names no curl.exe driver to prove the block with')
+            exit 1
+          }
+          & $driver[0] -sS --noproxy '*' --max-time 20 -o "$env:RUNNER_TEMP/zen" $env:PROBE_URL
+          $blocked = $LASTEXITCODE
+          if ($blocked -ne 7) {
+            [Console]::Error.WriteLine("the blocked driver did not fail to connect (curl exit $blocked)")
+            exit 1
+          }
+          try {
+            $null = Invoke-WebRequest -Uri $env:PROBE_URL -UseBasicParsing -TimeoutSec 20
+          }
+          catch {
+            [Console]::Error.WriteLine('the host itself cannot reach the address, so the refusal proves nothing')
+            exit 1
+          }
+          Write-Output ('blocked: ' + $driver[0] + ' could not connect (exit 7); the host itself could')
+          exit 0
 
       # ⭐ AND THIS IS THE ONE THING NO FIXTURE CAN ESTABLISH. check-runner.ps1
-      # proves the guard's logic against files of Get-NetRoute output; that the
-      # real cmdlet's output matches those fixtures is only ever established by
-      # the step above running with no -RouteTable on a real Windows host.
+      # proves the guard's logic against files of firewall state; that the real
+      # cmdlets' output matches those fixtures is only ever established by the
+      # steps above running with no -FirewallState on a real Windows host.
       - name: Capture
         shell: pwsh
         env:
@@ -188,52 +240,6 @@ jobs:
           SECONDS_TO_SERVE: ${{ inputs.seconds }}
         run: |
           ./scripts/capture/capture-run.ps1 -RunId $env:RUN_ID -Out "$env:RUNNER_TEMP/capture" -Observer "$env:GITHUB_WORKSPACE/target/debug/examples/evidence-bundle.exe" -Seconds ([int]$env:SECONDS_TO_SERVE)
-
-      # ⛔ THIS STEP IS WHY CI-06 EXISTS. On the first dispatch the restore
-      # WORKED and the step failed anyway: the inverted guard below refuses,
-      # exit 1 is the proof the route came back, and that 1 was left in
-      # $LASTEXITCODE. GitHub's `pwsh` wrapper reads a block's residual code as
-      # the step's verdict, so the evidence upload was skipped over a guard that
-      # had said exactly what it was asked to say. ⭐ THE STEP'S STATUS IS A
-      # DECISION NOW RATHER THAN A RESIDUE: every path ends in an explicit exit.
-      # ⚠ The Linux twin never had this, because `if sh ...; then` consumes the
-      # status - a convention held on one of the two paths into one mistake.
-      - name: Restore the route
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $PSNativeCommandUseErrorActionPreference = $false
-          $saved = @(Import-Clixml -LiteralPath "$env:RUNNER_TEMP/routes.clixml")
-          # ⛔ AN ADD THAT THROWS IS REPORTED AND DOES NOT END THE STEP, for the
-          # reason the Linux job gives: ending here skips the upload and throws
-          # away a finished capture over a route. ⭐ The guard below is the
-          # verdict; an add is an attempt and the routing table is the fact.
-          foreach ($route in $saved) {
-            try {
-              New-NetRoute -DestinationPrefix $route.DestinationPrefix `
-                -InterfaceIndex $route.ifIndex -NextHop $route.NextHop `
-                -RouteMetric $route.RouteMetric -PolicyStore ActiveStore `
-                -Confirm:$false -ErrorAction Stop | Out-Null
-            }
-            catch {
-              Write-Output ("could not restore: " + $route.DestinationPrefix + " " + $_.Exception.Message)
-            }
-          }
-          ./scripts/acquisition/assert-disposable.ps1 -Egress
-          $egress = $LASTEXITCODE
-          if ($egress -eq 0) {
-            [Console]::Error.WriteLine('the default routes were not restored; the upload cannot work')
-            exit 1
-          }
-          # ⛔ 2 IS `could not run` AND IS NOT THE REFUSAL THIS STEP WANTS. Only
-          # a 1 is the guard reading a routing table and finding a public route
-          # on it; a 2 means it never got that far, and calling that a restored
-          # route would upload from a host nothing established was reachable.
-          if ($egress -ne 1) {
-            [Console]::Error.WriteLine("the egress guard could not run (exit $egress)")
-            exit 1
-          }
-          exit 0
 
       - name: Upload the evidence bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -481,7 +481,7 @@ the same name, which is the shape `check-twins.sh` calls invisible drift.
 ⚠ `capture/check-capture.sh` is declared on the PowerShell lane for a third
 reason again, and its row says which: it is an `sh` harness, and what it drives
 includes `capture-run.ps1`, which the capture workflow's Windows job runs on a
-real Windows host with no `-RouteTable`. That is a stronger control than this
+real Windows host with no `-FirewallState`. That is a stronger control than this
 lane could give and it happens somewhere else.
 
 ⭐ `check-staleness` was declared on the PowerShell lane for a **different**

@@ -116,10 +116,11 @@ still open is a host that never reached it.
    targets in the published view. Its entry in
    [`clients.md`](clients.md) carries the drive.
 2. **`CI-08`**: `capture.yml`'s Linux job runs in `contained.sh`, proved on
-   `capture` run 38612214714. Its Windows job still cuts the host's route and
-   needs a different containment, such as a firewall rule scoped to the
-   capture's processes. The orphaned-subprocess residual and the `sh -c` and
-   `bash -e` split are closed.
+   `capture` run 38612214714. ⭐ Its Windows job no longer cuts the host's
+   route: on 2026-10-15 it blocks the capture's own programs at the firewall,
+   reads the rules back and proves them, the operator's settled shape. A
+   `capture.yml` dispatch is what proves it on a runner. The
+   orphaned-subprocess residual and the `sh -c` and `bash -e` split are closed.
 3. **`OBS-10`**, which needs a second platform, so it follows the captures.
 4. **`CI-07`**: its Approach and Prove were rewritten on 2026-10-14 to the route
    `CI-10` made. `check-corpus`, `check-indexes`, `check-release`,

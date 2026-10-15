@@ -16,12 +16,12 @@
 # runner that is a check which goes green the day it is written and red forever,
 # for a reason that looks like the guard being broken rather than the test.
 #
-# ⭐ AND THE ROUTE FIXTURES ARE WHY THIS RUNS ANYWHERE. assert-disposable.ps1
-# takes -RouteTable so the routing source can be a file, which means the guard's
-# logic is provable on a host with no Get-NetRoute at all. What is NOT proved
-# here is that Get-NetRoute's real output matches these fixtures; the capture
-# workflow's own windows job is what establishes that, by running the guard with
-# no -RouteTable on a real Windows host.
+# ⭐ AND THE FIREWALL FIXTURES ARE WHY THIS RUNS ANYWHERE. assert-disposable.ps1
+# takes -FirewallState so the firewall can be a file, which means the guard's
+# logic is provable on a host with no Get-NetFirewallRule at all. What is NOT
+# proved here is that the real cmdlets' output matches these fixtures; the
+# capture workflow's own windows job is what establishes that, by running the
+# guard with no -FirewallState on a real Windows host.
 #
 # Usage:
 #   pwsh -NoProfile -File scripts/acquisition/check-runner.ps1
@@ -93,35 +93,100 @@ try {
     }
 
     # --- forbidden egress ---------------------------------------------------
-    # A table with a default route is a host that can reach the public network,
-    # and a capture there puts an untrusted client on it.
-    $open = Join-Path $work 'route-open'
-    "Ethernet 0.0.0.0/0`nEthernet 192.168.0.0/24" | Set-Content -LiteralPath $open
-    Expect 1 'an IPv4 default route is refused' @('-Egress', '-RouteTable', $open)
+    #
+    # ⛔ THE FIREWALL, NOT THE ROUTING TABLE, since 2026-10-15. The Windows
+    # capture is contained by an outbound block rule per program it runs, so
+    # these fixtures are firewall state in the lines the guard's live reader
+    # writes, and every program named must be covered by one rule narrowed by
+    # nothing, under profiles that are all on.
+    $sep = [System.IO.Path]::DirectorySeparatorChar
+    $observer = Join-Path $work 'observer.exe'
+    $driver = Join-Path $work 'curl.exe'
+    $both = "$observer|$driver"
+    $zones = @("profile`tname=Domain`tenabled=True", "profile`tname=Private`tenabled=True",
+        "profile`tname=Public`tenabled=True")
+    function Get-RuleLine([string]$Path, [hashtable]$Over = @{}) {
+        $fields = [ordered]@{
+            enabled = 'True'; direction = 'Outbound'; action = 'Block'; profile = 'Any'
+            local = 'Any'; remote = 'Any'; protocol = 'Any'; interfacetype = 'Any'
+            interface = 'Any'; service = 'Any'; localuser = 'Any'
+        }
+        foreach ($key in $Over.Keys) { $fields[$key] = $Over[$key] }
+        $parts = @('rule') + @($fields.Keys | ForEach-Object { "$_=$($fields[$_])" }) + @("program=$Path")
+        $parts -join "`t"
+    }
+    $stateN = 0
+    function New-State([string[]]$Lines) {
+        $script:stateN++
+        $path = Join-Path $work "firewall-$script:stateN"
+        $Lines | Set-Content -LiteralPath $path
+        $path
+    }
 
-    # ⛔ AND THE IPv6 ONE SEPARATELY. A Windows host with IPv4 unplugged and IPv6
-    # up still reaches the internet, and a guard reading only the first family
-    # would pass it. That is the one-gated-door defect on a protocol rather than
-    # on a code path.
-    $v6 = Join-Path $work 'route-v6'
-    "Ethernet ::/0`nEthernet fe80::/64" | Set-Content -LiteralPath $v6
-    Expect 1 'an IPv6 default route is refused on its own' @('-Egress', '-RouteTable', $v6)
+    $good = New-State ($zones + @((Get-RuleLine $observer), (Get-RuleLine $driver)))
+    Expect 0 'every program blocked under every profile passes' @(
+        '-Egress', '-Program', $both, '-FirewallState', $good) 'no way off this host for 2 program(s)'
 
-    # ⚠ A prefix that merely starts with the default's digits is not a default
-    # route. Without this case a substring match would pass every one of the
-    # cases above and refuse a host whose only route is 0.0.0.0/8.
-    $near = Join-Path $work 'route-near'
-    "Ethernet 0.0.0.0/8`nEthernet 10.0.0.0/8" | Set-Content -LiteralPath $near
-    Expect 0 'a non-default prefix that looks like one is not egress' @('-Egress', '-RouteTable', $near)
+    # ⛔ EVERY PROGRAM, NOT THE FIRST. A guard that stopped at one covered
+    # program would pass a capture whose driver has a way out.
+    $one = New-State ($zones + @((Get-RuleLine $observer)))
+    Expect 1 'a program nothing blocks is refused' @(
+        '-Egress', '-Program', $both, '-FirewallState', $one) "nothing blocks $driver"
 
-    # Loopback only, which is what a capture host looks like.
-    $loop = Join-Path $work 'route-loopback'
-    "Loopback 127.0.0.0/8`nLoopback ::1/128" | Set-Content -LiteralPath $loop
-    Expect 0 'loopback only passes' @('-Egress', '-RouteTable', $loop)
+    # ⛔ AND EVERY FILTER, ONE CASE EACH. A block narrowed to one profile,
+    # address, protocol, interface, service or user blocks some traffic and reads
+    # as a block in a listing; each key below is one way to leave the rest open.
+    foreach ($key in @('profile', 'local', 'remote', 'protocol', 'interfacetype',
+            'interface', 'service', 'localuser')) {
+        $narrow = New-State ($zones + @((Get-RuleLine $observer @{ $key = 'Narrowed' }), (Get-RuleLine $driver)))
+        Expect 1 "a block narrowed by $key is refused" @(
+            '-Egress', '-Program', $both, '-FirewallState', $narrow) "narrowed to $key=Narrowed"
+    }
 
-    # ⛔ An unreadable table is exit 2, not exit 0. Not knowing is not a pass.
-    Expect 2 'an unreadable table is not a pass' @(
-        '-Egress', '-RouteTable', (Join-Path $work 'no-such-table')) 'could not be established'
+    # A rule that is off, that allows, or that is inbound is not an outbound block.
+    foreach ($case in @(@('enabled', 'False'), @('action', 'Allow'), @('direction', 'Inbound'))) {
+        $notBlock = New-State ($zones + @((Get-RuleLine $observer @{ $case[0] = $case[1] }), (Get-RuleLine $driver)))
+        Expect 1 "a rule with $($case[0])=$($case[1]) blocks nothing" @(
+            '-Egress', '-Program', $both, '-FirewallState', $notBlock) "nothing blocks $observer"
+    }
+
+    # ⚠ A NARROWED RULE BESIDE A COVERING ONE IS COVERED. A guard that gave up at
+    # the first rule for a path would refuse a host whose image ships a narrow
+    # rule of its own.
+    $mixed = New-State ($zones + @((Get-RuleLine $observer @{ remote = 'LocalSubnet' }),
+            (Get-RuleLine $observer), (Get-RuleLine $driver)))
+    Expect 0 'a covering rule beside a narrowed one covers' @(
+        '-Egress', '-Program', $both, '-FirewallState', $mixed)
+
+    # ⛔ ONE PROFILE OFF ENFORCES NOTHING, whatever its rules say.
+    $off = New-State (@($zones[0], $zones[1], "profile`tname=Public`tenabled=False") +
+        @((Get-RuleLine $observer), (Get-RuleLine $driver)))
+    Expect 1 'a firewall profile that is off is refused' @(
+        '-Egress', '-Program', $both, '-FirewallState', $off) 'the Public firewall profile is off'
+    $none = New-State @((Get-RuleLine $observer), (Get-RuleLine $driver))
+    Expect 1 'no profile read is refused' @(
+        '-Egress', '-Program', $both, '-FirewallState', $none) 'no firewall profile was read'
+
+    # ⚠ ONE FILE, SPELLED ANOTHER WAY, IS COVERED. The firewall keeps a rule's
+    # path as written, so an environment variable, a `..` or another case names
+    # the same file and must compare as it.
+    $env:BIT_IDS_FW_DIR = $work
+    try {
+        $spelled = New-State ($zones + @(
+                (Get-RuleLine ("%BIT_IDS_FW_DIR%" + $sep + 'observer.exe')),
+                (Get-RuleLine (Join-Path (Join-Path $work 'sub') ('..' + $sep + 'CURL.EXE')))))
+        Expect 0 'a path spelled through a variable, a .. or another case is covered' @(
+            '-Egress', '-Program', $both, '-FirewallState', $spelled)
+    }
+    finally { Remove-Item Env:\BIT_IDS_FW_DIR -ErrorAction SilentlyContinue }
+
+    # ⛔ NOTHING NAMED, A RELATIVE NAME, OR AN UNREADABLE STATE IS EXIT 2. Not
+    # knowing is not a pass, and a guard asked about nothing passes everywhere.
+    Expect 2 'no program named is not a pass' @('-Egress', '-FirewallState', $good) 'needs -Program'
+    Expect 2 'a relative program is not a pass' @(
+        '-Egress', '-Program', 'curl.exe', '-FirewallState', $good) 'is not an absolute path'
+    Expect 2 'an unreadable firewall state is not a pass' @(
+        '-Egress', '-Program', $both, '-FirewallState', (Join-Path $work 'no-such-state')) 'could not be established'
 
     # --- persistent state ---------------------------------------------------
     $fresh = Join-Path $work 'host-a'

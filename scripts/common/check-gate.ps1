@@ -278,9 +278,9 @@ Invoke-Ported 'check-remote-items'
 
 # ⭐ A REAL ROW NOW, AND IT USED TO BE A DECLARED GAP. The disposable-host guards
 # were Linux-only because they read /proc/net/route and /etc/machine-id;
-# assert-disposable.ps1 reads Get-NetRoute and the machine GUID, and this runs
-# the harness that mutation-proves it. ⚠ Its route fixtures are files, so the
-# logic is provable on any host; that Get-NetRoute's real output matches them is
+# assert-disposable.ps1 reads the firewall and the machine GUID, and this runs
+# the harness that mutation-proves it. ⚠ Its firewall fixtures are files, so the
+# logic is provable on any host; that the real cmdlets' output matches them is
 # established by a Windows job rather than here.
 $runner = Join-Path $here '..' 'acquisition' 'check-runner.ps1'
 if ($Rows) { Write-Output 'check-runner' }
@@ -352,9 +352,9 @@ Add-Unavailable 'check-bitcheck' 'an sh harness over a Go binary that does run h
 # over. ⚠ A Windows half would need the same instrument over a named pipe and
 # would be measuring a different operating system's answer to the same question,
 # rather than the second implementation of one rule that check-twins compares.
-# ⭐ It runs the `pwsh` half of its SUBJECT anyway: three of its cases execute
-# capture.yml's Windows *Restore the route* block under GitHub's own wrapper
-# form, which is why this row is declared and not a gap in what is proved.
+# ⭐ It runs the `pwsh` half of its SUBJECT anyway: four of its cases execute
+# capture.yml's Windows *Prove the firewall blocks* block under GitHub's own
+# wrapper form, which is why this row is declared and not a gap in what is proved.
 Add-Unavailable 'check-step-bodies' 'it lifts a Linux-only workflow bodies and already runs the pwsh ones; CI-07 class D'
 
 # ⛔ ITS SUBJECT IS EVERY `.sh` IN THE TREE, and the tools that read them are
@@ -368,7 +368,7 @@ Add-Unavailable 'check-shell' 'its subject is the sh scripts; a ps1 linter is it
 # ⚠ AND THIS ONE IS DECLARED WHILE ITS SUBJECT IS EXERCISED ANYWAY, which is the
 # third kind of reason on this lane. check-capture is an sh harness, so it cannot
 # run here; what it drives includes capture-run.ps1, which the Windows job of the
-# capture workflow runs on a real Windows host with no route table argument. That
+# capture workflow runs on a real Windows host with no firewall state argument. That
 # is a stronger control than this lane could give and it happens elsewhere.
 Add-Unavailable 'check-capture' 'its subject PowerShell half exists and the capture workflow runs it; CI-07 class D'
 

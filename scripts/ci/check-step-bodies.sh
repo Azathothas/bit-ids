@@ -277,6 +277,16 @@ hangs() { # label want-rc
   pass "$1 (exit $2, output HELD OPEN after the command exited)"
 }
 
+# ⚠ AND WHAT IT SAID, where two refusals share a code. A case asserting exit 1
+# alone passes when a different refusal fired.
+said() { # label text
+  if grep -q -F -e "$2" "$BODY_OUT" 2>/dev/null; then
+    pass "$1"
+  else
+    fail "$1: the step did not say '$2'"
+  fi
+}
+
 # -- 1. the instrument's own guards -------------------------------------------
 #
 # ⛔ A PROBE'S GUARD IS A GUARD LIKE ANY OTHER. Every case below rests on this
@@ -345,60 +355,6 @@ cp "$ROOT/scripts/ci/report-holders.sh" "$TREE/scripts/ci/" || exit 2
 # here answered 2, which is the scan saying it could not run.
 cp "$ROOT/scripts/capture/scan-bundle.sh" "$TREE/scripts/capture/" || exit 2
 
-# ⚠ A `sudo` THAT IS NOT sudo. The RESTORE blocks run `sudo ip route add`, and
-# this session is not a place to ask for privilege; dropping the flags and
-# running the command is what the runner's passwordless sudo amounts to here.
-#
-# ⛔ THE INSTALL BODY NO LONGER REACHES IT, AND THAT IS `ACQ-06`. It ran
-# `setsid sudo -E timeout` until 2026-09-17, which is why this stub was
-# written; the install is rootless now, so the only callers left are the two
-# restore blocks. ⚠ The stub is kept for them rather than deleted, and
-# `check-rootless.sh` is what refuses a `sudo` returning to the install path.
-cat >"$TREE/bin/sudo" <<'STUB'
-#!/bin/sh
-set -u
-while [ $# -gt 0 ]; do
-  case "$1" in
-    -E | -H | -n) shift ;;
-    *) break ;;
-  esac
-done
-exec "$@"
-STUB
-# ⚠ `ip` IS A STUB TOO, and it reports success. The restore block's own comment
-# says an add is an attempt and the routing table is the fact, so what these
-# cases vary is the GUARD's answer rather than the add's.
-cat >"$TREE/bin/ip" <<'STUB'
-#!/bin/sh
-set -u
-exit 0
-STUB
-chmod +x "$TREE/bin/sudo" "$TREE/bin/ip" || exit 2
-
-# The egress guard, whose three codes are what the restore blocks read.
-guard_says() { # code
-  cat >"$TREE/scripts/acquisition/assert-disposable.sh" <<STUB
-#!/bin/sh
-set -u
-exit $1
-STUB
-  chmod +x "$TREE/scripts/acquisition/assert-disposable.sh"
-}
-guard_ps_says() { # code
-  cat >"$TREE/scripts/acquisition/assert-disposable.ps1" <<STUB
-exit $1
-STUB
-}
-
-: >"$TREE/temp/routes-v4"
-: >"$TREE/temp/routes-v6"
-# ⚠ An empty CLIXML document, so `Import-Clixml` reads a real file and yields no
-# routes. The restore loop then runs zero times, which is the case these three
-# are about: the verdict is the guard's, not the add's.
-cat >"$TREE/temp/routes.clixml" <<'XML'
-<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04"></Objs>
-XML
-
 PATH="$TREE/bin:$PATH"
 export PATH
 RUNNER_TEMP="$TREE/temp"
@@ -406,42 +362,75 @@ export RUNNER_TEMP
 BIT_IDS_STATE_DIR="$TREE/state"
 export BIT_IDS_STATE_DIR
 
-# -- 3. capture.yml's restore blocks, both halves ------------------------------
+# -- 3. capture.yml's firewall proof, the Windows half -------------------------
 #
-# ⛔ THIS IS `CI-08`'s WRITTEN ACCEPTANCE. The entry asks for a harness that
-# refuses the *Restore the route* block as it stood on capture run 1 and accepts
-# it as it stands, and until now that had been done once by hand in a session
-# scratch directory - which is evidence rather than a control.
-# ⚠ THE `sh` HALF RETIRED WITH ITS STEP on 2026-10-14: the Linux job contains
-# its capture in a namespace and has no route to restore. `check-workflow`
-# holds that job to `contained.sh` instead. The Windows job still cuts, so its
-# half stays.
+# ⛔ THE RESTORE BLOCKS RETIRED WITH THE ROUTE CUT. Their cases were `CI-08`'s
+# first acceptance: a harness refusing the *Restore the route* block as it stood
+# on capture run 1. The Linux job stopped cutting on 2026-10-14 and the Windows
+# job on 2026-10-15, so there is no restore left to run, and the `sudo` and `ip`
+# stubs those cases needed went with them.
+#
+# ⭐ WHAT THE WINDOWS JOB RUNS INSTEAD is *Prove the firewall blocks*: the
+# capture's own blocked driver tries to leave, and only `curl` exit 7 is a
+# block. Run here under GitHub's wrapper with the driver and the program list
+# stubbed, and the control pointed at a port nothing listens on, so no case
+# sends a packet off this host. ⚠ That leaves the step's passing path unrun
+# here; a capture dispatch is what runs it, against a real firewall.
 if [ "$HAVE_PWSH" = 1 ]; then
-  if lift "$CAPTURE_WF" windows "Restore the route" "$WORK/restore.ps1"; then
-    guard_ps_says 1
-    run_body "$WORK/restore.ps1" pwsh "$TREE"
-    ended "pwsh     restore accepts a guard that REFUSES, under GitHub's wrapper" 0
+  if lift "$CAPTURE_WF" windows "Prove the firewall blocks" "$WORK/prove.ps1"; then
+    # The driver answers whatever exit the case asks for.
+    cat >"$TREE/bin/curl.exe" <<'STUB'
+#!/bin/sh
+exit "${BIT_IDS_STUB_CURL_RC:-0}"
+STUB
+    chmod +x "$TREE/bin/curl.exe" || exit 2
+    # ⚠ `capture-run.ps1 -Programs` is the list's only derivation, so the stub
+    # stands in for it and nothing else: it names the stub driver, or a list
+    # with no driver in it.
+    programs_are() { # path...
+      {
+        for _p in "$@"; do printf "Write-Output '%s'\n" "$_p"; done
+        printf 'exit 0\n'
+      } >"$TREE/scripts/capture/capture-run.ps1"
+    }
+    OBSERVER="$TREE/bin/observer.exe"
+    PROBE_URL="http://127.0.0.1:9/"
+    export OBSERVER PROBE_URL
 
-    guard_ps_says 0
-    run_body "$WORK/restore.ps1" pwsh "$TREE"
-    ended "pwsh     restore refuses a guard that PASSES" 1
+    programs_are "$OBSERVER" "$TREE/bin/curl.exe"
+    BIT_IDS_STUB_CURL_RC=0
+    export BIT_IDS_STUB_CURL_RC
+    run_body "$WORK/prove.ps1" pwsh "$TREE"
+    ended "pwsh     a blocked driver that reached the address fails the proof" 1
+    said "pwsh     ... and says the driver did not fail to connect" "did not fail to connect (curl exit 0)"
 
-    # ⛔ AND THE RUN-1 FORM, WHICH IS THE DEFECT THIS ENTRY EXISTS FOR. Nothing
-    # in the block was wrong; what failed was what the block LEFT BEHIND. Take
-    # the explicit `exit 0` away and the wrapper's epilogue reads the guard's
-    # own refusal as the step's verdict - so the step fails at the moment the
-    # guard proves the route came back, which is exactly what threw away capture
-    # run 1's Windows evidence.
-    cp "$WORK/restore.ps1" "$WORK/restore-run1.ps1"
-    if replace_once "$WORK/restore-run1.ps1" 'exit 0' '# exit 0 - the run-1 form left this to the wrapper'; then
-      guard_ps_says 1
-      run_body "$WORK/restore-run1.ps1" pwsh "$TREE"
-      ended "pwsh     the run-1 form FAILS over the guard that proves the restore" 1
-    else
-      fail "pwsh     the run-1 plant did not apply"
-    fi
+    # ⛔ A TIMEOUT IS NOT A BLOCK. A firewall that refused nothing on a slow
+    # network times out too, and a step that took 28 for 7 would pass it.
+    BIT_IDS_STUB_CURL_RC=28
+    export BIT_IDS_STUB_CURL_RC
+    run_body "$WORK/prove.ps1" pwsh "$TREE"
+    ended "pwsh     a driver that timed out is not proof of a block" 1
+    said "pwsh     ... and says so, before the control is asked" "did not fail to connect (curl exit 28)"
+
+    # ⛔ AND A REFUSAL WITH NO WORKING HOST BEHIND IT PROVES NOTHING. The control
+    # is the host itself reaching the same address; here it reaches a port
+    # nothing listens on, which is what a host with no network looks like.
+    BIT_IDS_STUB_CURL_RC=7
+    export BIT_IDS_STUB_CURL_RC
+    run_body "$WORK/prove.ps1" pwsh "$TREE"
+    ended "pwsh     a block with no reachable control proves nothing" 1
+    said "pwsh     ... and says the refusal proves nothing" "the refusal proves nothing"
+
+    programs_are "$OBSERVER"
+    BIT_IDS_STUB_CURL_RC=7
+    export BIT_IDS_STUB_CURL_RC
+    run_body "$WORK/prove.ps1" pwsh "$TREE"
+    ended "pwsh     a program list with no driver in it cannot prove anything" 1
+    said "pwsh     ... and says there is no driver" "names no curl.exe driver"
+    rm -f "$TREE/scripts/capture/capture-run.ps1" "$TREE/bin/curl.exe"
+    unset OBSERVER PROBE_URL BIT_IDS_STUB_CURL_RC
   else
-    fail "pwsh     capture.yml has no windows step named Restore the route (exit $?)"
+    fail "pwsh     capture.yml has no windows step named Prove the firewall blocks (exit $?)"
   fi
 fi
 
@@ -454,12 +443,12 @@ fi
 # have seen it.
 #
 # ⛔ AND THE REAL GUARD GOES BACK, because `install-client` asks it where the
-# claim marker lives and that derivation is the one under test. ⚠ The section
-# above leaves a stub answering 2 behind, and the first version of this file ran
-# these two cases against it: `--marker` printed nothing, `install-client`
-# reported it could not run, and both cases failed for a reason neither was
-# about. A harness that shares scratch state with an earlier section owes the
-# next one a known starting point.
+# claim marker lives and that derivation is the one under test. ⚠ The restore
+# cases that stood above until 2026-10-15 left a stub answering 2 behind, and
+# the first version of this file ran these two cases against it: `--marker`
+# printed nothing, `install-client` reported it could not run, and both cases
+# failed for a reason neither was about. A harness that shares scratch state
+# with an earlier section owes the next one a known starting point.
 cp "$ROOT/scripts/acquisition/assert-disposable.sh" "$TREE/scripts/acquisition/" || exit 2
 : >"$TREE/state/host-claimed"
 

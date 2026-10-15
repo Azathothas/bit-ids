@@ -387,12 +387,12 @@ fi
 # answers confidently. ⭐ Every one is hermetic:
 # check-publish and check-access each create their own bare repository in a
 # scratch directory and touch no real remote, and check-capture binds only
-# loopback and reads a routing table it wrote itself.
+# loopback and reads a routing table and a firewall state it wrote itself.
 # ⚠ They need cargo, so they exit 2 on a host without
 # one, which is a skip and not a pass. ⚠ check-capture needs curl, which is
 # the HTTP client it drives the observer with. None has a PowerShell half; scripts/README.md carries why,
 # and ⭐ check-capture is the one that runs the PowerShell half of its SUBJECT
-# anyway, because capture-run.ps1 takes a route table as a file.
+# anyway, because capture-run.ps1 takes its firewall state as a file.
 #
 # ⚠ THE COUNT IS NOT WRITTEN HERE. It was, twice, and both copies went stale in
 # the commit that added a prover. The list below is the list.

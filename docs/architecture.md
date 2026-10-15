@@ -1228,7 +1228,10 @@ non-injective layout section 4 describes, in a second place.
 - ⭐ A fixture capture has now run on a hosted runner of each platform, and
   `CI-06` carries what it established. ⛔ **`Get-NetRoute`'s real output matches
   the fixtures the Windows guard is proved against**: the guard ran with no
-  `-RouteTable` on a real host and agreed with the corpus. ⚠ What a capture still
+  `-RouteTable` on a real host and agreed with the corpus. ⚠ That guard reads
+  the firewall rather than the routes since 2026-10-15, when the Windows job
+  stopped cutting its route (`CI-08`), so the same question is now asked of
+  `Get-NetFirewallRule`'s output. ⚠ What a capture still
   is not is a measurement of a client - nothing is installed, the attestation
   says `kind=fixture`, `measured_build=none`, `stock_client=false`, and
   `CLIENT-01` is what points a stock build at the same lab.

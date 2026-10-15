@@ -3292,6 +3292,7 @@ the Windows job, which still cuts.
 
 ⛔ **Still open:** the Windows job's containment, which needs something other
 than a namespace, such as a firewall rule scoped to the capture's processes.
+⭐ Built on 2026-10-15, below.
 
 ⭐ **The orphaned-subprocess residual is closed.** Nested `timeout`s each start
 their own process group, so a bound reaches only the group it started. That was
@@ -3317,6 +3318,49 @@ one where every line succeeds. Measured: `sh -c` answers 0 on the first, which
 is the defect, and `bash -e` answers 1. `check-shards` 14 of 14 with the new
 unit. A dispatch of `capture.yml` on this
 commit is what proves the Linux half on a runner.
+
+### ⭐ `capture.yml`'s Windows job is contained at the firewall. 2026-10-15
+
+⛔ **Neither capture job cuts the host's route now.** Windows has no network
+namespace, so the operator settled the containment on 2026-10-15: outbound
+firewall rules for the capture's own executables, with the egress guard reading
+those rules. *Cut the route off this host* and *Restore the route* are gone from
+the Windows job, and in their place:
+
+| step | what it runs |
+| --- | --- |
+| *Contain the capture's programs* | asks `capture-run.ps1 -Programs` for the list, then [`firewall-contain.ps1`](../scripts/capture/firewall-contain.ps1) turns every profile on and writes one outbound block rule per program |
+| *Assert containment* | `assert-disposable.ps1 -Egress -Program` over the same list, read from the active store |
+| *Prove the firewall blocks* | the capture's own blocked `curl.exe` tries to reach GitHub and only exit 7, could not connect, passes; the host itself reaching the same address is the control |
+| *Capture* | `capture-run.ps1`, which asks the guard again over its own list before it starts anything |
+
+⭐ **The list has one derivation.** `capture-run.ps1 -Programs` prints the
+observer and the driver it will start, and every step that writes, reads or
+proves the rules asks it. `check-workflow` refuses a step that does not, and
+refuses any capture job with a step that cuts the route.
+
+⛔ **The guard reads every filter, not just the rule's name.** A covering rule
+is enabled, outbound and blocking, for exactly that program, with profile,
+local and remote address, protocol, interface type, interface, service and
+local user all at `Any`, and every firewall profile on. A block narrowed by any
+one of those blocks some traffic and reads as a block in a listing. Paths
+compare after environment expansion and `..` resolution, ignoring case.
+
+| measured on the session host, 2026-10-15 | result |
+| --- | --- |
+| `pwsh -File scripts/acquisition/check-runner.ps1` | 30 guard cases, 30 passed; 20 of them over firewall fixtures |
+| the guard, nine mutations (profile check off, a filter dropped, `continue` to `break` on a narrowed rule, case-sensitive compare, no path normalising, stop at the first covered program, no program list required, no profile required, action unchecked) | each refused by at least one case |
+| `sh scripts/capture/check-capture.sh` | 48 cases, 48 passed; the PowerShell half captures under fixtures built from `-Programs` |
+| `capture-run.ps1`, three mutations (driver left off the list, guard asked about the observer alone, an open firewall not refused) | each refused |
+| `sh scripts/ci/check-step-bodies.sh` | 43 cases, 43 passed; four run *Prove the firewall blocks* under GitHub's wrapper |
+| *Prove the firewall blocks*, four mutations (exit 28 taken for a block, a failed control not refused, no driver not refused, any exit taken for a block) | each refused |
+
+⚠ **What this does not establish.** A rule covers the executable it names and
+nothing that executable starts under another name. The fixture capture's
+observer and `curl.exe` start nothing; a Windows client capture must name its
+helpers too. The *Prove* step's passing path does not run off a runner, because
+its control needs the network: a `capture.yml` dispatch is what proves the rules
+are enforced.
 
 ## CI-09: The capture-to-publisher path, end to end
 

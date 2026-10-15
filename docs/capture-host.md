@@ -143,20 +143,34 @@ The same six rules, and
 [`../scripts/acquisition/assert-disposable.ps1`](../scripts/acquisition/assert-disposable.ps1)
 is the pair that enforces them. `-Claim` writes an exclusively created marker
 under `ProgramData`, which survives a reboot so a host that rebooted rather than
-being destroyed still reads as claimed; `-Egress` reads `Get-NetRoute`;
-`-Fingerprint` digests the machine GUID with the install identity and the
-computer name.
+being destroyed still reads as claimed; `-Egress -Program` reads the firewall's
+active store; `-Fingerprint` digests the machine GUID with the install identity
+and the computer name.
 
-⛔ **Both address families are checked.** A host with IPv4 unplugged and IPv6 up
-still reaches the internet, and a guard reading only `0.0.0.0/0` would pass it.
+⛔ **The Windows capture is contained at the firewall, not by its routes.**
+Windows has no network namespace, and cutting the host's default routes severed
+the runner from GitHub (`CI-08`).
+[`../scripts/capture/firewall-contain.ps1`](../scripts/capture/firewall-contain.ps1)
+turns every firewall profile on and writes one outbound block rule per
+executable the capture runs, the list `capture-run.ps1 -Programs` names. The
+guard passes only when every one of those programs is covered by an enabled
+outbound block rule narrowed by nothing, under profiles that are all on: a rule
+narrowed to one profile, address, protocol, interface, service or user blocks
+some traffic and reads as a block in a listing. ⚠ Loopback is not filtered for a
+desktop process, which is how the observer and the driver still meet on
+127.0.0.1; the capture proves that on every run.
 
-⚠ **`-RouteTable` makes the routing source a file**, which is how
+⚠ **`-FirewallState` makes the firewall a file**, which is how
 [`check-runner.ps1`](../scripts/acquisition/check-runner.ps1) proves the logic on
-a machine that has no `Get-NetRoute`. ⭐ **That the real cmdlet's output matches
-those fixtures is measured rather than assumed**: the guard ran with no
-`-RouteTable` on a hosted `windows-2025` runner whose default routes had just
-been removed, and answered `no route off this host (read Get-NetRoute)`. `CI-06`
-is the dispatch that established it.
+a machine that has no `Get-NetFirewallRule`. ⭐ **That the host enforces the
+rules is measured on every dispatch rather than assumed**: *Prove the firewall
+blocks* has the capture's own blocked `curl.exe` try to reach GitHub and accepts
+only exit 7, could not connect, with the host itself reaching the same address
+as the control.
+
+⚠ Until 2026-10-15 `-Egress` read `Get-NetRoute`, and `CI-06`'s dispatch
+measured that cmdlet's output against the route fixtures on a runner whose
+default routes had just been removed.
 
 ## The workflow that runs on such a host
 
@@ -232,11 +246,13 @@ running until cancelled, with no log and no artifact, over a step that had
 finished in seconds. `TODO/ci.md` under `CI-08` carries the runs that showed it.
 [`../scripts/ci/check-workflow.sh`](../scripts/ci/check-workflow.sh) refuses a
 job that neither cuts a route nor runs its guard and capture through
-`contained.sh`. ⭐ [`../.github/workflows/capture.yml`](../.github/workflows/capture.yml)'s
-Linux job runs through `contained.sh` since 2026-10-14. ⚠ Its Windows job still
-cuts the route, because Windows has no network namespace to run a process in,
-and the same rule holds it to building before the cut and uploading after the
-restore.
+`contained.sh`, and refuses any job that cuts the host's route.
+⭐ [`../.github/workflows/capture.yml`](../.github/workflows/capture.yml)'s
+Linux job runs through `contained.sh` since 2026-10-14. Its Windows job is
+contained at the firewall since 2026-10-15, because Windows has no network
+namespace to run a process in, and the same check holds it to containing the
+programs after the build, reading the rules back and proving them before it
+captures.
 
 ⛔ **The evidence upload is fatal and the install-logs upload is not, and the
 asymmetry is enforced.** A capture that measured a build and uploaded nothing

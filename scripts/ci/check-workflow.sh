@@ -834,23 +834,45 @@ if unit capture-fork; then
 
     for job in $CAPJOBS; do
       # ⛔ TWO SHAPES OF CONTAINMENT, AND A JOB IS HELD TO THE ONE IT USES. A job
-      # that cuts the host's route must build before the cut and upload after the
-      # restore. A job that contains the capture in a network namespace never
-      # cuts anything, so what must hold is that the guard and the capture both
-      # RUN inside it - a capture step that dropped `contained.sh` would measure a
-      # host with a route off it, and every ordering rule would still pass.
-      # ⚠ `capture-client.yml` is the second shape since 2026-10-11, because the
-      # first one severed the runner agent from GitHub: `TODO/ci.md`, `CI-08`.
+      # that contains the capture in a network namespace must have the guard and
+      # the capture both RUN inside it - a capture step that dropped
+      # `contained.sh` would measure a host with a route off it, and every
+      # ordering rule would still pass. A job that contains the capture at the
+      # firewall must write the rules after the build, read them back, and prove
+      # them, all before it captures.
+      # ⛔ AND CUTTING THE HOST'S ROUTE IS NO SHAPE AT ALL ANY MORE. It severed
+      # the runner agent from GitHub (`TODO/ci.md`, `CI-08`); the Linux jobs left
+      # it on 2026-10-11 and 2026-10-14 and the Windows job on 2026-10-15, so a
+      # step that brings it back is refused rather than ordered.
       order_case "$job" "Claim the host" "Build the observer"
-      if [ -n "$(step_index "$CAPWF" "$job" "Cut the route off this host")" ]; then
-        CAPCUT=1
-        order_case "$job" "Build the observer" "Cut the route off this host"
-        order_case "$job" "Cut the route off this host" "Assert containment"
-        order_case "$job" "Assert containment" "Capture"
-        order_case "$job" "Capture" "Restore the route"
-        order_case "$job" "Restore the route" "Upload the evidence bundle"
+      for _cut in "Cut the route off this host" "Restore the route"; do
+        if [ -n "$(step_index "$CAPWF" "$job" "$_cut")" ]; then
+          fail "workflow  $CAPNAME $job: [$_cut] cuts the host's route, which severs the runner from GitHub"
+        fi
+      done
+      if [ -n "$(step_index "$CAPWF" "$job" "Contain the capture's programs")" ]; then
+        order_case "$job" "Build the observer" "Contain the capture's programs"
+        order_case "$job" "Contain the capture's programs" "Assert containment"
+        order_case "$job" "Assert containment" "Prove the firewall blocks"
+        order_case "$job" "Prove the firewall blocks" "Capture"
+        order_case "$job" "Capture" "Upload the evidence bundle"
+        # ⛔ AND THE LIST IS ASKED FOR IN EVERY STEP THAT USES IT. A step that
+        # wrote its own list could block one set of programs and run another.
+        for _fw in "Contain the capture's programs" "Assert containment" "Prove the firewall blocks"; do
+          case "$(step_command "$CAPWF" "$job" "$_fw")" in
+            *"capture-run.ps1 -Programs"*) pass "workflow  $CAPNAME $job: [$_fw] asks the runner which programs it runs" ;;
+            *) fail "workflow  $CAPNAME $job: [$_fw] does not ask capture-run.ps1 -Programs for the list" ;;
+          esac
+        done
+        case "$(step_command "$CAPWF" "$job" "Contain the capture's programs")" in
+          *"scripts/capture/firewall-contain.ps1 -Program"*) pass "workflow  $CAPNAME $job: the rules are written by firewall-contain.ps1" ;;
+          *) fail "workflow  $CAPNAME $job: [Contain the capture's programs] does not run firewall-contain.ps1" ;;
+        esac
+        case "$(step_command "$CAPWF" "$job" "Assert containment")" in
+          *"assert-disposable.ps1 -Egress -Program"*) pass "workflow  $CAPNAME $job: the guard reads the rules for the programs" ;;
+          *) fail "workflow  $CAPNAME $job: [Assert containment] does not run the guard over the programs" ;;
+        esac
       else
-        CAPCUT=0
         order_case "$job" "Build the observer" "Assert containment"
         order_case "$job" "Assert containment" "Capture"
         order_case "$job" "Capture" "Upload the evidence bundle"
@@ -865,17 +887,13 @@ if unit capture-fork; then
       # ⛔ AN INSTALL IS TWO MORE ORDERING CONSTRAINTS AND BOTH ARE NEW. It must
       # come AFTER the claim, because a product installed on a host nothing
       # established was disposable is state on a machine that may be kept; and it
-      # must come BEFORE the route is cut, because a package index is not
-      # reachable from a host with no default route and capture-client refuses to
-      # install anything itself. ⚠ A workflow with no such step is not failed
+      # must come BEFORE the guard, because a package index is not reachable from
+      # inside the containment and capture-client refuses to install anything
+      # itself. ⚠ A workflow with no such step is not failed
       # here: capture.yml installs nothing and its own Prove says so.
       if [ -n "$(step_index "$CAPWF" "$job" "Install the client")" ]; then
         order_case "$job" "Claim the host" "Install the client"
-        if [ "$CAPCUT" = 1 ]; then
-          order_case "$job" "Install the client" "Cut the route off this host"
-        else
-          order_case "$job" "Install the client" "Assert containment"
-        fi
+        order_case "$job" "Install the client" "Assert containment"
       fi
 
       # ⛔ AND CHOOSING THE ARTIFACT IS A THIRD. A `release` route refuses without
@@ -914,16 +932,6 @@ if unit capture-fork; then
       if [ -n "$(step_index "$CAPWF" "$job" "Wait at the install barrier")" ]; then
         order_case "$job" "Install the client" "Wait at the install barrier"
         order_case "$job" "Wait at the install barrier" "Capture"
-      fi
-
-      # ⛔ AND EVERY UPLOAD IS AFTER THE RESTORE, NOT ONLY THE EVIDENCE ONE.
-      # Between *Cut the route* and *Restore the route* this host has no way off
-      # itself, so an upload placed there cannot reach GitHub at all. ⚠ The install
-      # logs sat BEFORE the cut for four dispatches, which worked because that is
-      # also before the cut - and the rule a reader would infer from it, that the
-      # step may go anywhere, is the one that breaks the day it moves.
-      if [ "$CAPCUT" = 1 ] && [ -n "$(step_index "$CAPWF" "$job" "Upload the install logs")" ]; then
-        order_case "$job" "Restore the route" "Upload the install logs"
       fi
 
       # ⚠ And the capture step must call the runner this workflow is for. Every
@@ -1059,20 +1067,20 @@ if unit static-readers; then
   # over any input would pass all twelve ordering cases above.
   if [ -f "$CAPONE" ]; then
     sed -e 's/- name: Build the observer/- name: BIT-IDS-PROBE-SWAP/' \
-      -e 's/- name: Cut the route off this host/- name: Build the observer/' \
-      -e 's/- name: BIT-IDS-PROBE-SWAP/- name: Cut the route off this host/' \
+      -e "s/- name: Contain the capture's programs/- name: Build the observer/" \
+      -e "s/- name: BIT-IDS-PROBE-SWAP/- name: Contain the capture's programs/" \
       "$CAPONE" >"$MUTWF"
     if cmp -s "$CAPONE" "$MUTWF"; then
       fail "probe    the ordering mutation did not change the workflow"
     else
-      # ⚠ The Windows job, because it is the one that still cuts: the Linux
-      # job has contained its capture in a namespace since 2026-10-14.
+      # ⚠ The Windows job, because it is the one contained at the firewall:
+      # the Linux job contains its capture in a namespace.
       _a=$(step_index "$MUTWF" windows "Build the observer")
-      _b=$(step_index "$MUTWF" windows "Cut the route off this host")
+      _b=$(step_index "$MUTWF" windows "Contain the capture's programs")
       if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
-        pass "probe    the order reader sees a build moved after the route is cut"
+        pass "probe    the order reader sees a build moved after the programs are contained"
       else
-        fail "probe    the order reader missed a build moved after the route is cut"
+        fail "probe    the order reader missed a build moved after the programs are contained"
       fi
     fi
 
@@ -1087,7 +1095,7 @@ if unit static-readers; then
   fi
 
   # ⛔ THE TWO INSTALL-ORDER RULES ARE REFUTED SEPARATELY, BECAUSE THEY ARE TWO
-  # RULES. An install after the route is cut cannot reach a package index; an
+  # RULES. An install after containment cannot reach a package index; an
   # install before the claim puts a stranger's binary on a host nothing
   # established was disposable. A single probe would leave whichever one it did
   # not move as a reader nobody has seen refuse anything.

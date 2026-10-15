@@ -139,8 +139,6 @@ printf 'Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tW
 printf 'lo\t0000007F\t00000000\t0001\t0\t0\t0\t000000FF\t0\t0\t0\n' >>"$WORK/route-loopback"
 printf 'Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT\n' >"$WORK/route-open"
 printf 'eth0\t00000000\t010200C0\t0003\t0\t0\t0\t00000000\t0\t0\t0\n' >>"$WORK/route-open"
-printf 'Loopback 127.0.0.0/8\nLoopback ::1/128\n' >"$WORK/route-loopback-win"
-printf 'Ethernet 0.0.0.0/0\nEthernet 192.168.0.0/24\n' >"$WORK/route-open-win"
 
 # -- the stub observer --------------------------------------------------------
 #
@@ -464,20 +462,86 @@ else
     fi
   }
 
+  # ⛔ THE WINDOWS HALF IS CONTAINED AT THE FIREWALL, so its fixtures are
+  # firewall state, and the programs they block are ASKED of the runner, which
+  # is the only derivation of that list. ⚠ A fixture written from a list
+  # composed here would pass over a runner whose -Programs forgot its driver.
+  fw_state() { # file observer...
+    _file="$1"
+    shift
+    {
+      printf 'profile\tname=Domain\tenabled=True\n'
+      printf 'profile\tname=Private\tenabled=True\n'
+      printf 'profile\tname=Public\tenabled=True\n'
+    } >"$_file"
+    for _obs in "$@"; do
+      pwsh -NoProfile -File "$PS_RUNNER" -Programs -Observer "$_obs" >"$WORK/programs" 2>"$WORK/err" || {
+        printf 'check-capture: capture-run.ps1 -Programs could not run\n' >&2
+        exit 2
+      }
+      while IFS= read -r _prog; do
+        printf 'rule\tenabled=True\tdirection=Outbound\taction=Block\tprofile=Any\tlocal=Any\tremote=Any\tprotocol=Any\tinterfacetype=Any\tinterface=Any\tservice=Any\tlocaluser=Any\tprogram=%s\n' "$_prog"
+      done <"$WORK/programs" >>"$_file"
+    done
+  }
+  fw_state "$WORK/fw-contained" "$OBSERVER" "$STUB"
+  # The observer alone: the driver has a way off the host.
+  pwsh -NoProfile -File "$PS_RUNNER" -Programs -Observer "$OBSERVER" >"$WORK/programs" 2>/dev/null
+  head -1 "$WORK/programs" >"$WORK/observer-only"
+  {
+    grep '^profile' "$WORK/fw-contained"
+    grep -F -f "$WORK/observer-only" "$WORK/fw-contained" | grep '^rule'
+  } >"$WORK/fw-open"
+
+  _programs=$(wc -l <"$WORK/programs" | tr -d ' ')
+  if [ "$_programs" = 2 ] && grep -q 'curl' "$WORK/programs"; then
+    pass "ps   -Programs names the observer and the driver"
+  else
+    fail "ps   -Programs names $_programs program(s), not the observer and the driver"
+  fi
+
+  # ⛔ AND THE SCRIPT THAT WRITES THE RULES REFUSES WHAT IT CANNOT CONTAIN.
+  # Its writes need a Windows firewall and are proved by a capture dispatch,
+  # whose guard reads them back; what runs here is every way it can be asked
+  # to contain nothing, each of which would leave the guard as the only door.
+  CONTAIN="$ROOT/scripts/capture/firewall-contain.ps1"
+  contain_case() { # saying name args...
+    _saying="$1"
+    _name="$2"
+    shift 2
+    pwsh -NoProfile -File "$CONTAIN" "$@" >"$WORK/out" 2>"$WORK/err"
+    _got=$?
+    if [ "$_got" = 2 ] && grep -q -F -e "$_saying" "$WORK/err"; then
+      pass "ps   $_name"
+    else
+      fail "ps   $_name (exit $_got)"
+    fi
+  }
+  contain_case "-Program is required" "firewall-contain refuses to contain nothing"
+  contain_case "is not an absolute path" "firewall-contain refuses a relative program" -Program curl.exe
+  contain_case "is not present" "firewall-contain refuses a program nothing runs from" \
+    -Program "$WORK/no-such-binary"
+  if pwsh -NoProfile -Command 'if (Get-Command New-NetFirewallRule -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }' >/dev/null 2>&1; then
+    fail "ps   this host has a Windows firewall, so firewall-contain was not run against it"
+  else
+    contain_case "has no Windows Firewall" "firewall-contain on a host with no firewall is could-not-run" \
+      -Program "$OBSERVER|$(head -1 "$WORK/programs")"
+  fi
+
   ps_case 0 "" "a claimed, contained host captures and verifies" \
-    "$OBSERVER" -RouteTable "$WORK/route-loopback-win"
+    "$OBSERVER" -FirewallState "$WORK/fw-contained"
   PS_CONTROL_OUT="$WORK/out-$OUTS"
-  ps_case 1 "egress is open" "an open default route is refused" \
-    "$OBSERVER" -RouteTable "$WORK/route-open-win"
-  ps_case 2 "egress could not be established" "an unreadable route table is not a pass" \
-    "$OBSERVER" -RouteTable "$WORK/no-such-table"
+  ps_case 1 "egress is open" "a driver the firewall does not block is refused" \
+    "$OBSERVER" -FirewallState "$WORK/fw-open"
+  ps_case 2 "egress could not be established" "an unreadable firewall state is not a pass" \
+    "$OBSERVER" -FirewallState "$WORK/no-such-state"
   ps_case 2 "is not present" "an observer that was never built is could-not-run" \
-    "$WORK/no-such-binary" -RouteTable "$WORK/route-loopback-win"
+    "$WORK/no-such-binary" -FirewallState "$WORK/fw-contained"
 
   OUTS=$((OUTS + 1))
   BIT_IDS_STATE_DIR="$WORK/ps-unclaimed" pwsh -NoProfile -File "$PS_RUNNER" \
     -RunId "$RUN" -Out "$WORK/out-$OUTS" -Observer "$OBSERVER" -Seconds "$SECS" \
-    -RouteTable "$WORK/route-loopback-win" >"$WORK/out" 2>"$WORK/err"
+    -FirewallState "$WORK/fw-contained" >"$WORK/out" 2>"$WORK/err"
   _rc=$?
   if [ "$_rc" = 1 ] && grep -q -F -e "the host was never claimed" "$WORK/err"; then
     pass "ps   an unclaimed host is refused"
@@ -488,7 +552,7 @@ else
   OUTS=$((OUTS + 1))
   BIT_IDS_STATE_DIR="$PS_STATE" pwsh -NoProfile -File "$PS_RUNNER" \
     -RunId capture-0002 -Out "$WORK/out-$OUTS" -Observer "$OBSERVER" -Seconds "$SECS" \
-    -RouteTable "$WORK/route-loopback-win" >"$WORK/out" 2>"$WORK/err"
+    -FirewallState "$WORK/fw-contained" >"$WORK/out" 2>"$WORK/err"
   _rc=$?
   if [ "$_rc" = 1 ] && grep -q -F -e "is claimed by run [$RUN], not [capture-0002]" "$WORK/err"; then
     pass "ps   a host claimed by another run is refused"
@@ -498,7 +562,7 @@ else
 
   BIT_IDS_STATE_DIR="$PS_STATE" pwsh -NoProfile -File "$PS_RUNNER" \
     -RunId "$RUN" -Out "$PS_CONTROL_OUT" -Observer "$OBSERVER" -Seconds "$SECS" \
-    -RouteTable "$WORK/route-loopback-win" >"$WORK/out" 2>"$WORK/err"
+    -FirewallState "$WORK/fw-contained" >"$WORK/out" 2>"$WORK/err"
   _rc=$?
   if [ "$_rc" = 1 ] && grep -q -F -e "already exists" "$WORK/err"; then
     pass "ps   a capture never writes into another run's evidence"
@@ -514,7 +578,7 @@ else
     BIT_IDS_STUB_RC=0 \
     BIT_IDS_STUB_TOKEN_HEX="$TOKEN_HEX" \
     pwsh -NoProfile -File "$PS_RUNNER" -RunId "$RUN" -Out "$WORK/out-$OUTS" \
-    -Observer "$STUB" -Seconds "$SECS" -RouteTable "$WORK/route-loopback-win" \
+    -Observer "$STUB" -Seconds "$SECS" -FirewallState "$WORK/fw-contained" \
     >"$WORK/out" 2>"$WORK/err"
   _rc=$?
   if [ "$_rc" = 1 ] && grep -q -F -e "does not carry the bytes the driver sent" "$WORK/err"; then

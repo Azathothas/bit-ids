@@ -14,7 +14,7 @@
 # -- ⭐ TWO INDEPENDENT GUARDS, AND WHY THEY ARE NOT ONE ---------------------
 #
 #   -Claim        the host has never been used for a capture before
-#   -Egress       the host cannot reach anything but loopback
+#   -Egress       the capture's own programs cannot reach anything but loopback
 #
 # They fail for different reasons and neither implies the other. A fresh host
 # with an open route leaks the capture onto the public network. A firewalled
@@ -34,16 +34,38 @@
 # rather than being destroyed still reads as claimed. TEMP would not, and a
 # guard cleared by a reboot reports a survived host as fresh.
 #
-# -- ⛔ THE ROUTE SOURCE IS AN ARGUMENT, FOR THE REASON THE SH HALF GIVES -----
+# -- ⛔ -Egress READS THE FIREWALL, NOT THE ROUTING TABLE ----------------------
 #
-# -RouteTable takes a file of `Get-NetRoute` output so the runner test can drive
-# this against fixtures on a machine that has no Get-NetRoute at all, which is
-# every Linux host this repository is developed on. A seam a test can use is a
-# seam a misconfiguration can use, so a passing run prints which source it read.
+# ⚠ THIS IS WHERE THE TWINS PART, AND ON PURPOSE. The sh half reads the routing
+# table of the network namespace the capture runs in, which holds loopback
+# alone. Windows has no namespace, and cutting the host's default routes severed
+# runners from GitHub (`TODO/ci.md`, `CI-08`), so the Windows capture is
+# contained by an outbound block rule per executable it runs, written by
+# scripts/capture/firewall-contain.ps1. This guard reads those rules back.
+#
+# ⛔ -Program NAMES WHAT MUST BE CONTAINED, and the guard refuses unless every
+# one of them is covered: an enabled outbound block rule for exactly that path,
+# narrowed by nothing (profile, address, protocol, interface, service, user),
+# and every firewall profile on. A rule narrowed to one profile or one protocol
+# blocks some traffic and reads as a block in any listing, which is why the
+# filters are read and not only the rule. The paths are joined by `|`, which
+# no Windows path can carry, because `pwsh -File` passes an array parameter as
+# one string.
+#
+# ⚠ Loopback is not blocked by these rules: Windows Firewall does not filter
+# loopback for a desktop process, so the observer and the driver still talk
+# over 127.0.0.1. The capture itself proves that on every run.
+#
+# ⛔ THE FIREWALL SOURCE IS AN ARGUMENT, FOR THE REASON THE SH HALF GIVES its
+# route source: -FirewallState takes a file of the lines the live reader below
+# produces, so the runner test drives this on a host with no
+# Get-NetFirewallRule at all, which is every Linux host this repository is
+# developed on. A seam a test can use is a seam a misconfiguration can use, so
+# a passing run prints which source it read.
 #
 # Usage:
 #   pwsh -NoProfile -File scripts/acquisition/assert-disposable.ps1 -Claim <run-id>
-#   pwsh -NoProfile -File scripts/acquisition/assert-disposable.ps1 -Egress [-RouteTable <path>]
+#   pwsh -NoProfile -File scripts/acquisition/assert-disposable.ps1 -Egress -Program <path|path...> [-FirewallState <path>]
 #   pwsh -NoProfile -File scripts/acquisition/assert-disposable.ps1 -Fingerprint
 #   pwsh -NoProfile -File scripts/acquisition/assert-disposable.ps1 -Marker
 #
@@ -66,7 +88,8 @@ param(
     [switch]$Fingerprint,
     [switch]$Marker,
     [string]$RunId = '',
-    [string]$RouteTable = '',
+    [string]$Program = '',
+    [string]$FirewallState = '',
     [switch]$Help
 )
 
@@ -145,40 +168,134 @@ function Get-HostFingerprint {
     finally { $sha.Dispose() }
 }
 
-# ⛔ Reports whether anything but loopback is reachable, WITHOUT sending a packet
-# anywhere. The kernel's own routing table says what the host would do; probing a
-# real host to see whether egress works would be reaching out from a machine this
-# guard exists to establish is contained, which is the wrong order.
+# The programs -Program names, split on `|`.
+function Split-Programs([string]$Text) {
+    @($Text -split '\|' | Where-Object { -not [string]::IsNullOrEmpty($_) })
+}
+
+# The one comparable spelling of a program path: environment variables
+# expanded, `.` and `..` resolved. ⚠ The firewall stores a rule's path as it was
+# written, and a rule written as %SystemRoot%\System32\curl.exe blocks the same
+# file as C:\Windows\System32\curl.exe; comparing the strings as given would
+# report that file uncovered, or a `..` spelling of another file covered.
+function Get-ComparablePath([string]$Path) {
+    [System.IO.Path]::GetFullPath([System.Environment]::ExpandEnvironmentVariables($Path))
+}
+
+# The firewall as lines, one per profile and one per outbound rule, in the shape
+# -FirewallState fixtures are written in:
 #
-# ⚠ A default route is `0.0.0.0/0` in IPv4 and `::/0` in IPv6. BOTH ARE CHECKED,
-# and that is not symmetry for its own sake: a Windows host with IPv4 unplugged
-# and IPv6 up still reaches the internet, and a guard reading only the first
-# would pass it.
+#   profile <TAB> name=Public <TAB> enabled=True
+#   rule <TAB> enabled=True <TAB> direction=Outbound <TAB> action=Block <TAB> profile=Any
+#        <TAB> local=Any <TAB> remote=Any <TAB> protocol=Any <TAB> interfacetype=Any
+#        <TAB> interface=Any <TAB> service=Any <TAB> localuser=Any <TAB> program=<path>
 #
-# Returns 0 a public route exists, 1 none does, 2 could not establish.
-function Test-PublicRoute {
+# ⚠ ONE RULE IS ONE LINE, with `program` last because a path may carry a space
+# and no Windows path carries a tab.
+#
+# Returns the lines, or $null when the firewall could not be read.
+function Read-FirewallState {
     param([string]$Source)
 
-    $lines = $null
     if (-not [string]::IsNullOrEmpty($Source)) {
-        if (-not (Test-Path -LiteralPath $Source -PathType Leaf)) { return 2 }
-        $lines = Get-Content -LiteralPath $Source -ErrorAction SilentlyContinue
-        if ($null -eq $lines) { return 2 }
-    }
-    else {
-        if (-not (Get-Command Get-NetRoute -ErrorAction SilentlyContinue)) { return 2 }
-        try {
-            $lines = Get-NetRoute -ErrorAction Stop |
-                ForEach-Object { "$($_.InterfaceAlias) $($_.DestinationPrefix)" }
-        }
-        catch { return 2 }
-        if ($null -eq $lines) { return 2 }
+        if (-not (Test-Path -LiteralPath $Source -PathType Leaf)) { return $null }
+        $read = Get-Content -LiteralPath $Source -ErrorAction SilentlyContinue
+        if ($null -eq $read) { return $null }
+        return , @($read)
     }
 
-    foreach ($line in $lines) {
-        if ($line -match '(^|\s)(0\.0\.0\.0/0|::/0)(\s|$)') { return 0 }
+    if (-not (Get-Command Get-NetFirewallRule -ErrorAction SilentlyContinue)) { return $null }
+    $lines = New-Object System.Collections.ArrayList
+    try {
+        # ⛔ THE ACTIVE STORE, which is what the host enforces. The persistent
+        # store is what was written; a group policy can override it, and a
+        # rule that exists there and not here blocks nothing.
+        foreach ($zone in @(Get-NetFirewallProfile -PolicyStore ActiveStore -ErrorAction Stop)) {
+            [void]$lines.Add("profile`tname=$($zone.Name)`tenabled=$($zone.Enabled)")
+        }
+        # ⚠ SilentlyContinue because a filter that matches nothing is an error
+        # to this cmdlet. No rule read is a refusal below, never a pass.
+        # ⚠ Outbound blocks only, because each rule costs seven filter reads
+        # and an image carries hundreds of allow rules. The lines still carry
+        # direction and action, and Test-Containment still asks both.
+        $rules = @(Get-NetFirewallRule -PolicyStore ActiveStore -Direction Outbound `
+                -Action Block -ErrorAction SilentlyContinue)
+        foreach ($rule in $rules) {
+            $app = $rule | Get-NetFirewallApplicationFilter -ErrorAction Stop
+            $address = $rule | Get-NetFirewallAddressFilter -ErrorAction Stop
+            $port = $rule | Get-NetFirewallPortFilter -ErrorAction Stop
+            $type = $rule | Get-NetFirewallInterfaceTypeFilter -ErrorAction Stop
+            $face = $rule | Get-NetFirewallInterfaceFilter -ErrorAction Stop
+            $service = $rule | Get-NetFirewallServiceFilter -ErrorAction Stop
+            $security = $rule | Get-NetFirewallSecurityFilter -ErrorAction Stop
+            [void]$lines.Add(("rule`tenabled=$($rule.Enabled)`tdirection=$($rule.Direction)" +
+                    "`taction=$($rule.Action)`tprofile=$($rule.Profile)" +
+                    "`tlocal=$(@($address.LocalAddress) -join ',')" +
+                    "`tremote=$(@($address.RemoteAddress) -join ',')" +
+                    "`tprotocol=$($port.Protocol)`tinterfacetype=$($type.InterfaceType)" +
+                    "`tinterface=$(@($face.InterfaceAlias) -join ',')" +
+                    "`tservice=$($service.Service)`tlocaluser=$($security.LocalUser)" +
+                    "`tprogram=$($app.Program)"))
+        }
     }
-    return 1
+    catch { return $null }
+    return , @($lines)
+}
+
+# ⛔ THE FILTERS A COVERING RULE LEAVES AT `Any`. Each one, set to anything else,
+# narrows the block to part of the traffic: one profile, one address, one
+# protocol, one interface, one service or one user.
+$script:Unnarrowed = @('profile', 'local', 'remote', 'protocol', 'interfacetype',
+    'interface', 'service', 'localuser')
+
+# Returns '' when every program is contained, else the first reason one is not.
+function Test-Containment {
+    param([string[]]$State, [string[]]$Programs)
+
+    $profiles = 0
+    $rules = New-Object System.Collections.ArrayList
+    foreach ($line in $State) {
+        $fields = @($line -split "`t")
+        $kind = $fields[0]
+        if ($kind -cne 'profile' -and $kind -cne 'rule') { continue }
+        $map = @{}
+        foreach ($field in ($fields | Select-Object -Skip 1)) {
+            $at = $field.IndexOf('=')
+            if ($at -gt 0) { $map[$field.Substring(0, $at)] = $field.Substring($at + 1) }
+        }
+        if ($kind -ceq 'profile') {
+            $profiles++
+            # ⛔ A PROFILE THAT IS OFF ENFORCES NO RULE AT ALL, so a host whose
+            # rules are perfect and whose active profile is off is open.
+            if ($map['enabled'] -cne 'True') { return "the $($map['name']) firewall profile is off" }
+        }
+        else { [void]$rules.Add($map) }
+    }
+    if ($profiles -eq 0) { return 'no firewall profile was read' }
+
+    foreach ($one in $Programs) {
+        $want = Get-ComparablePath $one
+        $narrowed = ''
+        $covered = $false
+        foreach ($rule in $rules) {
+            if (-not $rule.ContainsKey('program')) { continue }
+            if (-not [string]::Equals((Get-ComparablePath $rule['program']), $want,
+                    [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+            if ($rule['enabled'] -cne 'True' -or $rule['direction'] -cne 'Outbound' -or
+                $rule['action'] -cne 'Block') { continue }
+            $why = ''
+            foreach ($key in $script:Unnarrowed) {
+                if ($rule[$key] -cne 'Any') { $why = "$key=$($rule[$key])"; break }
+            }
+            if ($why) { $narrowed = $why; continue }
+            $covered = $true
+            break
+        }
+        if ($covered) { continue }
+        if ($narrowed) { return "the block for $one is narrowed to $narrowed" }
+        return "nothing blocks $one"
+    }
+    return ''
 }
 
 # ⚠ THE OUTER @() IS load-bearing UNDER Set-StrictMode. A pipeline that yields
@@ -202,24 +319,34 @@ if ($Marker) {
 }
 
 if ($Egress) {
-    $verdict = Test-PublicRoute -Source $RouteTable
-    $read = if ([string]::IsNullOrEmpty($RouteTable)) { 'Get-NetRoute' } else { $RouteTable }
-    switch ($verdict) {
-        0 {
-            [Console]::Error.WriteLine(
-                'assert-disposable: a public route exists; a capture host reaches loopback only')
-            exit 1
-        }
-        2 {
-            [Console]::Error.WriteLine(
-                "assert-disposable: $read is unreadable, so egress could not be established. That is not a pass.")
+    $read = if ([string]::IsNullOrEmpty($FirewallState)) { 'Get-NetFirewallRule' } else { $FirewallState }
+    $programs = @(Split-Programs $Program)
+    # ⛔ NOTHING NAMED IS NOT NOTHING TO CONTAIN. A guard asked about no program
+    # would pass on every host, so a caller that lost its list is could-not-run.
+    if ($programs.Count -eq 0) {
+        [Console]::Error.WriteLine(
+            'assert-disposable: -Egress needs -Program; a guard told to contain nothing establishes nothing')
+        exit 2
+    }
+    foreach ($one in $programs) {
+        if (-not [System.IO.Path]::IsPathRooted($one)) {
+            [Console]::Error.WriteLine("assert-disposable: program [$one] is not an absolute path")
             exit 2
         }
-        default {
-            Write-Output "no route off this host (read $read)"
-            exit 0
-        }
     }
+    $state = Read-FirewallState -Source $FirewallState
+    if ($null -eq $state) {
+        [Console]::Error.WriteLine(
+            "assert-disposable: $read is unreadable, so egress could not be established. That is not a pass.")
+        exit 2
+    }
+    $refusal = Test-Containment -State $state -Programs $programs
+    if ($refusal) {
+        [Console]::Error.WriteLine("assert-disposable: egress is open: $refusal")
+        exit 1
+    }
+    Write-Output ("no way off this host for " + $programs.Count + " program(s) (read $read)")
+    exit 0
 }
 
 # -Claim

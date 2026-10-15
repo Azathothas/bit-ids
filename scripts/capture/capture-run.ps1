@@ -1,16 +1,21 @@
 ﻿# capture-run.ps1 - the capture itself, on a Windows host that has already been
-# claimed and already had its default routes deleted.
+# claimed and whose capture programs the firewall already blocks.
 #
 # ⭐ THE TWIN OF capture-run.sh. It exists for the reason assert-disposable.ps1
 # exists: the sh half reads /proc/net/route and calls sha256sum, and a Windows
 # capture host has neither. CI-03 owns the pair.
 #
-# ⛔ IT BUILDS NOTHING. By the time this runs there is no network, because the
-# workflow deleted the default routes in both address families before calling
-# it. A capture that discovered a missing dependency here would have to restore
-# egress to fix it, on a host running a binary this project downloaded minutes
-# ago. The observer is a path to an ALREADY BUILT binary and a missing one is
-# `could not run`.
+# ⛔ IT BUILDS NOTHING. By the time this runs, every program it starts is
+# blocked from leaving the host by an outbound firewall rule the workflow wrote
+# with firewall-contain.ps1. A capture that discovered a missing dependency here
+# would be fetching it on the host it exists to contain. The observer is a path
+# to an ALREADY BUILT binary and a missing one is `could not run`.
+#
+# ⭐ -Programs PRINTS THE EXECUTABLES THIS CAPTURE RUNS, one absolute path per
+# line, and is the only derivation of that list. The workflow hands it to
+# firewall-contain.ps1 and to the egress guard, and this script hands the same
+# list to the guard again before it captures, so the set that was blocked and
+# the set that runs cannot drift apart.
 #
 # -- ⛔ WHAT THIS IS NOT ------------------------------------------------------
 #
@@ -34,7 +39,8 @@
 #
 # Usage:
 #   pwsh -NoProfile -File scripts/capture/capture-run.ps1 -RunId <id> -Out <dir>
-#        -Observer <path> [-Seconds <n>] [-RouteTable <path>]
+#        -Observer <path> [-Seconds <n>] [-FirewallState <path>]
+#   pwsh -NoProfile -File scripts/capture/capture-run.ps1 -Programs -Observer <path>
 #
 # Exit codes: 0 the capture ran and its evidence verifies, 1 a guard refuses,
 # 2 could not run.
@@ -47,7 +53,8 @@ param(
     [string]$Out = '',
     [string]$Observer = '',
     [int]$Seconds = 15,
-    [string]$RouteTable = '',
+    [string]$FirewallState = '',
+    [switch]$Programs,
     [switch]$Help
 )
 
@@ -89,13 +96,15 @@ function Cannot([string]$Message) {
     exit 2
 }
 
-if ([string]::IsNullOrEmpty($RunId)) { Cannot '-RunId is required' }
-if ([string]::IsNullOrEmpty($Out)) { Cannot '-Out is required' }
 if ([string]::IsNullOrEmpty($Observer)) { Cannot '-Observer is required' }
+if (-not $Programs) {
+    if ([string]::IsNullOrEmpty($RunId)) { Cannot '-RunId is required' }
+    if ([string]::IsNullOrEmpty($Out)) { Cannot '-Out is required' }
+}
 
 # ⚠ The same slug rule the guard applies, restated because this value becomes a
 # token on the wire and a key in a document before the guard is consulted.
-if ($RunId -notmatch '^[a-z0-9-]+$') {
+if (-not $Programs -and $RunId -notmatch '^[a-z0-9-]+$') {
     Cannot "run id must be lowercase a-z0-9-: $RunId"
 }
 if ($Seconds -lt 1) { Cannot "-Seconds must be at least 1: $Seconds" }
@@ -111,9 +120,19 @@ $curl = (Get-Command curl -CommandType Application -ErrorAction SilentlyContinue
         Select-Object -First 1)
 if ($null -eq $curl) { Cannot 'curl not found' }
 
-# ⛔ THE BUILD RAN BEFORE THE NETWORK WAS CUT, OR IT DID NOT RUN.
+# ⛔ THE BUILD RAN BEFORE THE CAPTURE WAS CONTAINED, OR IT DID NOT RUN.
 if (-not (Test-Path -LiteralPath $Observer -PathType Leaf)) {
-    Cannot "the observer $Observer is not present; it is built before the routes are deleted, never here"
+    Cannot "the observer $Observer is not present; it is built before the capture is contained, never here"
+}
+$Observer = (Resolve-Path -LiteralPath $Observer).Path
+
+# ⛔ EVERY EXECUTABLE THIS SCRIPT STARTS, and nothing it starts is missing from
+# it: the observer and the driver. pwsh itself is the runner's shell and is not
+# the capture's.
+$capturePrograms = @($Observer, $curl.Source)
+if ($Programs) {
+    $capturePrograms | ForEach-Object { Write-Output $_ }
+    exit 0
 }
 
 # ⛔ A SECOND CAPTURE MUST NOT WRITE OVER THE FIRST ONE'S EVIDENCE.
@@ -154,19 +173,21 @@ try {
         Deny "the host is claimed by run [$claimedRun], not [$RunId]"
     }
 
-    # ⛔ AND THE ROUTES ARE READ AGAIN AT THE MOMENT OF CAPTURE. The workflow ran
-    # the same guard a step earlier; what this adds is that nothing between the
-    # two steps put a route back.
-    if ([string]::IsNullOrEmpty($RouteTable)) {
-        $egressRc = Invoke-Guard -Arguments @('-Egress') -Log $guardLog
-        $egressSource = 'Get-NetRoute'
+    # ⛔ AND THE FIREWALL IS READ AGAIN AT THE MOMENT OF CAPTURE, for the
+    # programs this run is about to start. The workflow ran the same guard a
+    # step earlier; what this adds is that nothing between the two steps lifted
+    # a rule, and that the list it was asked about is this script's own.
+    $egressArgs = @('-Egress', '-Program', ($capturePrograms -join '|'))
+    if ([string]::IsNullOrEmpty($FirewallState)) {
+        $egressSource = 'Get-NetFirewallRule'
     }
     else {
-        $egressRc = Invoke-Guard -Arguments @('-Egress', '-RouteTable', $RouteTable) -Log $guardLog
-        $egressSource = $RouteTable
+        $egressArgs += @('-FirewallState', $FirewallState)
+        $egressSource = $FirewallState
     }
+    $egressRc = Invoke-Guard -Arguments $egressArgs -Log $guardLog
     if ($egressRc -eq 1) {
-        Deny 'egress is open; a default route is still there and a capture would leak'
+        Deny 'egress is open; a program this capture runs is not blocked and a capture would leak'
     }
     if ($egressRc -ne 0) {
         Cannot "egress could not be established from $egressSource"
