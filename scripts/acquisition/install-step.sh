@@ -67,7 +67,7 @@ if [ "$ROUTE" = release ]; then
   # between four dispositions is four copies of one decision, which is the
   # one-gated-door shape `docs/methodology/reviews.md` names. `ACQ-06`.
   #
-  # ⚠ `resolve-release.sh` did the resolving while the host still had a route
+  # ⚠ `bit-check resolve-release` did the resolving while the host still had a route
   # off itself, which is the containment order; this step only points the route
   # at what is already on disk.
   BIT_IDS_RELEASE_RESOLUTION="$RUNNER_TEMP/release/resolution.txt"

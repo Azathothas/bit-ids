@@ -56,7 +56,7 @@ trap 'rm -rf "$WORK"' EXIT INT TERM
 # finds the repository from where it is run, hence the `cd`.
 BITCHECK=$(store_bitcheck "$ROOT" "$WORK") || exit 2
 
-# A resolution as `resolve-release.sh` writes it, carrying only what is read.
+# A resolution as `bit-check resolve-release` writes it, carrying only what is read.
 # ⚠ The generation is the sixth argument, `bit-ids/resolution/2` by default.
 resolution() { # file target prefix-or-null min max [schema]
   jq -n --arg t "$2" --argjson p "$3" --argjson a "$4" --argjson b "$5" \

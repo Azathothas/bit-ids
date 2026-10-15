@@ -242,7 +242,7 @@ case "$COMMAND" in
     # ABOUT THE VENDOR'S OWN CHECKSUMS DOCUMENT. ⚠ That is a narrower sentence
     # than "no digest", and the difference is measured: the release LISTING
     # carries a per-asset digest published by the party serving the bytes, which
-    # `resolve-release.sh` resolves out of the same response and records as
+    # `bit-check resolve-release` resolves out of the same response and records as
     # `source-listing`. This key says only that the VENDOR uploaded no checksums
     # file - which is what an adapter can know by reading a release, and is what
     # decides whether the resolver goes looking for one.

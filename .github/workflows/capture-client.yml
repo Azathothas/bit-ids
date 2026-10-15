@@ -211,7 +211,7 @@ jobs:
           # into it and the step dies on the redirection rather than on anything
           # the script did.
           mkdir -p "$RUNNER_TEMP/release"
-          sh scripts/acquisition/resolve-release.sh \
+          "$BIT_CHECK" resolve-release \
             --adapter "$ADAPTER" \
             --workdir "$RUNNER_TEMP/release" \
             --record "$RUNNER_TEMP/release/resolution.txt" \
@@ -238,7 +238,7 @@ jobs:
           # ⛔ THE DIRECTORY IS MADE BEFORE THE REDIRECTION, for the reason the
           # step above gives: a shell opens `>` targets before it execs.
           mkdir -p "$RUNNER_TEMP/source"
-          sh scripts/acquisition/resolve-source.sh \
+          "$BIT_CHECK" resolve-source \
             --adapter "$ADAPTER" \
             --workdir "$RUNNER_TEMP/source" \
             --record "$RUNNER_TEMP/source/resolution.txt" \

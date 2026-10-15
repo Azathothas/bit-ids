@@ -381,19 +381,19 @@ Add-Unavailable 'check-capture' 'its subject PowerShell half exists and the capt
 Add-Unavailable 'check-capture-client' 'an sh harness whose subject has no PowerShell half yet; CI-07'
 
 # ⛔ AND ITS REASON IS A THIRD ONE AGAIN. check-release-route drives
-# resolve-release.sh, which is `sh`, over recorded listings; the decision it
-# proves is in Rust and the Rust suite exercises it on both lanes. What this lane
-# does not exercise is the shell that composes the three steps. ⚠ It closes when
-# CI-07 writes that twin, and a Windows adapter is what would need one.
-Add-Unavailable 'check-release-route' 'an sh harness whose subject has no PowerShell half yet; CI-07'
+# `bit-check resolve-release` over recorded listings, Go since 2026-10-15; what
+# keeps it off this lane is that the harness is `sh` and so are the adapters
+# whose `describe` it reads. ⚠ It closes when CI-11 moves the adapters and the
+# harness into Go.
+Add-Unavailable 'check-release-route' 'an sh harness over sh adapters; the resolver is Go; closes with CI-11'
 
 Add-Unavailable 'check-transmission' 'its subject transmission.sh is an sh adapter with no PowerShell half; CI-07 class C'
 
 
-# ⚠ Its reason is `check-release-route`'s exactly: the decision it proves is in
-# Rust and the Rust suite exercises it on both lanes; what this lane does not
-# exercise is the shell that composes the fetch and the resolution.
-Add-Unavailable 'check-source-route' 'an sh harness whose subject has no PowerShell half yet; CI-07'
+# ⚠ Its reason is `check-release-route`'s exactly: the resolver is
+# `bit-check resolve-source` since 2026-10-15, and the harness and the adapters
+# it reads are still `sh`.
+Add-Unavailable 'check-source-route' 'an sh harness over sh adapters; the resolver is Go; closes with CI-11'
 
 # ⛔ AND A SIXTH REASON, WHICH IS A FACT ABOUT THE PLATFORM RATHER THAN A MISSING
 # TWIN. check-rootless drives every release route under a uid that is not root,

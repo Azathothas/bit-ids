@@ -192,7 +192,7 @@ case "$COMMAND" in
     # carries `aria2-next-{version}-checksums.sha256` beside the seven builds,
     # read out of the live listing on 2026-09-09 and still in the fixture, so
     # the release route is verified against the vendor rather than merely
-    # recorded. `resolve-release.sh` selects it with the same call that selects
+    # recorded. `bit-check resolve-release` selects it with the same call that selects
     # the artifact, from the same response.
     printf 'release_digest_asset=aria2-next-{version}-checksums.sha256\n'
     # ⛔ THE ROUTE THAT COMPILES, SO THE WORKFLOW BOUNDS IT AS A BUILD: 870
@@ -302,7 +302,7 @@ no package index carries it, and installing aria2 would acquire a different prod
         # ⛔ ITS OWN TAG, FROM ITS OWN RESOLUTION. This read
         # `BIT_IDS_RELEASE_TAG` until 2026-09-09, which is the tag the RELEASE
         # lane's listing chose - so both lanes resolved through one index and
-        # `E-ACQ-07` called them one route. `resolve-source.sh` reads the
+        # `E-ACQ-07` called them one route. `bit-check resolve-source` reads the
         # repository's refs instead, and the two versions are then COMPARED
         # after installation rather than made equal beforehand, which is what
         # absolute 4 asks for.

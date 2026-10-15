@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T12:17:00Z
+
+- ⭐ **Both route resolvers are Go**: `bit-check resolve-release` and `bit-check
+  resolve-source` agree with their deleted shell halves on every harness row
+  and on five live resolutions.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T12:02:24Z
 
 - ⭐ **Every release route now fetches and installs through Go.** `bit-check

@@ -82,7 +82,7 @@ it would destroy the moment it was kept for.
 did not move, which is what makes a changed answer over one the fault of this
 project rather than of a vendor - and it is also why passing here says nothing
 about the release that exists this morning. Only
-`resolve-release.sh` without `--listing` asks a vendor, and only a dispatch
+`bit-check resolve-release` without `--listing` asks a vendor, and only a dispatch
 installs anything.
 
 ⚠ **And the digest of a listing identifies a response, not a release.** Two

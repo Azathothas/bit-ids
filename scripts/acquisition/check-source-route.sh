@@ -72,11 +72,11 @@ store_build "$ROOT" resolve-stable >/dev/null || exit 2
 WORK=$(store_workdir checksource) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
-RESOLVE="$ROOT/scripts/acquisition/resolve-source.sh"
-[ -f "$RESOLVE" ] || {
-  printf 'check-source-route: %s is missing\n' "$RESOLVE" >&2
-  exit 2
-}
+# ⭐ THE RESOLVER IS `bit-check resolve-source` SINCE 2026-10-15, `CI-11`. These cases
+# held its shell half to the same rows before that half was deleted.
+mkdir -p "$WORK/bin" || exit 2
+BIT_CHECK=$(store_bitcheck "$ROOT" "$WORK/bin") || exit 2
+RESOLVE="$BIT_CHECK"
 
 # ⛔ COMPUTED, NEVER TYPED. See the header: forty hex digits is the shape the
 # public secret rule refuses, and it is right to.
@@ -115,7 +115,7 @@ chmod +x "$STUB"
 # ⛔ The exit code is read from the process that produced it.
 resolve() { # tag refs-file
   rm -rf "$WORK/$1.work"
-  sh "$RESOLVE" --adapter "$STUB" --workdir "$WORK/$1.work" \
+  "$RESOLVE" resolve-source --adapter "$STUB" --workdir "$WORK/$1.work" \
     --record "$WORK/$1.rec" --refs "$2" \
     >"$WORK/$1.out" 2>"$WORK/$1.err"
   return $?

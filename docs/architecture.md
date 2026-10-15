@@ -930,8 +930,8 @@ cut", and the resolver above orders versions and selects no asset, so
 `select_asset` in
 [`../crates/bit-ids/src/resolution.rs`](../crates/bit-ids/src/resolution.rs) are
 the missing half, and
-[`../scripts/acquisition/resolve-release.sh`](../scripts/acquisition/resolve-release.sh)
-is what composes them with the fetch.
+`bit-check resolve-release`, in [`../tools/check/resolve.go`](../tools/check/resolve.go)
+since 2026-10-15 (`CI-11`), is what composes them with the fetch.
 
 ⛔ **Which asset is the installable one is target knowledge, so the target
 declares it.** The adapter prints the repository, the version scheme and the

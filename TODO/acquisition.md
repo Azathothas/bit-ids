@@ -277,7 +277,7 @@ called.
 
 ⭐ **`select_asset` and `AssetPattern` are the missing half**, beside `resolve`
 because they answer the second half of one question, and
-[`../scripts/acquisition/resolve-release.sh`](../scripts/acquisition/resolve-release.sh)
+`scripts/acquisition/resolve-release.sh` (`bit-check resolve-release` since 2026-10-15)
 composes the fetch, the resolution and the selection into the one command a
 workflow step runs.
 

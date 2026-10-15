@@ -48,6 +48,8 @@
 //	bit-check fetch-releases <owner/repo> <output-file>
 //	bit-check fetch-releases --url <https url> <output-file>
 //	bit-check install-rootless --prefix | --fetch ... | --install ...
+//	bit-check resolve-release --adapter <path> --workdir <dir> [...]
+//	bit-check resolve-source --adapter <path> --workdir <dir> [...]
 //	bit-check --rows
 //
 // ⛔ Read the exit code from this process, unpiped. ⚠ `go run . <check>` is a
@@ -176,6 +178,12 @@ func main() {
 	}
 	if args[0] == "install-rootless" {
 		os.Exit(installRootless(args[1:]))
+	}
+	if args[0] == "resolve-release" {
+		os.Exit(resolveRelease(args[1:]))
+	}
+	if args[0] == "resolve-source" {
+		os.Exit(resolveSource(args[1:]))
 	}
 
 	name := args[0]

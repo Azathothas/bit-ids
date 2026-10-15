@@ -67,13 +67,13 @@ store_build "$ROOT" select-asset >/dev/null || exit 2
 WORK=$(store_workdir checkrelease) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
-RESOLVE="$ROOT/scripts/acquisition/resolve-release.sh"
+# ⭐ THE RESOLVER IS `bit-check resolve-release` SINCE 2026-10-15, `CI-11`. These cases
+# held its shell half to the same rows before that half was deleted.
+mkdir -p "$WORK/bin" || exit 2
+BIT_CHECK=$(store_bitcheck "$ROOT" "$WORK/bin") || exit 2
+RESOLVE="$BIT_CHECK"
 ADAPTERS="$ROOT/scripts/capture/adapters"
 LISTINGS="$HERE/listings"
-[ -f "$RESOLVE" ] || {
-  printf 'check-release-route: %s is missing\n' "$RESOLVE" >&2
-  exit 2
-}
 
 # ⛔ THE CHECKSUMS DOCUMENT IS BUILT HERE RATHER THAN COMMITTED, AND THAT IS TWO
 # DECISIONS. A stored `.sha256` fixture is a file of bare 64-digit hex, which is
@@ -106,7 +106,7 @@ resolve() { # tag adapter listing [checksums-asset]
   else
     : >"$_sums"
   fi
-  sh "$RESOLVE" --adapter "$2" --workdir "$WORK/$1.work" \
+  "$RESOLVE" resolve-release --adapter "$2" --workdir "$WORK/$1.work" \
     --record "$WORK/$1.rec" --listing "$3" --checksums "$_sums" >"$_out" 2>"$_err"
   return $?
 }
@@ -410,7 +410,7 @@ fi
 sums_for "some-other-asset" >"$WORK/wrong-sums.txt"
 _out="$WORK/wrongsums.out"
 _err="$WORK/wrongsums.err"
-sh "$RESOLVE" --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/wrongsums.work" \
+"$RESOLVE" resolve-release --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/wrongsums.work" \
   --record "$WORK/wrongsums.rec" --listing "$LISTINGS/aria2-next.json" \
   --checksums "$WORK/wrong-sums.txt" >"$_out" 2>"$_err"
 rc=$?
@@ -427,7 +427,7 @@ fi
 # passes equally over a reader that searches for a substring.
 sums_for "aria2-next-2.7.4-linux-x86_64.asc" >"$WORK/prefix-sums.txt"
 _err="$WORK/prefixsums.err"
-sh "$RESOLVE" --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/prefixsums.work" \
+"$RESOLVE" resolve-release --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/prefixsums.work" \
   --record "$WORK/prefixsums.rec" --listing "$LISTINGS/aria2-next.json" \
   --checksums "$WORK/prefix-sums.txt" >"$WORK/prefixsums.out" 2>"$_err"
 rc=$?
@@ -441,7 +441,7 @@ fi
 # this the resolver would fetch the vendor's checksums over a URL the fixture
 # names, so a harness written to need no network would quietly need one.
 _err="$WORK/nosums.err"
-sh "$RESOLVE" --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/nosums.work" \
+"$RESOLVE" resolve-release --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/nosums.work" \
   --record "$WORK/nosums.rec" --listing "$LISTINGS/aria2-next.json" \
   >"$WORK/nosums.out" 2>"$_err"
 rc=$?
@@ -496,22 +496,6 @@ if [ "$rc" = 2 ] && said bothdigest "declares both release_digest_asset and rele
   pass "digest    an adapter declaring both dispositions is could-not-run"
 else
   fail "digest    the double disposition exited $rc: $(tail -1 "$WORK/bothdigest.err")"
-fi
-
-# -- 3c. the live route finds its fetcher, and never builds one --------------
-#
-# ⛔ `bit-check fetch-releases` SINCE 2026-10-15, `CI-11`. With no `--listing`
-# the resolver asks the vendor, and it finds the fetcher through BIT_CHECK. A
-# BIT_CHECK naming nothing is could-not-run before any request is sent, which
-# is also why this case reaches no network.
-BIT_CHECK="$WORK/no-bit-check-here" sh "$RESOLVE" \
-  --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/nofetch.work" \
-  >"$WORK/nofetch.out" 2>"$WORK/nofetch.err"
-_rc=$?
-if [ "$_rc" = 2 ] && said nofetch "BIT_CHECK names no bit-check binary"; then
-  pass "fetcher   a live resolution with no BIT_CHECK is could-not-run, before any request"
-else
-  fail "fetcher   a live resolution with no BIT_CHECK answered $_rc"
 fi
 
 # -- 4. the control the refusals need ----------------------------------------

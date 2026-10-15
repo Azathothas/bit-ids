@@ -5817,3 +5817,23 @@ own line in each file, and `check-bitcheck`'s plant has moved into the Go file.
 to require. Placement is a copy at mode 0755 followed by a rename, which needs
 neither `install` nor `mv`. Only the vendor's checksums document is still
 checked by a host tool: `sha256sum -c`, or `certutil` on Windows.
+
+### ⭐ Both resolvers are Go: the fourth and fifth leaves. 2026-10-15
+
+`bit-check resolve-release` and `bit-check resolve-source`, both in
+[`../tools/check/resolve.go`](../tools/check/resolve.go), replace their shell
+halves. `capture-client.yml`'s two resolve steps run them, and the resolver
+fetches through its own executable's `fetch-releases` and `install-rootless`
+rather than through a second spelling of either. The adapter's `describe` is
+still `sh <adapter> describe`, bounded the way `timeout -k` bounded it, because
+the adapters are the next leaves and that call is the one door to them.
+
+| held against the shell halves before they were deleted | result |
+| --- | --- |
+| `check-release-route` and `check-source-route`, each run over the shell half and then over a shim that execs the port | every row identical. The one exception is the case that pointed `BIT_CHECK` at nothing, which then broke the shim itself; the port no longer has that guard and the case is retired |
+| live, network and all: three release routes (aria2-next, Transmission, qBittorrent) and two source routes (Transmission, aria2-next) | the same exit code and stdout, and the same records apart from the instants and the workdir path |
+| `check-release-route`, 35 of 35, and `check-source-route`, 26 of 26, now driving `bit-check` | green |
+
+⚠ The Windows lane still declares both harness rows. Their reasons now give the
+real event: the resolver is Go, while the harness and the adapters whose
+`describe` it reads are still `sh`. The rows close with `CI-11`.

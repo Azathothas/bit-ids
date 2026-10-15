@@ -43,7 +43,8 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   - what the register allows, so the tie between the two is a call rather than a
   second reading of the register. ⭐ It was `acquisition/check-cache.sh` and a
   PowerShell twin until 2026-09-29, the first HARNESS to leave the twin layer.
-- [`acquisition/resolve-release.sh`](acquisition/resolve-release.sh) decides
+- `bit-check resolve-release`, in [`../tools/check/resolve.go`](../tools/check/resolve.go)
+  and `acquisition/resolve-release.sh` until 2026-10-15 (`CI-11`), decides
   which artifact a `release` route will fetch, while the network is in reach. ⛔ It
   carries no per-target knowledge: the repository, the version scheme and the
   asset pattern come out of the adapter's own `describe`, so a workflow driving
@@ -219,8 +220,8 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   client rather than for a caller that already knew the address, and it runs
   each shipped adapter's `describe` so a typo in one is found by a gate rather
   than by a runner.
-- [`acquisition/resolve-source.sh`](acquisition/resolve-source.sh) decides which
-  tag the `source` route builds, from `git ls-remote --tags --refs` rather than
+- `bit-check resolve-source`, `acquisition/resolve-source.sh` until 2026-10-15
+  (`CI-11`), decides which tag the `source` route builds, from `git ls-remote --tags --refs` rather than
   from a release listing. ⛔ It exists because the two lanes of a dispatch used to
   share one resolution, which `E-ACQ-07` calls one route.
   [`acquisition/check-source-route.sh`](acquisition/check-source-route.sh) proves

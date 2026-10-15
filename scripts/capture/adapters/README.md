@@ -227,7 +227,7 @@ route the adapter declares in `compiles`.
 
 ⛔ **A release route needs an artifact chosen and `describe` is where the target
 says which.** Six more keys, printed by `describe` and read by
-[`../../acquisition/resolve-release.sh`](../../acquisition/resolve-release.sh).
+`bit-check resolve-release`, in [`../../../tools/check/resolve.go`](../../../tools/check/resolve.go).
 An adapter with no release route prints none of them, which is an answer: the
 caller learns this target has no second route rather than watching a fetch fail
 with something that names nothing.
@@ -253,7 +253,7 @@ source tarball. `CLIENT-06`.
 ⛔ **THE DIGEST DISPOSITION IS DECLARED AND NEVER DEFAULTED, AND EXACTLY ONE OF
 THE TWO IS REQUIRED.** `ACQ-06`. An adapter that named neither would install
 bytes nothing identified, and a default would mean the day a vendor stopped
-publishing digests nothing would say so. `resolve-release.sh` refuses both an
+publishing digests nothing would say so. `bit-check resolve-release` refuses both an
 absent declaration and a doubled one.
 
 ⭐ **`release_digest_asset` is an asset pattern like `release_asset`**, selected
@@ -265,7 +265,7 @@ route reads it from this adapter rather than spelling it a second time.
 ⛔ **AND THIS KEY IS ABOUT THE VENDOR'S CHECKSUMS DOCUMENT, NOT ABOUT DIGESTS.**
 That is narrower than it sounds and the difference is measured. A release listing
 also carries a per-asset `digest`, published by the party SERVING the bytes, and
-`resolve-release.sh` resolves it out of the same response with no extra
+`bit-check resolve-release` resolves it out of the same response with no extra
 retrieval. An adapter cannot know that by reading a release and does not declare
 it; what this key decides is only whether the resolver goes looking for a
 checksums FILE.

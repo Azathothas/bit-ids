@@ -280,7 +280,7 @@ ROUTE_DRIVER
 CASE_ENV="BIT_IDS_STATE_DIR=$STATE BIT_IDS_PREFIX=$SCRATCH/prefix"
 
 # ⛔ THE DISPOSITION TRAVELS AS A RESOLUTION RECORD, BECAUSE THAT IS WHAT THE REAL
-# PATH PASSES. `install-step.sh` exports the resolution `resolve-release.sh`
+# PATH PASSES. `install-step.sh` exports the resolution `bit-check resolve-release`
 # wrote and the installer reads it; a harness that handed the installer flags
 # directly would be exercising a door the capture path does not use.
 #
@@ -578,7 +578,7 @@ fi
 # -- 3b. the resolution reader, which is where four adapters' decision now lives
 #
 # ⛔ A VOCABULARY THAT GREW ON ONE SIDE AND NOT THE OTHER IS THE FAILURE THIS
-# READER CAN HAVE. `resolve-release.sh` writes `digest_source` and this reads it;
+# READER CAN HAVE. `bit-check resolve-release` writes `digest_source` and this reads it;
 # a value one knows and the other does not must be could-not-run, never an
 # install under a disposition nobody implemented.
 cat >"$WORK/unknown-res.txt" <<'UNKNOWN'
