@@ -1,0 +1,52 @@
+{
+  "schema": "bit-ids/index/1",
+  "excluded": 0,
+  "superseded": 0,
+  "indexes": [
+    {
+      "kind": "target",
+      "rows": [
+        {"key": "aria2-next", "record": "record:sha256:56daa3c88410dd4c5a168d0d59c222a82fa2f81b6a62d9b57e400328452d0145", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json"},
+        {"key": "aria2-next", "record": "record:sha256:80d18abe24d342b896251f9ad2526e297f9acbd0b9412f16b9f9fde96dac028c", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-source.json"}
+      ]
+    },
+    {
+      "kind": "peer_prefix",
+      "rows": [
+        {"key": "2d7142353233302d", "record": "record:sha256:56daa3c88410dd4c5a168d0d59c222a82fa2f81b6a62d9b57e400328452d0145", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json"},
+        {"key": "2d7142353233302d", "record": "record:sha256:80d18abe24d342b896251f9ad2526e297f9acbd0b9412f16b9f9fde96dac028c", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-source.json"}
+      ]
+    },
+    {
+      "kind": "bep10_client",
+      "rows": [
+      ]
+    },
+    {
+      "kind": "platform",
+      "rows": [
+        {"key": "linux", "record": "record:sha256:56daa3c88410dd4c5a168d0d59c222a82fa2f81b6a62d9b57e400328452d0145", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json"},
+        {"key": "linux", "record": "record:sha256:80d18abe24d342b896251f9ad2526e297f9acbd0b9412f16b9f9fde96dac028c", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-source.json"}
+      ]
+    },
+    {
+      "kind": "version",
+      "rows": [
+        {"key": "3.0.3", "record": "record:sha256:56daa3c88410dd4c5a168d0d59c222a82fa2f81b6a62d9b57e400328452d0145", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json"},
+        {"key": "3.0.3", "record": "record:sha256:80d18abe24d342b896251f9ad2526e297f9acbd0b9412f16b9f9fde96dac028c", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-source.json"}
+      ]
+    },
+    {
+      "kind": "captured_at",
+      "rows": [
+        {"key": "2026-10-14T12:25:35Z", "record": "record:sha256:80d18abe24d342b896251f9ad2526e297f9acbd0b9412f16b9f9fde96dac028c", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-source.json"},
+        {"key": "2026-10-14T12:25:39Z", "record": "record:sha256:56daa3c88410dd4c5a168d0d59c222a82fa2f81b6a62d9b57e400328452d0145", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json"}
+      ]
+    }
+  ],
+  "latest": [
+    {"target": "aria2-next", "platform": "linux", "arch": "x86-64", "package": "elf-binary", "version": "3.0.3", "record": "record:sha256:56daa3c88410dd4c5a168d0d59c222a82fa2f81b6a62d9b57e400328452d0145", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json"}
+  ],
+  "corrections": [
+  ]
+}

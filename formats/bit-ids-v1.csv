@@ -1,0 +1,3 @@
+record,schema,target,target_kind,version,platform,arch,package,executable,capture,captured_at
+record:sha256:56daa3c88410dd4c5a168d0d59c222a82fa2f81b6a62d9b57e400328452d0145,bit-ids/profile/1,aria2-next,client,3.0.3,linux,x86-64,elf-binary,sha256:0350294cd1510a9e65c3397a8ca64a38b8467a274db898819eb49a29ea8cb2da,cap-release,2026-10-14T12:25:39Z
+record:sha256:80d18abe24d342b896251f9ad2526e297f9acbd0b9412f16b9f9fde96dac028c,bit-ids/profile/1,aria2-next,client,3.0.3,linux,x86-64,elf-binary,sha256:69bd293952ecd381934699e631d27037ca1682b4f66994d12877652bfa0538be,cap-source,2026-10-14T12:25:35Z

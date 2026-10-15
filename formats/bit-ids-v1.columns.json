@@ -1,0 +1,26 @@
+{
+  "schema": "bit-ids/formats/1",
+  "file": "formats/bit-ids-v1.csv",
+  "columns": [
+    "record",
+    "schema",
+    "target",
+    "target_kind",
+    "version",
+    "platform",
+    "arch",
+    "package",
+    "executable",
+    "capture",
+    "captured_at"
+  ],
+  "omits": [
+    "acquisition",
+    "observations",
+    "corroboration",
+    "normalizations",
+    "evidence",
+    "supersedes",
+    "adjudication"
+  ]
+}
