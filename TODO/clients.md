@@ -1450,6 +1450,84 @@ Reassembling run 38667886527's artifacts, dialled in one session, gives the
 same records as before, byte for byte. `check-capture-client` moves its
 session counts to three. ⚠ The pair needs capturing again under this.
 
+### ⭐ Transmission's Windows half is built, and not yet run. 2026-10-15
+
+[`../tools/check/adapter_transmission_windows.go`](../tools/check/adapter_transmission_windows.go)
+registers `transmission` on Windows, run as `bit-check adapter transmission`.
+[`../tools/check/trwindows.go`](../tools/check/trwindows.go) holds what it
+decides without Windows in it: the settings document, the two version readings,
+the image's layout, msiexec's command line, the service state and the verifier
+scrub. `bit-check transmission-windows --selftest` asks each of them on any
+host, 51 cases, all held. Five mutants were each refused, and `check-bitcheck`
+runs the selftest. This is the Windows half this entry's Prove names.
+
+| route | what it does | `package` |
+| --- | --- | --- |
+| `release` | `transmission-4.1.3-x64.msi` from GitHub, fetched by `install-rootless --fetch` under the resolution's digest, then laid out by `msiexec /a /qn TARGETDIR=` into `<prefix>\opt\transmission`. No install runs | `msi-payload` |
+| `package` | `winget install --id Transmission.Transmission` with `--custom ADDLOCAL=CommonLibs,Daemon,CmdTools` and no `--version`, into `%ProgramFiles%\Transmission`. The installer's own service is then stopped and disabled, and the build's answer must equal the version winget's index named | `msi-installer` |
+
+⭐ **The MSI was read rather than assumed**, on 2026-10-15, with msitools on
+the session host, over the asset whose sha256 is
+`c8ea492d...21741f8`, the digest
+the listing states:
+
+| table | what it holds |
+| --- | --- |
+| File | `transmission-daemon.exe` and `transmission-remote.exe`, both `4.1.3.0`, beside `transmission-qt.exe`, `-create`, `-edit` and `-show`. `msiextract` lays them out as `PFiles/Transmission/`, with `libcurl.dll`, `libcrypto-3-x64.dll`, `libssl-3-x64.dll` and `zlib.dll` beside them |
+| Feature | `CommonLibs` and `QtClient` at level 1. `Daemon`, `CmdTools` and `WebUi` at level 2. The Property table sets no `INSTALLLEVEL`, so the default of 1 applies, and **a default install places neither executable the capture runs** |
+| ServiceInstall, ServiceControl | a service `Transmission` in the daemon's own component: own process, automatic start, `NT AUTHORITY\LocalService`. Event 163 starts it on install |
+| AdminExecuteSequence | cost, validate, `InstallAdminPackage`, `InstallFiles`, finalize. No custom action, no service, no registry and no launch condition |
+| LaunchCondition | the Visual C++ runtime 14.30 or later and the UCRT. The daemon imports `MSVCP140`, `VCRUNTIME140` and `VCRUNTIME140_1`, and the MSI carries none of them |
+| Property | ProductName `Transmission 4.1.3 (838877323f) (x64)` |
+
+⭐ **The daemon was read rather than assumed too**, from the `4.1.3` tag's
+`daemon/daemon.cc` and `daemon/daemon-win32.cc`. `--version` prints
+`transmission-daemon <LONG_VERSION_STRING>` to stderr and exits, so `version`
+is the pure read the contract describes, unlike qBittorrent's Windows build.
+Without `--foreground`, `spawn` calls `StartServiceCtrlDispatcher`, which fails
+from a console, so the flag the Linux half passes is required here. The RPC
+`session-close`, which is what `transmission-remote --exit` sends, calls the
+same `stop()` as a console control event. The daemon then saves its settings,
+which is where the verifier comes back, and closes the session.
+
+⛔ **The two routes deliver one artifact from one host.** winget's x64
+installer URL is the release route's own GitHub asset URL, with the same
+InstallerSha256. The resolvers differ (winget's index against the release
+listing), and so does the delivery (winget against `install-rootless`). That is
+what `E-ACQ-07` and `E-ACQ-08` compare. ⚠ The host serving the bytes does not
+differ, which makes this pair weaker than qBittorrent's, whose winget route
+fetches from SourceForge. It is the same build acquired twice, so `ACQ-03` is
+handed the strongest version agreement and the weakest origin independence.
+
+⚠ **What differs from the Linux half, each for a reason in the adapter's
+header:** the scrub is Go and takes every member naming a password, and it
+deletes the file only when it cannot parse it. The RPC port is a free loopback
+port drawn per session, because the installed service holds 9091. The settings
+values are JSON-encoded, because a Windows path's backslashes are escapes. The
+version reading requires the daemon's own name and a version-shaped field.
+`--log-level=error` replaces the deprecated `--log-error`. And `helpers=` names
+`transmission-remote.exe` for the firewall.
+
+⛔ **What needs a runner, in the order to read a dispatch:**
+
+1. Whether `msiexec /a` lays the image out on `windows-2025` as measured here,
+   `PFiles\Transmission\`. The release lane's `install.log`, `msiexec.log` and
+   `extract.txt` show it, and `extract.txt` names the runtime DLLs the build
+   will load.
+2. Whether winget installs with `--custom ADDLOCAL=...` and places both
+   executables. The package lane's `install.log`, `winget.log` and
+   `winget-show.txt` show it. `winget-version.txt` holds the index's version
+   beside the build's.
+3. Whether the installer's service starts and then stops and disables.
+   `service.txt` records the state before and after.
+4. Whether `transmission-daemon --version` answers on both routes, which
+   `version.err` beside each install record carries.
+5. Whether `--exit` ends the daemon, so it announces `stopped`.
+   `client/stop.txt` says `session-close` or `killed`, and
+   `client/config/settings.json` must carry no `rpc-password`.
+6. The capture itself: announces from `-TR4130-` with the daemon and
+   `transmission-remote.exe` both under the firewall rules.
+
 ## CLIENT-07: Deluge capture adapter
 
 Source: operator scope and upstream project

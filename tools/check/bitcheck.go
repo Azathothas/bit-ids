@@ -2028,6 +2028,15 @@ func (b *bitcheck) adapters() {
 	} else {
 		b.h.bad(fmt.Sprintf("adapters the Windows qbittorrent adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
 	}
+	// ⭐ AND TRANSMISSION'S WINDOWS HALF, for the same reason: the settings
+	// document, the two answers, the image's layout, msiexec's command line, the
+	// service state and the verifier scrub are trwindows.go. `CI-11`,
+	// `CLIENT-06`.
+	if rc, out := b.run("transmission-windows", "--selftest"); rc == 0 && strings.Contains(out, `"failed":0}`) {
+		b.h.ok("adapters the Windows transmission adapter's selftest holds: go (exit 0)")
+	} else {
+		b.h.bad(fmt.Sprintf("adapters the Windows transmission adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
+	}
 
 	// ⛔ A RELEASE FETCH WITH NO TIME LIMIT. ⚠ Planted in the installer, because
 	// `ACQ-06` moved every release retrieval there, and in its Go file since

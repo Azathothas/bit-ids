@@ -12,7 +12,7 @@ their contract.** Each is a `bit-check` command, `bit-check adapter <name>
 | `aria2` | [`../../../tools/check/adapter_aria2.go`](../../../tools/check/adapter_aria2.go) |
 | `aria2-next` | [`../../../tools/check/adapter_aria2-next.go`](../../../tools/check/adapter_aria2-next.go) |
 | `qbittorrent` | [`../../../tools/check/adapter_qbittorrent.go`](../../../tools/check/adapter_qbittorrent.go), with a Windows half registered under the same name |
-| `transmission` | [`../../../tools/check/adapter_transmission.go`](../../../tools/check/adapter_transmission.go) |
+| `transmission` | [`../../../tools/check/adapter_transmission.go`](../../../tools/check/adapter_transmission.go), with a Windows half registered under the same name |
 
 The four Linux adapters share their mechanics, and none of their decisions, in
 [`../../../tools/check/adapterkit.go`](../../../tools/check/adapterkit.go). The
@@ -146,8 +146,10 @@ each session, and asks the build not to open its add-torrent dialog.
 A Windows runner has no `sh`, so an adapter's Windows half is Go, registered
 by name and run as `bit-check adapter <name> <subcommand>`, under the same
 contract. `qbittorrent` has one,
-[`../../../tools/check/adapter_qbittorrent_windows.go`](../../../tools/check/adapter_qbittorrent_windows.go).
-Three things in it differ from Linux, and each is a fact of the build:
+[`../../../tools/check/adapter_qbittorrent_windows.go`](../../../tools/check/adapter_qbittorrent_windows.go),
+and so does `transmission`,
+[`../../../tools/check/adapter_transmission_windows.go`](../../../tools/check/adapter_transmission_windows.go).
+Three things in the first differ from Linux, and each is a fact of the build:
 
 - ⛔ **`version` starts the build.** The Windows GUI build compiles
   `--version` out, and on Windows the flag opens a modal *Bad command line*
@@ -165,6 +167,18 @@ Three things in it differ from Linux, and each is a fact of the build:
   the build that `start` or `stop` runs. ⛔ The second is what the firewall
   blocks beside the build: `bit-check capture-client --programs` reads it, and
   a rule covers only the executable it names.
+
+⭐ **`transmission`'s Windows half differs from Linux less**, because its build
+has a `--version` on Windows and is driven by the same `transmission-remote`.
+`version` is the pure read the contract describes. `stop` asks the daemon to
+exit with `transmission-remote --exit`, the RPC `session-close`, and kills it
+only after a grace period; `stop.txt` says which. The scrub of the RPC verifier
+is Go rather than `jq`, and `helpers=` names `transmission-remote.exe`. Its
+release route lays the vendor's MSI out as an administrative image, `msiexec
+/a`, which runs no install; its package route is winget, with the MSI's
+`Daemon` and `CmdTools` features named because a default install carries
+neither. `CLIENT-06` in [`../../../TODO/clients.md`](../../../TODO/clients.md)
+carries the measurements.
 
 ## ⛔ The workdir IS the evidence bundle
 

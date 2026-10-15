@@ -6199,3 +6199,30 @@ The other two stay as they are:
   and the workflow always resolves first, so this is the safe outcome.
 - **The old shell reader that missed `timeout 120 curl`.** It is gone, and the
   Go reader counts those fetches.
+
+### ⭐ Transmission's Windows half is built, and not yet dispatched. 2026-10-15
+
+[`../tools/check/adapter_transmission_windows.go`](../tools/check/adapter_transmission_windows.go)
+registers `transmission` on Windows, so `capture-client.yml` can run with
+`windows_adapters: ["transmission"]` over the routes `release` and `package`.
+Its pure decisions are in
+[`../tools/check/trwindows.go`](../tools/check/trwindows.go), whose selftest,
+`bit-check transmission-windows --selftest`, `check-bitcheck` runs beside the
+qBittorrent one. The routes, the measurements behind them and the reading
+order for a dispatch are under `CLIENT-06` in [`clients.md`](clients.md).
+
+⚠ **The workflow changed in its words only.** The `windows_adapters`
+description and the comment above it now name `transmission`, and the
+*Resolve the release artifact* comment names both installers. No step, default
+or bound changed. Neither Windows route compiles, so the lane's fixed install
+bound holds.
+
+| held before commit | result |
+| --- | --- |
+| `bit-check transmission-windows --selftest` | 51 of 51 |
+| five mutants, each in a scratch copy of `tools/check` | each refused: DHT left on (1 case), the download directory written raw as the Linux half writes it (15), the scrub keeping the verifier (3), the first of two daemons accepted (1), unparseable settings kept rather than deleted (1) |
+| `gofmt -l`, `go vet ./...`, `GOOS=windows go vet ./...`, `GOOS=windows go build` | clean |
+| `sh scripts/common/check-gate.sh` | 42 checks: 41 passed, 0 failed, 1 skipped |
+
+⛔ **Not established off a runner.** No step of the Windows half has run on
+Windows. `CLIENT-06` lists what a dispatch proves, in reading order.

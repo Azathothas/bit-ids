@@ -5,6 +5,21 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T18:15:49Z
+
+- ⭐ **Transmission has a Windows half**: `bit-check adapter transmission` on
+  Windows drives transmission-daemon 4.1.3 through `transmission-remote`, as
+  the Linux half does. Its release route lays the vendor's x64 MSI out with
+  `msiexec /a` and runs no install. Its package route is winget, with the
+  daemon's and the remote's MSI features named, because a default install
+  carries neither, and with the installer's own service stopped and disabled.
+- `bit-check transmission-windows --selftest` checks the adapter's pure
+  decisions on any host: 51 cases, and five mutants were each refused.
+  `check-bitcheck` runs it.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11` and
+  [`TODO/clients.md`](TODO/clients.md) `CLIENT-06`. Not yet dispatched. No
+  version bump and no deploy.
+
 ### 2026-10-15T17:40:00Z
 
 - **An adapter's `stop` never signals pid 0 or 1**, which would have reached
