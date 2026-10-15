@@ -16,8 +16,8 @@
 // A ported harness answers exactly what its shell half answered: the same
 // `{"schema":...,"total":...,"passed":...,"failed":...}` line under `--json`,
 // and the same verdict - a run that passed nothing is red whatever else it says.
-// `scripts/common/check-bitcheck.sh --compare` holds the two to that, byte for
-// byte, before either half is deleted.
+// `check-bitcheck.sh --compare` held the two to that, byte for byte, before
+// either half was deleted.
 package main
 
 import (

@@ -26,9 +26,9 @@
 //	2  the check could not run
 //
 // ⚠ A port that changed one verdict while getting faster would be trading the
-// thing being measured for the measurement. `scripts/common/check-bitcheck.sh`
-// is what compares each ported check against the halves it replaces, case for
-// case over the same plants, and it runs BEFORE any half is deleted.
+// thing being measured for the measurement. `check-bitcheck` compared each
+// ported check against the halves it replaced, case for case over the same
+// plants, BEFORE any half was deleted; bitcheck.go keeps those plants.
 //
 // -- ⭐ NO DEPENDENCIES, WHICH IS A SUPPLY-CHAIN PROPERTY AND NOT A PREFERENCE -
 //
@@ -42,6 +42,7 @@
 //	bit-check check-licences --permitted
 //	bit-check check-no-secrets --public
 //	bit-check check-remote-items [--repo OWNER/NAME]
+//	bit-check check-bitcheck [--harnesses] [--json]
 //	bit-check mine-repo OWNER/NAME [--out DIR] [--route auto|gh|proxy] [--no-clone] [--json]
 //	bit-check mine-repo --selftest [--json]
 //	bit-check scan-bundle [--top-level] <dir>
@@ -80,7 +81,7 @@ func errCannotRun(msg string) error { return cannotRun{msg} }
 var optPermitted bool
 
 // verdict is what a check answers: the exit code plus the one JSON line that
-// `check-bitcheck.sh` compares against the shell half's.
+// the shell halves were compared on, and `check-bitcheck` still reads.
 type verdict struct {
 	code int
 	json string
@@ -106,6 +107,7 @@ type check func(r *repo) (verdict, error)
 var checks = map[string]check{
 	"check-adapters":      checkAdapters,
 	"check-assemble":      checkAssemble,
+	"check-bitcheck":      checkBitcheck,
 	"check-cache":         checkCache,
 	"check-catalogue":     checkCatalogue,
 	"check-connector":     checkConnector,
@@ -215,6 +217,11 @@ func main() {
 			// content in a private project, which is why the gate runs this as
 			// its own row rather than as a flag on the default one.
 			optPublic = true
+		case "--harnesses":
+			// ⚠ check-bitcheck's slower mode: it adds the cases that build a ported
+			// harness's Rust subject out of a scratch tree. bitcheck.go says why
+			// the default mode leaves them out.
+			optHarnesses = true
 		case "--all-history":
 			// ⚠ Slow on purpose and deliberately not a gate row: it reads every
 			// blob ever committed.

@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T12:25:24Z
+
+- ⭐ **`check-bitcheck` is Go**: `bit-check check-bitcheck` runs the same 238
+  cases, and 310 with `--harnesses`, row for row identical to its deleted
+  shell half.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-07`. No version bump and no deploy.
+
 ### 2026-10-15T12:17:00Z
 
 - ⭐ **Both route resolvers are Go**: `bit-check resolve-release` and `bit-check

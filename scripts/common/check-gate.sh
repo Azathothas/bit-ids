@@ -324,7 +324,10 @@ fi
 # exits 2 on a machine without them and that reads as a skip rather than a pass.
 # That is correct: nothing was verified. Its logic is proved without either by
 # `check-bitcheck`, which serves it from a stub `gh` and a stub `curl`.
-for c in check-adapters check-assemble check-cache check-catalogue check-changelog \
+# ⭐ And `check-bitcheck` itself, Go since 2026-10-15: compared row for row
+# against its shell half in both modes, 238 and 310 cases, before that half was
+# deleted. `CI-07`.
+for c in check-adapters check-assemble check-bitcheck check-cache check-catalogue check-changelog \
   check-connector check-control-bytes check-corpus check-docs check-formats \
   check-ignores check-indexes check-licences check-markers check-no-secrets \
   check-one-home check-placeholders check-project check-release \
@@ -433,8 +436,7 @@ for spec in acquisition/check-release-route \
   ci/check-step-bodies \
   capture/check-transmission \
   common/check-examples \
-  common/check-handbook common/check-gate-rows common/check-public-row \
-  common/check-bitcheck; do
+  common/check-handbook common/check-gate-rows common/check-public-row; do
   PROVER="$HERE/../$spec.sh"
   NAME=${spec#*/}
   # ⛔ A ROW NAME IS A NAME AND TWO CHECKS MUST NOT SHARE ONE. The label is the

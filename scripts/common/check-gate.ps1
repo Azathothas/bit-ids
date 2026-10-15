@@ -335,15 +335,13 @@ Add-Unavailable 'check-gate-rows' 'it runs the sh runner itself, so there is no 
 # same two files and answer the same thing.
 Add-Unavailable 'check-public-row' 'it reads both runners itself, so there is no half to write; CI-07 class D'
 
-# ⛔ AND THIS ONE'S REASON IS AN ENTRY IN FLIGHT RATHER THAN A PLATFORM FACT.
-# check-bitcheck plants defects against the Go binary that CI-10 is porting the
-# checking layer into. ⭐ That binary runs natively on this platform - it is the
-# whole point of the port - so the gap is the HARNESS, which is still `sh`.
-# ⚠ The event that closes this row is therefore CI-10 finishing the port and
-# moving the harness into Go beside its subject, not CI-07 writing a twin: a
-# PowerShell twin of this file would be a new member of the layer this entry
-# exists to delete.
-Add-Unavailable 'check-bitcheck' 'an sh harness over a Go binary that does run here; closes when CI-10 moves the harness into Go'
+# ⛔ AND THIS ONE'S REASON MOVED WHEN ITS HARNESS DID. check-bitcheck is Go
+# since 2026-10-15, so the harness is no longer the gap: the stand-ins it puts
+# on PATH for gh, curl and git are still shell scripts, and a Windows PATH lookup
+# would skip them and reach the real tools and the network. The port refuses
+# here with exit 2 for that reason rather than run against a real remote.
+# ⚠ The event that closes this row is stand-ins that are not shell scripts.
+Add-Unavailable 'check-bitcheck' 'the harness is Go; its gh, curl and git stand-ins are sh scripts; CI-07'
 
 # ⛔ AND THIS ONE'S REASON IS THE MOST SPECIFIC ON THE LANE, because a
 # PowerShell half of it would not be the same check. check-step-bodies runs a

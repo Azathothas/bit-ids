@@ -23,9 +23,10 @@
 // where nobody would look.
 //
 // ⛔ A PAIR LEAVES `check-twins` ONE WAY ONLY:
-// `scripts/common/check-bitcheck.sh --compare` runs every planted case against
-// this implementation AND both halves, and any difference in the exit code or in
-// the `--json` line is a failure. That runs before a half is deleted.
+// `check-bitcheck.sh --compare` ran every planted case against this
+// implementation AND both halves, and any difference in the exit code or in the
+// `--json` line was a failure. It ran before each half was deleted; no half is
+// left, and `bit-check check-bitcheck` keeps the plants.
 //
 // Ported from scripts/common/check-project.sh and its PowerShell twin.
 package main

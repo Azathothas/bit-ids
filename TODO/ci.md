@@ -1510,6 +1510,37 @@ bundle; a mutant without the handler left 4 in 12 runs. And a failed copy
 exited 2 with nothing said, where `cp` had named it. Next: `check-assemble`
 ports whole.
 
+⭐ **And `check-bitcheck` is ported, 2026-10-15.** `bit-check check-bitcheck`, in
+[`../tools/check/bitcheck.go`](../tools/check/bitcheck.go), carries all of its
+cases: 238 in the default mode and 310 with `--harnesses`, with the same labels
+in the same order. Before the shell half was deleted, both halves ran over the
+same tree in both modes and their rows were identical. That tree already carried
+`CI-11`'s move of the rootless plant into Go. Six mutants of the port were each
+reported: a dropped case, a plant made a no-op, an expected code flipped, a
+broken stub route, a skipped restore, and an index left staged. The Linux gate
+runs it from the `bit-check` loop, and CI's *Checking harnesses* step runs
+`--harnesses`.
+
+⚠ **Its `--compare` was not ported.** Every half it compared had already been
+deleted, so every row it printed said it compared nothing. A mode that cannot
+fail for the reason it is named is ceremony. ⚠ **And its Windows row stays
+declared, with a new reason.** The harness is Go, but the `gh`, `curl` and `git`
+stand-ins it puts on PATH are shell scripts. A Windows PATH lookup would skip
+them and reach the real tools and the network, so the port refuses there with
+exit 2.
+
+⚠ **Latent defects the port found in the shell half, reported rather than
+fixed there.**
+
+- A plant write that failed went unchecked, so an "is accepted" case could pass
+  over a tree nobody had planted. The port stops the run instead.
+- The `tar` copy dropped a tracked file missing from the working tree without
+  saying so. The port behaves the same and prints tar's warning.
+- The scratch commit inherited the global git config, so a host with
+  `commit.gpgsign` and no key answered 2. The port behaves the same.
+- Every mine-repo case reuses one commit ID, so a failure in the first cascades
+  into the rest. This is a cascade, not a false pass.
+
 Prove: ⛔ **Rewritten with the Approach.** Every portable-subject row is a
 `bit-check` row on the Windows lane, each port compared against its `sh` half
 before that half is deleted. `check-store` runs on Windows with a plant set

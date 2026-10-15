@@ -145,7 +145,7 @@ line count and last heading as the receipt described in
 - ⛔ **A new checking rule goes into `tools/check/`, never into a `.sh` and
   `.ps1` pair.** Go replaced the twin layer because two hand-written halves
   drift; no twin pair is left. A rule's cases are planted in
-  `scripts/common/check-bitcheck.sh`, with the 0/1/2 vocabulary: held, refused,
+  `bit-check check-bitcheck`, [`../tools/check/bitcheck.go`](../tools/check/bitcheck.go), with the 0/1/2 vocabulary: held, refused,
   could not run.
 - Main docs describe current truth. Amend stale text in place. Put superseded
   reasoning, corrections, reviews and narrative history under `docs/history/`.

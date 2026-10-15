@@ -13,7 +13,7 @@ four-processor session host, cold, and on run 179 for CI.
 | --- | --- | --- | --- |
 | anything | `sh scripts/doctor/provision.sh` once per fresh host, then `sh scripts/common/check-gate.sh` | about 3 minutes | *Linux gate*, *Repository gate*, about 3 minutes of its 5.8 |
 | Rust | `cargo fmt --all -- --check`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `cargo test --workspace --locked --all-targets` | under a minute warm | *Linux gate* and *Windows gate* |
-| `tools/check/` | `gofmt -l tools/check`, `go vet ./...` from `tools/check`, `sh scripts/common/check-bitcheck.sh --harnesses` | about a minute | *Linux gate*: *Go formatting and vet*, *Checking harnesses* |
+| `tools/check/` | `gofmt -l tools/check`, `go vet ./...` from `tools/check`, then `bit-check check-bitcheck --harnesses` from a built `tools/check` | about a minute | *Linux gate*: *Go formatting and vet*, *Checking harnesses* |
 | a shell script | `shellcheck` and `shfmt -d -i 2 -ci` over it, then the gate | seconds, then 3 minutes | *Shell syntax and style* |
 | `.github/workflows/` | `sh scripts/ci/check-workflow.sh`, unsharded, after the gate | about 30 minutes | *Workflow acceptance*, four shards of 12 to 16 minutes |
 
@@ -413,13 +413,14 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   ⚠ `check-cache` used to build the binary and ask that mode; in the binary it
   calls the same reader directly, so the mode has no caller in this tree and is
   kept as the command a person runs to ask what the register permits.
-- [`common/check-bitcheck.sh`](common/check-bitcheck.sh) plants a defect per rule
-  against the Go checking binary in [`../tools/check/`](../tools/check/) and
-  refuses one it does not catch. ⭐ **`--compare` additionally runs the `.sh` and
-  `.ps1` halves and refuses any difference in exit code or in the `--json`
-  output**, stderr included, which is `CI-10`'s bound: a ported check refuses
-  exactly what its shell half refused, over the same plants, and is compared
-  case for case BEFORE either half is deleted. ⛔ That mode is deliberately not
+- `bit-check check-bitcheck`, in [`../tools/check/bitcheck.go`](../tools/check/bitcheck.go),
+  plants a defect per rule against the Go checking binary in
+  [`../tools/check/`](../tools/check/) and refuses one it does not catch. ⭐ It
+  was `common/check-bitcheck.sh` until 2026-10-15 (`CI-07`), compared row for
+  row against that half in both modes before it was deleted. Its `--compare`,
+  which ran every case against a check's `.sh` and `.ps1` halves as well, went
+  with it: every half it compared had already been deleted, which was
+  `CI-10`'s bound for deleting one. ⛔ That mode is deliberately not
   in the gate - one PowerShell half alone is 67.9 seconds, so running it per
   case would cost more than the layer this removes - and the default mode is the
   permanent row, which goes on being a row after every half has gone.
@@ -454,9 +455,9 @@ pair list because including a runner would recurse.
 ⛔ **The pair list is SHRINKING, and a pair leaves it by being deleted rather
 than exempted.** `CI-10` ports each rule into `tools/check/` and removes both
 halves; four went on 2026-09-10, taking `check-twins` from **69 seconds to
-15.9**. ⚠ A pair may only leave after
-`sh scripts/common/check-bitcheck.sh --compare` has run it against both halves
-over the same plants, which is the entry's own bound. This file's list of twinned
+15.9**. ⚠ A pair could only leave after
+`check-bitcheck.sh --compare` had run it against both halves over the same
+plants, which was the entry's own bound; no pair is left, and that mode is gone. This file's list of twinned
 scripts above is therefore a list of what has NOT been ported yet.
 
 ⚠ The twin rule is about `common/`, where every script is a check that emits a

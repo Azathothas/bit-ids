@@ -130,7 +130,8 @@ still open is a host that never reached it.
    `CI-10` made. `check-corpus`, `check-indexes`, `check-release`,
    `check-formats` and `check-staleness` are ported and run on both lanes;
    `check-connector` too, and `check-assemble` on 2026-10-15, the last portable
-   row. Then `check-bitcheck`.
+   row. ⭐ `check-bitcheck` is Go too since 2026-10-15; its Windows row waits on
+   stand-ins that are not shell scripts.
 6. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
 7. The remaining client and engine breadth, then refinements.
