@@ -6046,6 +6046,7 @@ process.
 - `check-workflow`'s script-name probe had been renaming a script that ci.yml
   never named, so its `sed` changed nothing. It now renames `check-gate.sh`,
   which ci.yml does run.
+- ⭐ **Proved on a runner:** capture run 38775292810 on `2ea9b46` is green.
 
 ### ⭐ The Windows lane of `capture-client.yml` is built, and not yet dispatched. 2026-10-15
 
