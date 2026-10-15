@@ -4253,6 +4253,53 @@ view*. Those are `capture-client` run 38's `aria2-next` 3.0.3 records, one per
 route. ⚠ Every later publication appends to this one, and `check-store` is
 what refuses one that would not.
 
+### ⛔ The second publication was refused, rightly, and the bundle now assembles onto the published tree. 2026-10-15
+
+`capture-client` run 38680098567's Transmission 4.1.3 pair assembled as
+`assemble-bundle` run 38689243666. Both records were `publishable`, the routes
+`build_equivalent`, and the 4 overlapping fields agreed. `publish-data` run
+38689473368, a dry run, then refused it with `E-STO-20` on every path the first
+publication had written: the bundle carried Transmission alone, so appending it
+would have deleted aria2-next. Nothing was pushed.
+
+⭐ **A bundle is the whole store now.** `bit-check assemble-bundle --published
+DIR` copies the published tree's `profiles/` and `raw/` under the run's own
+records. A path both carry must be byte-identical, or the assembly is refused
+before the publisher sees it. `assemble-dispatch` passes the flag through.
+`assemble-bundle.yml` reads the `data` branch into a directory first, and only
+`ls-remote --exit-code` answering 2, a ref that does not exist, makes it a first
+publication. Any other failure ends the step.
+
+⛔ **And a published record's scheme is published too.** The first records'
+resolutions were in their capture's artifacts, which expire, so nothing could
+order aria2-next for the latest view. Driven on the real artifacts and the real
+`data` tree, the index refused with `E-VIW-01`. A bundle now writes
+`indexes/v1/schemes.txt`, one `target:prefix:min:max` per line, and the next
+assembly reads it back. A line that is not a scheme, and a published scheme the
+resolutions contradict, are refused. ⚠ The one tree published before this
+carries no such file. Its bootstrap is to re-assemble run 38 onto it: the same
+records land on their own paths with the same bytes, which is accepted, and the
+scheme is written. Run 38's install artifacts expire on 2026-11-14.
+
+`check-bundle`, 21 of 21, adds seven cases:
+
+- a bundle names its scheme;
+- the next one carries both sets of records;
+- the publisher appends the second onto the first;
+- the same records re-assembled onto their own publication are accepted;
+- a changed byte at a published path is refused;
+- a contradicting published scheme is refused;
+- a malformed published scheme line is refused.
+
+Four mutants were each killed:
+
+- the merge skipped;
+- a rewrite accepted;
+- the published schemes ignored;
+- the schemes file not written.
+
+The workflow step's own body was driven against the real remote.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05

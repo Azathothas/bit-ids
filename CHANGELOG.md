@@ -5,6 +5,16 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T06:02:19Z
+
+- ⛔ **The second publication would have deleted the first.** Transmission
+  4.1.3's pair assembled with both records publishable, and the publisher's
+  dry run refused it with `E-STO-20`: the bundle carried one run's records
+  alone. Nothing was pushed. A bundle now assembles onto the published tree, a
+  path both carry must be byte-identical, and each bundle publishes the version
+  schemes its records were ordered under, for the next assembly to read back.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-09`. No version bump and no deploy.
+
 ### 2026-10-15T04:12:36Z
 
 - ⛔ **A prerelease marker after digits was not read.** `5.3.0beta1`'s last

@@ -124,6 +124,10 @@ that is not a valid corpus and composes the indexes, the renderings, the
 licence and the two documents above. The result is uploaded as `bundle`.
 `capture-client` run 38's `aria2-next` 3.0.3 pair is the first bundle, 30
 files, with both records admitted to the published view.
+⭐ **Every later bundle assembles onto the published tree**, because the branch
+only grows: `assemble-bundle.yml` reads `data` and passes it as `--published`.
+The bundle publishes the schemes its records were ordered under as
+`indexes/v1/schemes.txt`, which the next assembly reads back.
 
 ⚠ **The producer was absent on purpose until a measured record existed.** While
 every record was synthetic, a bundle would have left a publishable-looking

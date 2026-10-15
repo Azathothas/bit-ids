@@ -78,8 +78,36 @@ jobs:
       # it stands, to build the Rust examples it composes the bundle with.
       - name: Build bit-check
         run: cd tools/check && go build -o "$RUNNER_TEMP/bit-check" .
+      # ⭐ THE PUBLISHED TREE, WHICH THE BUNDLE ASSEMBLES ONTO. The data branch
+      # only grows: the second publication was refused on 2026-10-15 with
+      # `E-STO-20` on every path the first had written, because its bundle
+      # carried one run's records alone. `CI-09`. ⚠ A branch that does not exist
+      # yet is a first publication, and the directory is then empty.
+      # ⛔ READ, NEVER WRITTEN, by a job holding `contents: read`; the publisher
+      # is the only writer and checks the append rule itself.
+      - name: Read the published tree
+        # ⛔ A FETCH THAT FAILED IS NOT A FIRST PUBLICATION. `ls-remote
+        # --exit-code` answers 2 for a ref that does not exist and anything else
+        # for a failure, so only the answer "absent" yields an empty tree.
+        run: |
+          mkdir -p "$RUNNER_TEMP/published"
+          rc=0
+          git ls-remote --exit-code origin refs/heads/data >/dev/null || rc=$?
+          case "$rc" in
+            0)
+              git fetch --depth 1 origin data || exit 1
+              git archive FETCH_HEAD | tar -x -C "$RUNNER_TEMP/published" || exit 1
+              ;;
+            2) echo "no data branch yet: a first publication" ;;
+            *)
+              echo "the data branch could not be asked for (exit $rc)"
+              exit 1
+              ;;
+          esac
+          ls "$RUNNER_TEMP/published"
+
       - name: Assemble the bundle
-        run: '"$RUNNER_TEMP/bit-check" assemble-dispatch "$RUNNER_TEMP/artifacts" "$RUNNER_TEMP/bundle"'
+        run: '"$RUNNER_TEMP/bit-check" assemble-dispatch --published "$RUNNER_TEMP/published" "$RUNNER_TEMP/artifacts" "$RUNNER_TEMP/bundle"'
 
 
       # ⛔ FATAL WHEN EMPTY. A green run with no bundle is the outcome a person

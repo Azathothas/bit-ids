@@ -108,8 +108,22 @@ func onInterrupt(fn func()) {
 	})
 }
 
-const dispatchUsage = "usage: bit-check assemble-dispatch ARTIFACTS OUT\n"
-const bundleUsage = "usage: bit-check assemble-bundle --resolution FILE... STORE OUT\n"
+const dispatchUsage = "usage: bit-check assemble-dispatch [--published DIR] ARTIFACTS OUT\n"
+const bundleUsage = "usage: bit-check assemble-bundle [--published DIR] --resolution FILE... STORE OUT\n"
+
+// schemesFile is where a bundle publishes the version schemes it ordered under,
+// relative to the bundle root.
+//
+// ⛔ A PUBLISHED RECORD'S SCHEME HAS TO BE PUBLISHED TOO, and was not until
+// 2026-10-15. The second publication assembles onto the first, and the first's
+// records need the scheme they were ordered under for the latest view to be
+// rebuilt; their resolutions were in a capture's artifacts, which expire. So
+// the scheme travels with the records, as a derived file the next assembly
+// reads back. `CI-09`.
+const schemesFile = "indexes/v1/schemes.txt"
+
+// schemeShape is the one shape a scheme line has, `target:prefix:min:max`.
+var schemeShape = regexp.MustCompile(`^[^:]+:[^:]+:[0-9]+:[0-9]+$`)
 
 // helperRoot is the repository the binary was run in, found without changing
 // directory, because every path a caller passes is relative to where it stands.
@@ -184,6 +198,15 @@ func assembleDispatch(args []string) int {
 	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
 		fmt.Print(dispatchUsage)
 		return 0
+	}
+	var published []string
+	if len(args) >= 1 && args[0] == "--published" {
+		if len(args) < 2 {
+			fmt.Fprint(os.Stderr, dispatchUsage)
+			return 2
+		}
+		published = []string{"--published", args[1]}
+		args = args[2:]
 	}
 	if len(args) != 2 {
 		fmt.Fprint(os.Stderr, dispatchUsage)
@@ -312,7 +335,7 @@ func assembleDispatch(args []string) int {
 		}
 	}
 
-	var bundleArgs []string
+	bundleArgs := append([]string{}, published...)
 	for _, res := range resolutions {
 		bundleArgs = append(bundleArgs, "--resolution", res)
 	}
@@ -409,7 +432,7 @@ func schemeLine(path string) (string, bool) {
 		return "", false
 	}
 	line := target + ":" + prefix + ":" + minc + ":" + maxc
-	if !regexp.MustCompile(`^[^:]+:[^:]+:[0-9]+:[0-9]+$`).MatchString(line) {
+	if !schemeShape.MatchString(line) {
 		return "", false
 	}
 	return line, true
@@ -452,9 +475,23 @@ func copyTree(from, to string) error {
 
 func assembleBundle(args []string) int {
 	var resolutions []string
+	published := ""
 	i := 0
 	for ; i < len(args); i++ {
 		a := args[i]
+		if a == "--published" {
+			if i+1 >= len(args) {
+				fmt.Fprint(os.Stderr, "assemble-bundle: --published needs a directory\n")
+				return 2
+			}
+			i++
+			if !isDir(args[i]) {
+				fmt.Fprintf(os.Stderr, "assemble-bundle: %s is not a directory\n", args[i])
+				return 2
+			}
+			published = args[i]
+			continue
+		}
 		if a == "--resolution" {
 			if i+1 >= len(args) {
 				fmt.Fprint(os.Stderr, "assemble-bundle: --resolution needs a file\n")
@@ -555,6 +592,23 @@ func assembleBundle(args []string) int {
 			schemes = append(schemes, line)
 		}
 	}
+	// ⭐ AND THE SCHEMES THE PUBLISHED TREE WAS ORDERED UNDER, read back from
+	// where the last bundle wrote them. ⛔ A line that is not a scheme is a
+	// refusal, never a line passed over: a published record left with no scheme
+	// would fail the index later with a reason that names nothing here.
+	if published != "" {
+		if lines := fileLines(filepath.Join(published, filepath.FromSlash(schemesFile))); lines != nil {
+			for n, line := range lines {
+				if !schemeShape.MatchString(line) {
+					return refuse(fmt.Sprintf("the published %s line %d is not a scheme: %q", schemesFile, n+1, line))
+				}
+				if !seen[line] {
+					seen[line] = true
+					schemes = append(schemes, line)
+				}
+			}
+		}
+	}
 	sort.Strings(schemes)
 	for j := 1; j < len(schemes); j++ {
 		t := strings.SplitN(schemes[j], ":", 2)[0]
@@ -591,6 +645,66 @@ func assembleBundle(args []string) int {
 	}
 	if !isDir(filepath.Join(store, "profiles")) {
 		return refuse("the store has no profiles/")
+	}
+
+	// -- ⭐ THE PUBLISHED TREE, UNDER WHAT THIS RUN ADDS --------------------------
+	//
+	// ⛔ THE DATA BRANCH ONLY GROWS, so a bundle is the whole store and not this
+	// run's records. The second publication on 2026-10-15 was refused by the
+	// publisher with `E-STO-20` on every aria2-next path, because the bundle
+	// carried Transmission alone. ⛔ A file both carry must be byte-identical:
+	// the store never rewrites a published path, and a run whose record lands on
+	// one with other bytes is refused here rather than at the publisher.
+	if published != "" {
+		merged := filepath.Join(work, "merged")
+		for _, root := range []string{"profiles", "raw"} {
+			if isDir(filepath.Join(store, root)) {
+				if err := copyTree(filepath.Join(store, root), filepath.Join(merged, root)); err != nil {
+					fmt.Fprintf(os.Stderr, "assemble-bundle: cannot copy %s/: %v\n", root, err)
+					return 2
+				}
+			}
+		}
+		for _, root := range []string{"profiles", "raw"} {
+			from := filepath.Join(published, root)
+			if !isDir(from) {
+				continue
+			}
+			var clash string
+			err := filepath.WalkDir(from, func(p string, d fs.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return err
+				}
+				rel, err := filepath.Rel(published, p)
+				if err != nil {
+					return err
+				}
+				dst := filepath.Join(merged, rel)
+				if mine, err := os.ReadFile(dst); err == nil {
+					theirs, err := os.ReadFile(p)
+					if err != nil {
+						return err
+					}
+					if !bytes.Equal(mine, theirs) {
+						clash = filepath.ToSlash(rel)
+						return fs.SkipAll
+					}
+					return nil
+				}
+				if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+					return err
+				}
+				return copyFile(p, dst)
+			})
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "assemble-bundle: cannot read the published tree: %v\n", err)
+				return 2
+			}
+			if clash != "" {
+				return refuse(clash + " is published, and this run carries other bytes at that path; the store never rewrites one")
+			}
+		}
+		store = merged
 	}
 
 	corpus := filepath.Join(work, "corpus.out")
@@ -638,6 +752,13 @@ func assembleBundle(args []string) int {
 	if !step(filepath.Join(work, "formats.out"), "the formats were not rendered", tools["build-formats"],
 		append(append([]string{}, schemeArgs...), store, out)...) {
 		return 1
+	}
+	var listed strings.Builder
+	for _, s := range schemes {
+		listed.WriteString(s + "\n")
+	}
+	if err := os.WriteFile(filepath.Join(out, filepath.FromSlash(schemesFile)), []byte(listed.String()), 0o644); err != nil {
+		return cannot("write "+schemesFile, err)
 	}
 	release := filepath.Join(work, "release.out")
 	if !step(release, "the release was not assembled", tools["assemble-release"], out) {

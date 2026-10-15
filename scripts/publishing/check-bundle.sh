@@ -219,4 +219,98 @@ else
   fail "out      exit $RC: $(head -2 "$WORK/out" | tr '\n' ' ')"
 fi
 
+# -- ⭐ A SECOND PUBLICATION ASSEMBLES ONTO THE FIRST ------------------------------
+#
+# ⛔ THE DATA BRANCH ONLY GROWS. A bundle carrying one run's records alone was
+# refused by the publisher on 2026-10-15 with `E-STO-20` on every path the first
+# publication had written, which is the append rule doing its job. So the
+# published tree is an input, and the scheme its records were ordered under is
+# published beside them, where the next assembly reads it back. `CI-09`.
+fresh_store
+run_bundle --resolution "$WORK/res-a.json"
+rm -rf "$WORK/published"
+mv "$WORK/bundle" "$WORK/published"
+if [ "$RC" = "0" ] && [ "$(cat "$WORK/published/indexes/v1/schemes.txt" 2>/dev/null)" = "fixture-client:-:3:3" ]; then
+  pass "publish  a bundle publishes the scheme its records were ordered under"
+else
+  fail "publish  expected indexes/v1/schemes.txt to name fixture-client:-:3:3 (exit $RC)"
+fi
+_published=$(find "$WORK/published/profiles" -name '*.json' -type f | grep -c .)
+
+# The next run's own store, carrying a version the published tree does not.
+next_store() {
+  rm -rf "$WORK/store" "$WORK/bundle"
+  mkdir -p "$WORK/store" || return 1
+  "$BUILDER" --version 1.2.4 "$WORK/store" >/dev/null 2>&1
+}
+next_store
+run_bundle --published "$WORK/published" --resolution "$WORK/res-a.json"
+_carried=$(find "$WORK/bundle/profiles" -name '*.json' -type f 2>/dev/null | grep -c .)
+if [ "$RC" = "0" ] && [ "$_carried" -gt "$_published" ] &&
+  grep -q "$((_carried)) of $((_carried)) record(s) may enter a published view" "$WORK/out"; then
+  pass "publish  the next bundle carries the published records and its own"
+else
+  fail "publish  exit $RC, $_carried record(s) against $_published published: $(head -3 "$WORK/out" | tr '\n' ' ')"
+fi
+# ⛔ AND THE PUBLISHER, WHICH IS THE READER THAT REFUSED THE FIRST TRY, APPENDS
+# IT to a branch already holding the first bundle.
+rm -rf "$WORK/remote2"
+git init -q --bare "$WORK/remote2"
+sh "$PUBLISHER" --bundle "$WORK/published" --remote "$WORK/remote2" >"$WORK/pub2" 2>&1
+_first=$?
+sh "$PUBLISHER" --bundle "$WORK/bundle" --remote "$WORK/remote2" >"$WORK/pub3" 2>&1
+_second=$?
+if [ "$_first" = "0" ] && [ "$_second" = "0" ]; then
+  pass "publish  the publisher appends the second bundle onto the first"
+else
+  fail "publish  the publisher answered $_first then $_second: $(tail -3 "$WORK/pub3" | tr '\n' ' ')"
+fi
+
+# ⭐ THE CONTROL FOR THE CASE BELOW: the same version built again lands on the
+# published record's path with the same bytes, and that is no rewrite. A
+# re-assembly of a published capture is how a tree published before the schemes
+# were gets them.
+fresh_store
+run_bundle --published "$WORK/published" --resolution "$WORK/res-a.json"
+if [ "$RC" = "0" ]; then
+  pass "publish  the same records assembled again onto their own publication are accepted"
+else
+  fail "publish  exit $RC: $(head -3 "$WORK/out" | tr '\n' ' ')"
+fi
+
+# ⛔ A PUBLISHED PATH THIS RUN WOULD REWRITE IS REFUSED HERE, not at the
+# publisher: the same version built again lands on the published record's path,
+# and one byte changed in the published copy is a rewrite.
+fresh_store
+cp -R "$WORK/published" "$WORK/published-edit"
+_rec=$(find "$WORK/published-edit/profiles" -name '*.json' -type f | head -1)
+printf ' ' >>"$_rec"
+run_bundle --published "$WORK/published-edit" --resolution "$WORK/res-a.json"
+if [ "$RC" = "1" ] && grep -q 'is published, and this run carries other bytes' "$WORK/out" && [ ! -e "$WORK/bundle" ]; then
+  pass "publish  a run whose record would rewrite a published one is refused"
+else
+  fail "publish  exit $RC, $(left): $(head -2 "$WORK/out" | tr '\n' ' ')"
+fi
+rm -rf "$WORK/published-edit"
+
+# ⛔ AND THE PUBLISHED SCHEME IS HELD TO THE RESOLUTIONS, not overruled by them.
+next_store
+cp -R "$WORK/published" "$WORK/published-edit"
+printf 'fixture-client:-:4:4\n' >"$WORK/published-edit/indexes/v1/schemes.txt"
+run_bundle --published "$WORK/published-edit" --resolution "$WORK/res-a.json"
+if [ "$RC" = "1" ] && grep -q 'under two schemes' "$WORK/out" && [ ! -e "$WORK/bundle" ]; then
+  pass "publish  a published scheme the resolutions contradict is refused"
+else
+  fail "publish  exit $RC, $(left): $(head -2 "$WORK/out" | tr '\n' ' ')"
+fi
+printf 'not a scheme\n' >"$WORK/published-edit/indexes/v1/schemes.txt"
+next_store
+run_bundle --published "$WORK/published-edit" --resolution "$WORK/res-a.json"
+if [ "$RC" = "1" ] && grep -q 'is not a scheme' "$WORK/out" && [ ! -e "$WORK/bundle" ]; then
+  pass "publish  a published scheme line that is not one is refused, not passed over"
+else
+  fail "publish  exit $RC, $(left): $(head -2 "$WORK/out" | tr '\n' ' ')"
+fi
+rm -rf "$WORK/published-edit"
+
 store_report check-bundle/1 cases "$JSON"

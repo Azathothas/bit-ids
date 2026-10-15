@@ -100,8 +100,10 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   [`../tools/check/dispatch.go`](../tools/check/dispatch.go), composes the
   publication tree over a store that is a valid corpus: the indexes, every
   rendering, the licence, `MANIFEST.json` and `SHA256SUMS`. It takes each
-  target's version scheme from the resolutions it is handed, and removes a
-  half-built bundle. [`publishing/check-bundle.sh`](publishing/check-bundle.sh)
+  target's version scheme from the resolutions it is handed and from the
+  published tree's `indexes/v1/schemes.txt`, assembles onto that tree with
+  `--published`, so a bundle is the whole store, and removes a half-built
+  bundle. [`publishing/check-bundle.sh`](publishing/check-bundle.sh)
   proves it, ending with the publisher appending its bundle to a scratch bare
   repository.
 - [`publishing/check-publish.sh`](publishing/check-publish.sh) drives that
