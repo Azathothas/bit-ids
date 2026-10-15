@@ -1,0 +1,3 @@
+qbittorrent reported:
+Call to org.freedesktop.portal.Settings.ReadAll failed QDBusError("org.freedesktop.DBus.Error.ServiceUnknown", "The name org.freedesktop.portal.Desktop was not provided by any .service files")
+qBittorrent v5.2.4

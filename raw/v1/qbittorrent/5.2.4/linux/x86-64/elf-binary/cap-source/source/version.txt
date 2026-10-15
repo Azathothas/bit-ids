@@ -1,0 +1,2 @@
+qbittorrent reported:
+qBittorrent v5.2.4

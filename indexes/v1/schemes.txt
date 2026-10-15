@@ -1,2 +1,3 @@
 aria2-next:v:3:3
+qbittorrent:release-:3:4
 transmission:-:3:3
