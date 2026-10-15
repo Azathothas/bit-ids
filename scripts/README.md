@@ -135,8 +135,8 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   cannot do rather than of what one run did, and it checks its own needle list
   against the crate that owns the sockets. ⚠ It was
   `publishing/check-catalogue.sh` and a PowerShell twin until 2026-09-29.
-- [`capture/capture-run.sh`](capture/capture-run.sh) and
-  [`capture/capture-run.ps1`](capture/capture-run.ps1) run a capture on a host
+- `bit-check capture-run` (it was `capture/capture-run.sh` until 2026-10-15,
+  `CI-11`) and [`capture/capture-run.ps1`](capture/capture-run.ps1) run a capture on a host
   that has already been claimed and already had its route off itself deleted.
   ⛔ They build nothing: the observer is a path to an already built binary,
   because a capture that discovered a missing dependency under containment would

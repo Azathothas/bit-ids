@@ -87,7 +87,9 @@ ME=check-capture
 
 store_require cargo curl sha256sum awk sed od
 
-RUNNER="$ROOT/scripts/capture/capture-run.sh"
+# ⭐ THE RUNNER IS `bit-check capture-run` SINCE 2026-10-15, `CI-11`, and the
+# plant probes read its source.
+RUNNER="$ROOT/tools/check/capturerun.go"
 [ -f "$RUNNER" ] || {
   printf 'check-capture: %s is not present\n' "$RUNNER" >&2
   exit 2
@@ -242,7 +244,7 @@ sh_case() { # want-code  saying  name  observer  extra-args...
   _observer="$4"
   shift 4
   OUTS=$((OUTS + 1))
-  BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" \
+  BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-run \
     --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$_observer" \
     --seconds "$SECS" "$@" >"$WORK/out" 2>"$WORK/err"
   _got=$?
@@ -283,7 +285,7 @@ sh_case 2 "egress could not be established" "an unreadable route table is not a 
   "$OBSERVER" --route-table "$WORK/no-such-table"
 
 OUTS=$((OUTS + 1))
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id capture-0002 --out "$WORK/out-$OUTS" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-run --run-id capture-0002 --out "$WORK/out-$OUTS" \
   --observer "$OBSERVER" --seconds "$SECS" --route-table "$WORK/route-loopback" \
   >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -297,7 +299,7 @@ fi
 # defect: a workflow that dropped its claim step leaves the capture running on a
 # host nothing ever claimed, and the marker check is the only thing that sees it.
 OUTS=$((OUTS + 1))
-BIT_IDS_STATE_DIR="$WORK/unclaimed" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
+BIT_IDS_STATE_DIR="$WORK/unclaimed" "$BIT_CHECK" capture-run --run-id "$RUN" --out "$WORK/out-$OUTS" \
   --observer "$OBSERVER" --seconds "$SECS" --route-table "$WORK/route-loopback" \
   >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -311,7 +313,7 @@ fi
 sh_case 2 "is not executable" "an observer that was never built is could-not-run" \
   "$WORK/no-such-binary" --route-table "$WORK/route-loopback"
 
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$CONTROL_OUT" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-run --run-id "$RUN" --out "$CONTROL_OUT" \
   --observer "$OBSERVER" --seconds "$SECS" --route-table "$WORK/route-loopback" \
   >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -322,7 +324,7 @@ else
 fi
 
 OUTS=$((OUTS + 1))
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "Capture 0001" --out "$WORK/out-$OUTS" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-run --run-id "Capture 0001" --out "$WORK/out-$OUTS" \
   --observer "$OBSERVER" --seconds "$SECS" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 2 ] && grep -q -F -e "run id must be lowercase" "$WORK/err"; then
@@ -331,7 +333,7 @@ else
   fail "sh   a run id that is not a slug is refused (exit $_rc)"
 fi
 
-sh "$RUNNER" --nonsense >"$WORK/out" 2>"$WORK/err"
+"$BIT_CHECK" capture-run --nonsense >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 2 ] && grep -q -F -e "unknown argument" "$WORK/err"; then
   pass "sh   an unknown argument is refused"
@@ -351,7 +353,7 @@ stub_case() { # mode  rc  saying  name
     BIT_IDS_STUB_MODE="$1" \
     BIT_IDS_STUB_RC="$2" \
     BIT_IDS_STUB_TOKEN_HEX="$TOKEN_HEX" \
-    sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB" \
+    "$BIT_CHECK" capture-run --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB" \
     --seconds "$SECS" --route-table "$WORK/route-loopback" \
     >"$WORK/out" 2>"$WORK/err"
   _got=$?
@@ -377,7 +379,7 @@ BIT_IDS_STATE_DIR="$STATE" \
   BIT_IDS_STUB_MODE=pass \
   BIT_IDS_STUB_RC=0 \
   BIT_IDS_STUB_TOKEN_HEX="$TOKEN_HEX" \
-  sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB" \
+  "$BIT_CHECK" capture-run --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB" \
   --seconds "$SECS" --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 0 ]; then
@@ -403,7 +405,7 @@ filter_case() { # drop  substitute  saying  name
     BIT_IDS_STUB_DROP="$1" \
     BIT_IDS_STUB_SUB="$2" \
     BIT_IDS_STUB_RC=0 \
-    sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_FILTER" \
+    "$BIT_CHECK" capture-run --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_FILTER" \
     --seconds "$SECS" --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
   _got=$?
   if [ "$_got" != 1 ]; then

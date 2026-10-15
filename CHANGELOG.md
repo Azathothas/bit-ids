@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T16:55:00Z
+
+- ⭐ **The fixture capture is Go**: `bit-check capture-run` replaces its shell
+  half. The harness's 48 rows came out identical on both halves, and four
+  mutants were each caught.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T16:05:00Z
 
 - **A contained capture finds `bit-check` again**: `contained.sh` passes

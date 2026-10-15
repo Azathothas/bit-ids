@@ -1,8 +1,8 @@
 ﻿# capture-run.ps1 - the capture itself, on a Windows host that has already been
 # claimed and whose capture programs the firewall already blocks.
 #
-# ⭐ THE TWIN OF capture-run.sh. It exists for the reason assert-disposable.ps1
-# exists: the sh half reads /proc/net/route and calls sha256sum, and a Windows
+# ⭐ THE WINDOWS HALF OF `bit-check capture-run`. It exists for the reason
+# assert-disposable.ps1 exists: the Linux half reads /proc/net/route and calls sha256sum, and a Windows
 # capture host has neither. CI-03 owns the pair.
 #
 # ⛔ IT BUILDS NOTHING. By the time this runs, every program it starts is

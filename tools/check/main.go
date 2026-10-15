@@ -56,6 +56,7 @@
 //	bit-check assert-disposable --claim <id> | --egress [table] | --fingerprint | --marker
 //	bit-check adapter <name> <describe|install|version|start|stop> [args...]
 //	bit-check capture-client --run-id <id> --out <dir> --observer <path> --adapter <path> --connector <path> [...]
+//	bit-check capture-run --run-id <id> --out <dir> --observer <path> [--seconds <n>] [--route-table <path>]
 //	bit-check --rows
 //
 // ⛔ Read the exit code from this process, unpiped. ⚠ `go run . <check>` is a
@@ -206,6 +207,9 @@ func main() {
 	}
 	if args[0] == "capture-client" {
 		os.Exit(captureClient(args[1:]))
+	}
+	if args[0] == "capture-run" {
+		os.Exit(captureRun(args[1:]))
 	}
 
 	name := args[0]

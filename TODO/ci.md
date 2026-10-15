@@ -6017,3 +6017,27 @@ through `sudo -n env`, whose `env_reset` drops every variable it is not handed,
 and only `PATH` and `HOME` were handed. The egress guard before it passed only
 because its `"$BIT_CHECK"` was expanded outside. `BIT_CHECK` is now carried
 when set, beside `PATH` and `HOME`.
+
+Capture-client run 38763275101 on the same commit failed the same way, and
+the failure arrived later. Both installs passed through the Go install step, but
+the capture refused with "the adapter could not ask the installed build its
+version". Every adapter finds its prefix through `"$BIT_CHECK" install-rootless`,
+and since `ec7372d` that variable has been unset inside the namespace.
+
+### ⭐ `capture-run` is the tenth leaf: the fixture capture is Go. 2026-10-15
+
+[`../tools/check/capturerun.go`](../tools/check/capturerun.go) replaces
+`scripts/capture/capture-run.sh`, with every guard in the shell half's order and
+every message unchanged. `capture.yml` runs `"$BIT_CHECK" capture-run` inside
+`contained.sh`. The claim, the egress read and the fingerprint are asked in
+process.
+
+- **Parity:** `check-capture.sh` ran on both halves of the same tree, and its 48
+  rows came out identical.
+- **Mutants:** four, each caught by exactly one case: the transcript-token
+  check, the claimed-run check, the no-bytes check and the observer's exit code.
+- ⚠ `capture-run.ps1` stays as the Windows half until the Windows lane runs on
+  the Go one.
+- `check-workflow`'s script-name probe had been renaming a script that ci.yml
+  never named, so its `sed` changed nothing. It now renames `check-gate.sh`,
+  which ci.yml does run.

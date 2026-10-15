@@ -1050,7 +1050,7 @@ if unit static-readers; then
   # NOT in the tree, because a reader that reported every path present would pass
   # the case above on any workflow at all. That is the exact failure the deleted
   # draft of the capture workflow would have needed catching.
-  sed 's|scripts/capture/capture-run.sh|scripts/capture/no-such-script.sh|' "$WORKFLOW" >"$MUTWF"
+  sed 's|scripts/common/check-gate.sh|scripts/capture/no-such-script.sh|' "$WORKFLOW" >"$MUTWF"
   printf '        run: sh scripts/capture/no-such-script.sh\n' >>"$MUTWF"
   MISSING=""
   for s in $(scripts_named "$MUTWF"); do

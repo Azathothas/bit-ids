@@ -78,7 +78,7 @@ jobs:
       # ⛔ THE BUILD HAPPENS HERE, WHILE THE NETWORK STILL EXISTS. After the next
       # step nothing can be fetched, and a capture that discovered a missing
       # crate under containment would have to restore egress to fix it - on a
-      # host that exists to have no egress. capture-run.sh refuses to build,
+      # host that exists to have no egress. `bit-check capture-run` refuses to build,
       # so this order is enforced rather than remembered.
       - name: Build the observer
         run: cargo build -p bit-ids-lab --locked --example evidence-bundle
@@ -103,7 +103,7 @@ jobs:
           RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-linux
           SECONDS_TO_SERVE: ${{ inputs.seconds }}
         run: |
-          sh scripts/capture/contained.sh -- sh scripts/capture/capture-run.sh \
+          sh scripts/capture/contained.sh -- "$BIT_CHECK" capture-run \
             --run-id "$RUN_ID" \
             --out "$RUNNER_TEMP/capture" \
             --observer "$GITHUB_WORKSPACE/target/debug/examples/evidence-bundle" \
