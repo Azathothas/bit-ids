@@ -386,9 +386,11 @@ scan_gate() { # workflow job upload-if
     printf 'no step named [%s] carries the id the upload names' "$SCAN_STEP"
     return
   fi
+  # ⚠ In either lane's spelling: the Windows job is PowerShell. `CI-11`.
   # shellcheck disable=SC2016
   case "$(step_command "$1" "$2" "$SCAN_STEP")" in
     *'"$BIT_CHECK" scan-bundle "$RUNNER_TEMP/capture"'*) : ;;
+    *"& \$env:BIT_CHECK scan-bundle (Join-Path \$env:RUNNER_TEMP 'capture')"*) : ;;
     *)
       printf '[%s] does not run bit-check scan-bundle over the bundle' "$SCAN_STEP"
       return

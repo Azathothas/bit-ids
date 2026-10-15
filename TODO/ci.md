@@ -6164,3 +6164,12 @@ them.
 - qBittorrent's `version` leaves its `mktemp` file behind when Xvfb cannot
   start, and its source route's clone does not tell a hit bound (`124`) from a
   failure, as the other two source routes do.
+
+### ⚠ check-workflow reads the Windows lane's scan step in its own spelling. 2026-10-15
+
+On the integrated tree, check-workflow failed one row of 153. The Windows
+job's *Scan the evidence of a refused capture* runs `& $env:BIT_CHECK
+scan-bundle (Join-Path $env:RUNNER_TEMP 'capture')`, and `scan_gate` accepted
+only the sh spelling. The guard rule already took both spellings and the scan
+rule had not been extended. It now accepts both, and the step body was matched
+directly before the rerun.
