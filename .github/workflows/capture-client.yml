@@ -324,7 +324,7 @@ jobs:
           cat "$RUNNER_TEMP/install-step.log" || true
           exit "$rc"
         # ⚠ `bit-check install-step` is Go since 2026-10-15, `CI-11`; the body
-        # it replaced was `scripts/acquisition/install-step.sh`.
+        # it replaced was the shell script of the same name, now deleted.
 
       # ⛔ THE BARRIER, BECAUSE EACH ROUTE INSTALLS ON ITS OWN RUNNER. A run
       # manifest says the build was acquired twice before it was observed, and

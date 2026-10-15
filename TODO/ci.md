@@ -5978,6 +5978,13 @@ one did.
 | `check-capture-client` over the shell half and then over a shim to the port | 133 of 134 rows identical. The other row was the case that pointed `BIT_CHECK` at nothing, which a `bit-check` runner has nowhere to look for, so it is retired |
 | four mutants: an announce carrying only the observer's peer ID accepted, a peer ID the transcript does not hold accepted, a connector silent on the identifying field accepted, an interval longer than the run accepted | each refused by its own case |
 
+⛔ **`check-workflow` refused the `install-step` commit over a comment.** Its
+script-name reader reads every `scripts/...sh` a workflow names, comments
+included, and a comment in *Install the client* still gave the deleted path.
+128 of 129 until the comment named the deleted script without its path. ⭐
+That is the reader working as intended: a workflow that names a file that is
+gone is a workflow somebody will follow to nothing.
+
 ⚠ **The harness's own probe caught the first shim.** `store_probe_guards`
 needs a literal that appears more than once in its subject file. The first shim
 carried `capture-client` once, so the probe planted into it and every case
