@@ -96,6 +96,11 @@ env:
 jobs:
   linux:
     name: Linux client capture (${{ matrix.adapter }}, ${{ matrix.route }})
+    # ⚠ `[]` RUNS NO LINUX LANE, as `windows_adapters` does for the Windows
+    # job: a Windows-only dispatch exists because a Linux pair already on `data`
+    # cannot be published twice, and assemble-bundle run 38823655690 refused
+    # the whole bundle for re-capturing two. `CI-11`.
+    if: inputs.adapters != '[]'
     runs-on: ubuntu-24.04
     # ⛔ 45, BECAUSE THE BOUNDS BELOW HAVE TO FIT UNDER IT. A source lane can
     # spend 1980s in *Install the client* before its own last resort fires, and

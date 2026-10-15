@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T23:45:00Z
+
+- **Both Windows pairs assemble on a runner**: qBittorrent 5.2.4 and
+  Transmission 4.1.3, publishable on both routes and agreeing across them.
+- `capture-client.yml` takes `adapters: []` for a Windows-only dispatch, because
+  a Linux pair already published cannot be published twice.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T20:30:00Z
 
 - ⭐ **qBittorrent 5.2.4 and Transmission 4.1.3 were captured on Windows**, on

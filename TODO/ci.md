@@ -6266,3 +6266,18 @@ assembled into a valid bundle: 4 records, Linux and Windows, all 4 admitted
 to a published view. The real proof is a re-capture on the fixed tree and its
 assembly.
 
+### ⚠ The fixes hold on a runner, and a re-captured Linux pair blocks the bundle. 2026-10-15
+
+Capture-client run 38820888070 on `0d50262` captured qBittorrent 5.2.4 and
+Transmission 4.1.3 on all eight lanes. Assemble-bundle run 38823655690 then
+assembled all eight into records. Each of the four pairs is `publishable` on
+both routes and `build_equivalent` across them, and the Windows pairs are filed
+under `windows/x86-64` (qBittorrent at `nsis-payload` and `nsis-installer`,
+Transmission at `msi-payload` and `msi-installer`).
+
+⛔ The bundle was refused, correctly: the Linux pairs of both clients are
+already on `data`, and a re-capture carries other bytes at the same record
+path, which the store never rewrites. `capture-client.yml`'s Linux job now
+runs only when `adapters` names something, as the Windows job does for
+`windows_adapters`, so a dispatch can carry the Windows lanes alone.
+
