@@ -6024,6 +6024,11 @@ the capture refused with "the adapter could not ask the installed build its
 version". Every adapter finds its prefix through `"$BIT_CHECK" install-rootless`,
 and since `ec7372d` that variable has been unset inside the namespace.
 
+⭐ **Proved on `ed7f415`.** Capture run 38767501904 and capture-client run
+38767645210 (transmission, release and source) are both green. That is the
+first runner proof of the Go install step, `install-client`, `capture-client` and
+the host guard on Linux.
+
 ### ⭐ `capture-run` is the tenth leaf: the fixture capture is Go. 2026-10-15
 
 [`../tools/check/capturerun.go`](../tools/check/capturerun.go) replaces
