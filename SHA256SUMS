@@ -1,5 +1,5 @@
 e3f18c71e10d673590eb9856c1d79dd3b4b0d65404efb5e8584dbede7edd608b  LICENSE
-77cb519cfa123edf8d462492ea0739a494d63b5159e0a2e57e6033865d93df0c  MANIFEST.json
+591732d3f4810178bce65dba7755ad1a223bfcd45c004724d2b7489c7807f9da  MANIFEST.json
 b316782e4926a018edefb5fbd4537fbfae494f2cfde330eb28626e3289820618  formats/bit-ids-v1.cbor
 f53e14651b86913e7d03cec155576dcdda8e8562f3926931f1459be71c51974c  formats/bit-ids-v1.columns.json
 440c4359237c8142c4ceb773549dac1a8603f400a839e831ab7d7601189d2919  formats/bit-ids-v1.csv
@@ -7,6 +7,7 @@ b011267536f6915a6908f085b4b86ab7c6291338f0a24d0f26389773b7e6562a  formats/bit-id
 4f7e57d9b37066061d225d4f3987eab67a07fd6b52e71f589fe67bd5789b00b2  formats/bit-ids-v1.jsonl
 e670c64aa3d3ca078a0850143a1fa576efca7670100da4c74e8ce19ebee94d96  formats/bit-ids-v1.sqlite3
 dd6447058c5aae4ff419df24bc9c9802260ee86f522605e153d27e7f63c17ab7  indexes/v1/profiles.json
+c08682546a9cfae1a9ee8c53444e82eb5813f4707d396a2892243f5461b1c190  indexes/v1/schemes.txt
 47e4bc39d63451474daeef7c6c512085b34a5da5fdae8bef4e2a075521ce3fb5  profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json
 82de6ba0564fbc4193bd684584a54a91b9d65ff0fb841deb0b8f680d628152f6  profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-source.json
 1856c2571dc69f03007b67b3cb034f8933c760d0f1fb117b87861cb621b550bf  raw/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release/manifest.json

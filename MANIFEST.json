@@ -9,6 +9,7 @@
     {"path": "formats/bit-ids-v1.jsonl", "media_type": "application/jsonl", "schema": null, "bytes": 12792, "sha256": "sha256:4f7e57d9b37066061d225d4f3987eab67a07fd6b52e71f589fe67bd5789b00b2"},
     {"path": "formats/bit-ids-v1.sqlite3", "media_type": "application/vnd.sqlite3", "schema": null, "bytes": 143360, "sha256": "sha256:e670c64aa3d3ca078a0850143a1fa576efca7670100da4c74e8ce19ebee94d96"},
     {"path": "indexes/v1/profiles.json", "media_type": "application/json", "schema": null, "bytes": 2845, "sha256": "sha256:dd6447058c5aae4ff419df24bc9c9802260ee86f522605e153d27e7f63c17ab7"},
+    {"path": "indexes/v1/schemes.txt", "media_type": "text/plain", "schema": null, "bytes": 17, "sha256": "sha256:c08682546a9cfae1a9ee8c53444e82eb5813f4707d396a2892243f5461b1c190"},
     {"path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json", "media_type": "application/json", "schema": "bit-ids/profile/1", "bytes": 9698, "sha256": "sha256:47e4bc39d63451474daeef7c6c512085b34a5da5fdae8bef4e2a075521ce3fb5"},
     {"path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-source.json", "media_type": "application/json", "schema": "bit-ids/profile/1", "bytes": 9684, "sha256": "sha256:82de6ba0564fbc4193bd684584a54a91b9d65ff0fb841deb0b8f680d628152f6"},
     {"path": "raw/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release/manifest.json", "media_type": "application/json", "schema": "bit-ids/manifest/1", "bytes": 5755, "sha256": "sha256:1856c2571dc69f03007b67b3cb034f8933c760d0f1fb117b87861cb621b550bf"},
