@@ -4310,6 +4310,13 @@ clean, `validate-corpus` *valid store: 2 record(s), 2 run(s), 31 object(s); 2 of
 2 record(s) may enter a published view*, and `schemes.txt` reads
 `aria2-next:v:3:3`.
 
+⛔ **CI run 219 on `0c9dc54` was cancelled at the bound, not by a push.**
+*Workflow acceptance 2/4* ran 19 minutes 18 seconds against `timeout-minutes:
+20`. It had taken 19 minutes 5 seconds on run 218, so the shard was already at
+its edge before this entry's cases joined it. The other three shards finished in
+12 to 18 minutes. The bound stays at 20, and the work is spread over five
+shards. `check-shards` still proves the partition, 14 of 14.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05

@@ -138,7 +138,7 @@ jobs:
   # restore on a job that saves a quarter of an hour is a trade worth naming
   # rather than hiding behind a composite action nothing else would use.
   acceptance:
-    name: Workflow acceptance ${{ matrix.shard }}/4
+    name: Workflow acceptance ${{ matrix.shard }}/5
     runs-on: ubuntu-24.04
     # ⭐ SHARDED ACROSS FOUR RUNNERS, `CI-10`, 2026-09-10. This job was 32.6
     # minutes on run 122 - measured, not estimated - against 5.8 for the Linux
@@ -161,14 +161,18 @@ jobs:
     # refused proves nothing unless the clean tree is accepted. That is a floor on
     # what a shard can cost and it is paid on purpose.
     #
-    # ⚠ THE COUNT IS HERE AND IN THE MATRIX AND NOWHERE ELSE. `--shard i/4` takes
+    # ⚠ THE COUNT IS HERE AND IN THE MATRIX AND NOWHERE ELSE. `--shard i/5` takes
     # its N from this list, so a fifth entry added without changing the divisor
     # would leave one shard running nothing; `check-shards` is what compares the
     # two, and `check-workflow` refuses an `i` outside `1..N` outright.
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5]
+    # ⛔ FIVE SINCE 2026-10-15. Shard 2 of four took 19 minutes 5 seconds on run
+    # 218 and was cancelled at the 20-minute bound on run 219, once `CI-09` and
+    # `CLIENT-06` had added cases. The bound stays where it is, for the reason
+    # below, and the work is spread over one more runner instead.
     # ⛔ 20 RATHER THAN 45, AND LOWERING IT IS THE POINT. The bound was raised to
     # 45 on 2026-09-10 to fit a job that had been cancelled at 30 minutes three
     # times, which this repository calls masking everywhere else. A shard is about
@@ -219,7 +223,7 @@ jobs:
       - name: Shard partition
         run: sh scripts/ci/check-shards.sh
       - name: Workflow acceptance
-        run: sh scripts/ci/check-workflow.sh --shard ${{ matrix.shard }}/4
+        run: sh scripts/ci/check-workflow.sh --shard ${{ matrix.shard }}/5
 
   windows:
     name: Windows gate

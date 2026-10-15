@@ -109,9 +109,8 @@ still open is a host that never reached it.
    as an unprivileged user on 2026-10-14. ⭐ The source route's resolution
    failed closed over 112 historical tags git refs cannot date; the scheme
    floor the operator chose is built, and the source route selects 4.1.3 from
-   the live refs. ⭐ Run 38680098567, three sessions, assembled both records
-   `publishable` and `build_equivalent`; publishing it waits on the bootstrap
-   publication `CI-09` records. ⭐ `CLIENT-01`'s two 5.2.4 routes are built,
+   the live refs. ⭐ **Published on 2026-10-15**: run 38680098567's pair is on
+   `data` at `4c6ccb1`, beside aria2-next, 4 of 4 records in the published view. ⭐ `CLIENT-01`'s two 5.2.4 routes are built,
    installed and captured on the session host, and the pair assembled
    publishable by hand; next is a dispatch. Its entry in
    [`clients.md`](clients.md) carries the drive.

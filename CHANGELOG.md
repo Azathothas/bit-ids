@@ -5,6 +5,16 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T07:57:36Z
+
+- ⭐ **Transmission 4.1.3 is published**, beside aria2-next 3.0.3: `data` holds
+  4 records, all in the published view, verified from a fresh clone.
+- ⚠ CI's workflow acceptance runs on five shards rather than four. One shard
+  reached its 20-minute bound, and the bound stays.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-06` and
+  [`TODO/ci.md`](TODO/ci.md) `CI-09`. No version bump; the data branch is the
+  deployment.
+
 ### 2026-10-15T06:55:02Z
 
 - ⭐ **qBittorrent 5.2.4 has two routes, both driven.** The release route

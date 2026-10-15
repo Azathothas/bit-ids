@@ -1344,6 +1344,15 @@ Driven on this host against `aria2-next` 3.0.3, release route, 60 seconds, in
 the namespace: 3 sessions dialled, 2 connections each, 6 peer streams, and each
 session announced its own peer ID. A mutant that dialled in the first session
 alone gave `peer-sessions 1` and `peer-connections 2` on the same drive.
+
+⭐ **PUBLISHED, 2026-10-15.** `capture-client` run 38680098567 captured the pair
+under three sessions on `eb3db46`. `assemble-bundle` run 38696647239 assembled
+it onto the published tree: both records `publishable`, `build_equivalent`,
+and 4 fields agreeing. `publish-data` run 38697299991 appended it after a
+passing dry run. `data` is at `4c6ccb1`. ⭐ Read back from a fresh clone: 51
+files, `sha256sum -c` clean, *valid store: 4 record(s), 4 run(s), 51 object(s);
+4 of 4 record(s) may enter a published view*. `schemes.txt` names
+`transmission:-:3:3` beside `aria2-next:v:3:3`.
 `check-assemble` adds a case of three sessions with two connections each,
 69 of 69. The manifest's plan reads three sessions of two, and the mutant
 that puts every connection in session 0 reads one of six and is killed.
