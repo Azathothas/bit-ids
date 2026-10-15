@@ -231,7 +231,7 @@ func runInstallClient(args []string) error {
 		return cannot("--route is required")
 	case workdir == "":
 		return cannot("--workdir is required")
-	case !isRegular(adapter):
+	case !adapterPresent(adapter):
 		return cannot("the adapter %s is not present", adapter)
 	}
 
@@ -268,7 +268,8 @@ func runInstallClient(args []string) error {
 	wd := func(name string) string { return filepath.Join(workdir, name) }
 
 	adapterRun := func(bound int, out, errf string, sub ...string) int {
-		return boundedRun(out, errf, bound, killAfter, "sh", append([]string{adapter}, sub...)...)
+		prog, argv := adapterArgv(adapter, sub...)
+		return boundedRun(out, errf, bound, killAfter, prog, argv...)
 	}
 
 	if rc := adapterRun(describeSeconds, wd("describe.log"), wd("describe.err"), "describe"); rc != 0 {
@@ -317,7 +318,8 @@ func runInstallClient(args []string) error {
 
 	// ⚠ The install's own output is this process's, which `install-step` sends
 	// to a file one level up.
-	installRC := boundedRun("", "", installSeconds, killAfter, "sh", adapter, "install", route, workdir)
+	iprog, iargv := adapterArgv(adapter, "install", route, workdir)
+	installRC := boundedRun("", "", installSeconds, killAfter, iprog, iargv...)
 
 	// ⚠ THE LOGS THE ROUTE WROTE ARE PRINTED ON EVERY FAILURE, INDENTED, or the
 	// job log carries the refusal and not its cause.
@@ -433,7 +435,7 @@ func runInstallClient(args []string) error {
 		if fi, err := os.Stat(postBinary); err == nil && postBinary != "" && fi.Mode().IsRegular() {
 			size = fmt.Sprint(fi.Size())
 		}
-		asum, _ := fileSHA256(adapter)
+		asum := adapterDigest(adapter)
 		var b strings.Builder
 		b.WriteString("bit-ids/install-record/1\n")
 		for _, kv := range [][2]string{

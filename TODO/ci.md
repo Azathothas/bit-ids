@@ -5989,3 +5989,22 @@ gone is a workflow somebody will follow to nothing.
 needs a literal that appears more than once in its subject file. The first shim
 carried `capture-client` once, so the probe planted into it and every case
 failed with `unknown argument`. The probe now reads `captureclient.go`.
+
+### ⭐ The adapter layer, the seam both remaining halves build on. 2026-10-15
+
+[`../tools/check/adapter.go`](../tools/check/adapter.go) adds a second form of
+the adapter contract: a Go adapter registered by name and run as `bit-check
+adapter <name> <subcommand>`. Every caller (`resolve-release`,
+`resolve-source`, `install-client` and `capture-client`) now reaches an adapter
+through `adapterArgv`. A registered name with no path separator runs this binary
+as a child process; anything else is run as `sh <path>`, so the harnesses' stub
+adapters keep working. ⛔ The child process is what keeps every bound: an
+adapter called in process would escape the timeout, the null stdin and the
+output files that stop a product from hanging its caller. The digest a record
+carries is of the code that ran: the file for a shell adapter, this binary for a
+Go adapter.
+
+The operator settled the order on 2026-10-15: the four Linux adapters port, and
+qBittorrent's Windows half and the Windows lane are built, in parallel. The
+Windows routes are the `_lt20` installer extracted with 7-Zip, and a package
+manager that installs the same `_lt20` build at the same version.

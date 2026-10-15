@@ -212,9 +212,10 @@ func runBounded(stdout, stderr string, bound, grace int, prog string, args ...st
 // 21, 22 and 23 were cancelled with no log and no artifact.
 func describeAdapter(me, adapter, workdir string) ([]byte, error) {
 	desc := filepath.Join(workdir, "describe.txt")
+	prog, argv := adapterArgv(adapter, "describe")
 	err := runBounded(desc, filepath.Join(workdir, "describe.err"),
 		envSeconds("BIT_IDS_DESCRIBE_TIMEOUT", 30), envSeconds("BIT_IDS_KILL_AFTER", 20),
-		"sh", adapter, "describe")
+		prog, argv...)
 	if err != nil {
 		return nil, resolveExit{2, "the adapter could not describe itself"}
 	}
@@ -354,7 +355,7 @@ func prepareWorkdir(a *resolveArgs) error {
 	if a.workdir == "" {
 		return resolveExit{2, "--workdir is required"}
 	}
-	if !isRegular(a.adapter) {
+	if !adapterPresent(a.adapter) {
 		return resolveExit{2, fmt.Sprintf("the adapter %s is not present", a.adapter)}
 	}
 	return nil
@@ -634,7 +635,7 @@ func runResolveRelease(args []string) error {
 
 	if a.record != "" {
 		lsum, _ := fileSHA256(listing)
-		asum, _ := fileSHA256(a.adapter)
+		asum := adapterDigest(a.adapter)
 		var b strings.Builder
 		b.WriteString("bit-ids/release-resolution/1\n")
 		for _, kv := range [][2]string{
@@ -838,7 +839,7 @@ func runResolveSource(args []string) error {
 	digest, _ := fileSHA256(refs)
 	finished := utcNow()
 	if a.record != "" {
-		asum, _ := fileSHA256(a.adapter)
+		asum := adapterDigest(a.adapter)
 		var b strings.Builder
 		b.WriteString("bit-ids/source-resolution/1\n")
 		// ⛔ `source_url` IS THE FIELD `assemble-capture` SLUGIFIES INTO A

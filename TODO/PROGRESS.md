@@ -154,6 +154,16 @@ Do not re-raise one.
 | how `capture.yml`'s Windows job is contained | firewall rules blocking outbound traffic for the capture's own executables, with the egress guard reading those rules, in place of cutting the host's route. Settled by the operator on 2026-10-15. `CI-08`. |
 | how the Windows client capture lane runs the capture path | the capture path is ported into Go first, then the Windows lane is added; not `sh` under Git for Windows, not PowerShell twins. Settled by the operator on 2026-10-15. `CI-11`. |
 | which client is the first Windows capture | qBittorrent, so `CLIENT-01`'s Linux and Windows Prove closes first. Settled by the operator on 2026-10-15. `CI-11`. |
+| how the Windows release route acquires qBittorrent | the vendor's `qbittorrent_<version>_lt20_x64_setup.exe` from the GitHub release, its payload extracted with the runner's 7-Zip into the rootless prefix, so no installer code runs. Settled by the operator on 2026-10-15. `CI-11`, `CLIENT-01`. |
+| qBittorrent's second Windows route | a package manager, `choco`, `scoop` or `winget`, as long as it installs the same version. Settled by the operator on 2026-10-15. `CI-11`, `CLIENT-01`. |
+| how the Linux adapter port and the Windows lane are ordered | in parallel, by subagents, on one Go adapter layer. Settled by the operator on 2026-10-15. `CI-11`. |
+| which qBittorrent engine the Windows pair measures | `_lt20` (libtorrent 2.0) on both routes, through whichever of `choco`, `scoop` or `winget` installs it at the same version; the default build on both only if none can. Settled by the operator on 2026-10-15. `CLIENT-01`. |
+| what happens if the qBittorrent GUI will not run on a hosted Windows runner | find a headless way; failing that, record the measured blocker in `CLIENT-01` and move on, for the operator to decide. Settled by the operator on 2026-10-15. |
+| what follows qBittorrent's Windows pair | Windows captures of the clients already published, Transmission 4.1.3 then aria2-next 3.0.3, before new clients. Settled by the operator on 2026-10-15. |
+| how freely workflows are dispatched unattended | as needed, the publish chain for green records included; every red run is debugged and re-dispatched. Settled by the operator on 2026-10-15. |
+| a field on which a client's Linux and Windows profiles disagree | a platform-scoped field: each platform's profile is published and the field marked as varying by platform, with its evidence; publication is not held. Settled by the operator on 2026-10-15. |
+| whether `capture-run.sh` ports too | yes, into `bit-check capture-run`, with `capture-run.ps1` its Windows half until the Go one runs there. Settled by the operator on 2026-10-15. `CI-11`. |
+| a decision nothing settled, met while working unattended | take the conservative, reversible option and record it below under *Decided unattended*. Settled by the operator on 2026-10-15. |
 | who authors a commit | the operator, `Azathothas`, per `AGENTS.md` rule 11, whatever a host's hook asks. Settled by the operator on 2026-10-15. |
 | how Transmission's source route orders a history git cannot date | a scheme floor: the adapter declares the lowest major its scheme covers, and an unorderable tag below it gets its own verdict rather than blocking. Under `bit-ids/resolution/2`. Settled by the operator on 2026-10-15. `CLIENT-06`. |
 | which qBittorrent version the pair targets, and its second route | 5.2.4, the newest stable, built on the `source` lane from the signed `release-5.2.4` tag against Qt's own prebuilt archives. Settled by the operator on 2026-10-15. `CLIENT-01`. |
@@ -182,3 +192,10 @@ mirrors the CI job that would refuse the change.
 
 ⚠ The defect classes this repository has shipped and caught, which every review
 should know before it starts, are in [`../docs/lessons.md`](../docs/lessons.md).
+
+## Decided unattended
+
+Choices made while working unattended under the operator's standing rule, each for review.
+
+| decision | why | where |
+| --- | --- | --- |

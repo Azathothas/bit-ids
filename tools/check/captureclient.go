@@ -286,7 +286,7 @@ func runCaptureClient(args []string) error {
 	if fi, err := os.Stat(observer); err != nil || fi.IsDir() || (runtime.GOOS != "windows" && fi.Mode().Perm()&0o111 == 0) {
 		return cannot("the observer %s is not executable; it is built before the route is deleted, never here", observer)
 	}
-	if !isRegular(adapter) {
+	if !adapterPresent(adapter) {
 		return cannot("the adapter %s is not present", adapter)
 	}
 	if !isRegular(connector) {
@@ -364,8 +364,8 @@ func runCaptureClient(args []string) error {
 	}
 
 	adapterCall := func(stdout string, appendOut bool, stderr string, appendErr bool, sub ...string) int {
-		return boundedCall(stdout, appendOut, stderr, appendErr, adapterSeconds, killAfter,
-			"sh", append([]string{adapter}, sub...)...)
+		prog, argv := adapterArgv(adapter, sub...)
+		return boundedCall(stdout, appendOut, stderr, appendErr, adapterSeconds, killAfter, prog, argv...)
 	}
 
 	// -- what the adapter says it is ---------------------------------------
@@ -698,7 +698,7 @@ func runCaptureClient(args []string) error {
 	finished := utcNow()
 	obsSum, _ := fileSHA256(observer)
 	conSum, _ := fileSHA256(connector)
-	adSum, _ := fileSHA256(adapter)
+	adSum := adapterDigest(adapter)
 	peerSessions := log.first("peer-sessions", 1)
 	peerConnections := log.first("peer-connections", 1)
 	// ⛔ HOW MANY SESSIONS THE PEER SURFACE WAS DIALLED IN, beside how many
