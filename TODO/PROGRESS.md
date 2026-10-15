@@ -149,6 +149,8 @@ Do not re-raise one.
 | who authors a commit | the operator, `Azathothas`, per `AGENTS.md` rule 11, whatever a host's hook asks. Settled by the operator on 2026-10-15. |
 | how Transmission's source route orders a history git cannot date | a scheme floor: the adapter declares the lowest major its scheme covers, and an unorderable tag below it gets its own verdict rather than blocking. Under `bit-ids/resolution/2`. Settled by the operator on 2026-10-15. `CLIENT-06`. |
 | which qBittorrent version the pair targets, and its second route | 5.2.4, the newest stable, built on the `source` lane from the signed `release-5.2.4` tag against Qt's own prebuilt archives. Settled by the operator on 2026-10-15. `CLIENT-01`. |
+| how a capture tells a per-session value from a constant one on the peer surface | the peer surface is dialled again in every session, and each connection is attributed to the session its offset falls in. Settled by the operator on 2026-10-15. `CLIENT-06`, `SCHEMA-04`. |
+| how a capture keeps a coincidence at a varying span's edge from lengthening a fixed run | three sessions instead of two, so a span has three distinct values; the classifier is unchanged. Settled by the operator on 2026-10-15. `CLIENT-06`, `SCHEMA-04`. |
 | whether to take `rusqlite` 0.40.2 | no, settled by the operator on 2026-09-16. It resolves thirteen further packages for the same API. `.github/dependabot.yml` ignores every `rusqlite` version from 0.38, and dependabot closed pull request 2 itself on 2026-09-29 after reading it. |
 
 ⛔ **A capture host was never a blocker.** A hosted runner is a fresh virtual

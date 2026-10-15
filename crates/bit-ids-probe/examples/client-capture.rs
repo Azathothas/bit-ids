@@ -217,9 +217,10 @@ fn main() {
     println!("serving for {seconds}s");
 
     let peer_wire = PeerWire::offering(offer, *torrent.info_hash());
-    let (dialled, connections) =
-        dial_when_announced(&mut lab, &tracker, &peer_wire, peer_port, seconds, dials);
+    let (dialled, connections, dialled_sessions) =
+        dial_each_session(&mut lab, &tracker, &peer_wire, peer_port, seconds, dials);
     println!("peer-dialled {dialled}");
+    println!("peer-sessions {dialled_sessions}");
     // ⛔ ONE CONNECTION CANNOT ESTABLISH ANYTHING BUT A CONSTANT, so the count is
     // part of what a run reports. A peer ID carries a tail the build regenerates
     // per connection; a surface dialled once yields one observation, two captures
@@ -239,98 +240,152 @@ fn main() {
     write_bundle(&root, &journal, &torrent);
 }
 
-/// Dials the client's own listen port, once an announce says it is listening.
+/// Dials the client's own listen port in every session, once an announce says
+/// that session is listening.
 ///
 /// ⚠ Polling the observer rather than the socket. An announce is the first
 /// evidence that the build read the torrent, and it is the earliest moment its
 /// own listener is up for this info hash.
-/// ⛔ **And it dials `dials` times, into ONE endpoint.** Each connection is its
-/// own segment of the same transcript, so a value the build regenerates per
-/// connection is observed more than once and can be stated as the pattern it is
-/// rather than as one connection's bytes. ⚠ The connections are opened back to
-/// back on purpose: they are the `connections` dimension of a sampling plan, not
-/// the `sessions` one, and nothing here restarts the build.
-fn dial_when_announced(
+/// ⛔ **And it dials `dials` times per session, into ONE endpoint.** Each
+/// connection is its own segment of the same transcript, so a value the build
+/// regenerates per connection is observed more than once and can be stated as
+/// the pattern it is rather than as one connection's bytes.
+///
+/// ⛔ **EVERY SESSION, NOT THE FIRST.** This dialled once, at the first announce,
+/// until 2026-10-15, so every peer connection belonged to the first session.
+/// Transmission 4.1.3 keeps one peer ID per session, so each capture of
+/// `capture-client` run 38667886527 saw one value on the peer surface, called it
+/// constant, and the two routes then stated two different constants. A session
+/// is opened by an announce carrying `event=started` after the first announce,
+/// which is the rule `assemble-capture` reads them by, and the dials for it
+/// follow that announce. Settled by the operator on 2026-10-15. `CLIENT-06`.
+fn dial_each_session(
     lab: &mut Lab,
     tracker: &HttpTracker,
     peer_wire: &PeerWire,
     peer_port: Option<u16>,
     seconds: u64,
     dials: u32,
-) -> (String, u32) {
+) -> (String, u32, u32) {
     let Some(port) = peer_port else {
-        return ("none".to_owned(), 0);
+        return ("none".to_owned(), 0, 0);
     };
     let address: SocketAddr = ([127, 0, 0, 1], port).into();
     let waiting_since = Instant::now();
-    let wait_for = Duration::from_secs(seconds).min(Duration::from_secs(60));
+    let window = Duration::from_secs(seconds);
+    let mut first: Option<String> = None;
+    let mut opened = 0_u32;
+    let mut dialled_sessions = 0_u32;
     loop {
-        if !tracker.announces().is_empty() {
-            // ⛔ A FRESH IDENTITY PER CONNECTION, which is what run 18 lacked:
-            // both its dials presented the same peer ID, so a build that drops a
-            // second connection from a peer it already has would answer one and
-            // ignore the other - which is exactly what it did.
-            let presented = peer_wire.present();
-            let first = match lab.dial(
-                "peer-wire-dialled",
-                address,
-                presented.handshake().to_vec(),
-                peer_wire.dialling(&presented),
-            ) {
-                Ok(_) => format!("{address}"),
-                // ⚠ A refused dial is recorded and does not end the run. The
-                // tracker surface is already measured by this point, and
-                // throwing it away because a peer port was wrong would lose a
-                // measurement to a detail of the driver.
-                Err(error) => return (format!("refused: {error}"), 0),
-            };
-            let mut opened = 1;
-            for index in 1..dials {
+        let sessions = sessions_announced(tracker);
+        if sessions > dialled_sessions {
+            dialled_sessions = sessions;
+            let session = sessions - 1;
+            for index in 0..dials {
+                // ⛔ A FRESH IDENTITY PER CONNECTION, which is what run 18
+                // lacked: both its dials presented the same peer ID, so a build
+                // that drops a second connection from a peer it already has
+                // would answer one and ignore the other - which is exactly what
+                // it did.
                 let presented = peer_wire.present();
-                // ⛔ AND FROM ANOTHER ADDRESS PER CONNECTION, which is what runs 18,
-                // 19 and 36 lacked: every dial left from `127.0.0.1`, and
+                // ⛔ AND FROM ANOTHER ADDRESS PER CONNECTION, which is what runs
+                // 18, 19 and 36 lacked: every dial left from `127.0.0.1`, and
                 // `aria2-next` answered the first of them only. Driven on
                 // 2026-10-14 against 3.0.2 in a namespace holding loopback alone,
-                // a second connection from `127.0.0.2` was answered, with a peer ID
-                // of its own. ⚠ The source is a condition of the run, so it is
-                // printed beside the connection it opened.
-                let source = redial_source(index);
-                // ⚠ A refused RE-dial ends the dialling and not the run, for the
-                // same reason: a build that accepts one connection and not a
-                // second has been measured once, which is a weaker record than
-                // was asked for and a better one than none. The count says so.
-                let redialled = match source {
-                    Some(source) => lab.dial_again_from(
-                        "peer-wire-dialled",
-                        address,
-                        source,
-                        presented.handshake().to_vec(),
-                        peer_wire.dialling(&presented),
-                    ),
-                    None => lab.dial_again(
-                        "peer-wire-dialled",
-                        address,
-                        presented.handshake().to_vec(),
-                        peer_wire.dialling(&presented),
-                    ),
+                // a second connection from `127.0.0.2` was answered, with a peer
+                // ID of its own. ⚠ A new session is a new process, which has
+                // never seen any address, so each session starts again from
+                // `127.0.0.1`.
+                let source = if index == 0 {
+                    None
+                } else {
+                    redial_source(index)
                 };
-                if let Err(error) = redialled {
-                    println!("peer-redial refused: {error}");
-                    break;
+                let result = if first.is_none() {
+                    lab.dial(
+                        "peer-wire-dialled",
+                        address,
+                        presented.handshake().to_vec(),
+                        peer_wire.dialling(&presented),
+                    )
+                    .map(|_| ())
+                } else {
+                    match source {
+                        Some(source) => lab.dial_again_from(
+                            "peer-wire-dialled",
+                            address,
+                            source,
+                            presented.handshake().to_vec(),
+                            peer_wire.dialling(&presented),
+                        ),
+                        None => lab.dial_again(
+                            "peer-wire-dialled",
+                            address,
+                            presented.handshake().to_vec(),
+                            peer_wire.dialling(&presented),
+                        ),
+                    }
+                };
+                match result {
+                    Ok(()) => {
+                        if first.is_none() {
+                            first = Some(format!("{address}"));
+                        }
+                        opened += 1;
+                        let from = source.map_or_else(
+                            || "wherever the kernel chose".to_owned(),
+                            |source| source.to_string(),
+                        );
+                        println!("peer-dial session {session} connection {index} from {from}");
+                    }
+                    // ⚠ A refused dial is recorded and does not end the run.
+                    // The tracker surface is already measured by this point, and
+                    // throwing it away because a peer port was wrong would lose a
+                    // measurement to a detail of the driver.
+                    Err(error) if first.is_none() => {
+                        return (format!("refused: {error}"), 0, 0);
+                    }
+                    // ⚠ A refused LATER dial ends this session's dialling and
+                    // not the run: a build measured on fewer connections than
+                    // asked is a weaker record than was asked for and a better
+                    // one than none. The count says so.
+                    Err(error) => {
+                        println!("peer-redial refused in session {session}: {error}");
+                        break;
+                    }
                 }
-                match source {
-                    Some(source) => println!("peer-redial {index} from {source}"),
-                    None => println!("peer-redial {index} from wherever the kernel chose"),
-                }
-                opened += 1;
             }
-            return (first, opened);
         }
-        if waiting_since.elapsed() >= wait_for {
-            return ("no announce arrived".to_owned(), 0);
+        if waiting_since.elapsed() >= window || lab.deadline_expired() {
+            break;
         }
         std::thread::sleep(Duration::from_millis(200));
     }
+    match first {
+        Some(first) => (first, opened, dialled_sessions),
+        None => ("no announce arrived".to_owned(), 0, 0),
+    }
+}
+
+/// How many sessions the build's announces have opened so far: one at its first
+/// announce, and one more at every later announce carrying `event=started`.
+///
+/// ⛔ The same rule `assemble-capture` reads sessions by, so the dials this
+/// makes for a session land in the session the record attributes them to.
+fn sessions_announced(tracker: &HttpTracker) -> u32 {
+    let mut sessions = 0_u32;
+    for announce in tracker.announces() {
+        let started = announce
+            .request()
+            .query_values(b"event")
+            .first()
+            .and_then(|pair| pair.decoded_value().ok().flatten())
+            .is_some_and(|value| value == b"started");
+        if sessions == 0 || started {
+            sessions = sessions.saturating_add(1);
+        }
+    }
+    sessions
 }
 
 /// The loopback address the `index`th re-dial leaves from: `127.0.0.2` for the

@@ -62,11 +62,16 @@ CONNECTOR=""
 SECONDS_TO_SERVE=25
 PEER_PORT=""
 ROUTE_TABLE=""
-# ⛔ TWO BY DEFAULT, because one session cannot separate a value the build stores
-# from one it regenerates. `SamplingPlan::restarts` says so in as many words:
-# restarting the process is the only thing that distinguishes the two, and
-# `Lifetime::PerSession` is the answer only a second session can reach.
-SESSIONS=2
+# ⛔ THREE BY DEFAULT, because one session cannot separate a value the build
+# stores from one it regenerates. `SamplingPlan::restarts` says so in as many
+# words: restarting the process is the only thing that distinguishes the two,
+# and `Lifetime::PerSession` is the answer only a second session can reach.
+# ⚠ Three rather than two since 2026-10-15, `CLIENT-06`: two random values that
+# happen to share the byte beside a fixed run lengthen it, about one time in
+# sixty-four, and `capture-client` run 38667886527's source capture did exactly
+# that. A third value takes it to about one in four thousand. Settled by the
+# operator.
+SESSIONS=3
 
 usage() {
   awk 'NR>1 { if (/^#/) { sub(/^# ?/, ""); print } else exit }' "$0"
@@ -681,6 +686,17 @@ INFO_HASH=$(awk '$1 == "info-hash" { print $2; exit }' "$LOG")
 FIXTURE=$(awk '$1 == "fixture-sha256" { print $2; exit }' "$LOG")
 PEER_STREAMS=$(awk '$1 == "peer-streams" { print $2; exit }' "$LOG")
 PEER_DIALLED=$(awk '$1 == "peer-dialled" { $1 = ""; sub(/^ /, ""); print; exit }' "$LOG")
+# ⛔ HOW MANY SESSIONS THE PEER SURFACE WAS DIALLED IN, beside how many started.
+# `client-capture` dials after every session's opening announce since
+# 2026-10-15, `CLIENT-06`, and a session that announced nothing it could see was
+# not dialled. ⚠ Fewer is a weaker run rather than a refusal, as a refused
+# re-dial is, so it is said and counted.
+PEER_SESSIONS=$(awk '$1 == "peer-sessions" { print $2; exit }' "$LOG")
+PEER_CONNECTIONS=$(awk '$1 == "peer-connections" { print $2; exit }' "$LOG")
+if [ -n "$PEER_PORT" ] && [ "${PEER_SESSIONS:-0}" -lt "$SESSIONS_STARTED" ]; then
+  printf 'capture-client: the peer surface was dialled in %s of %s session(s)\n' \
+    "${PEER_SESSIONS:-0}" "$SESSIONS_STARTED" >&2
+fi
 
 # -- the attestation ----------------------------------------------------------
 #
@@ -746,6 +762,8 @@ PEER_DIALLED=$(awk '$1 == "peer-dialled" { $1 = ""; sub(/^ /, ""); print; exit }
   printf 'measured_peer_id=%s\n' "$PEER_ID_HEX"
   printf 'peer_streams=%s\n' "${PEER_STREAMS:-0}"
   printf 'peer_dialled=%s\n' "${PEER_DIALLED:-none}"
+  printf 'peer_sessions=%s\n' "${PEER_SESSIONS:-0}"
+  printf 'peer_connections=%s\n' "${PEER_CONNECTIONS:-0}"
   printf 'segments=%s\n' "$SEGMENTS"
   printf 'evidence=%s\n' "$EVIDENCE"
   printf 'evidence_verified_by=sha256sum\n'

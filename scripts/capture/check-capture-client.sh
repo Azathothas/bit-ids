@@ -517,13 +517,14 @@ fi
 
 # ⛔ THE ATTESTATION IS A CLAIM AND IT IS READ BACK. A runner that captured
 # correctly and wrote `kind=fixture` would pass every case above.
-# ⛔ `announces=2` AND `sessions_started=2` ARE WHAT SAY THE SECOND SESSION RAN.
+# ⛔ `announces=3` AND `sessions_started=3` ARE WHAT SAY EVERY SESSION RAN.
+# ⚠ Three since 2026-10-15, the runner's default, `CLIENT-06`.
 # The stub announces once per start, so this count is the session loop's own
 # receipt: it read `announces=1` until 2026-09-15, and a run that started the
 # build twice and announced once would be caught by nothing else here.
 for want in "kind=client" "target=stub-client" "adapter_kind=stub" \
-  "stock_client=false" "measured_build=1.2.3" "announces=2" \
-  "sessions=2" "sessions_started=2" "stopped_within_window=yes"; do
+  "stock_client=false" "measured_build=1.2.3" "announces=3" \
+  "sessions=3" "sessions_started=3" "stopped_within_window=yes"; do
   if grep -q -F -e "$want" "$CONTROL_OUT/attestation.txt"; then
     pass "the attestation says $want"
   else
@@ -560,8 +561,8 @@ fi
 # record is allowed to carry. A connector reporting the OBSERVER's own fixture
 # identity, or nothing, would satisfy the row above.
 # ⚠ ONE SAMPLE PER ANNOUNCE, and the stub announces once per session, so the
-# report carries the peer ID twice - the count `announces=2` above states.
-if [ "$(awk -F= '$1 == "tracker_http/peer_id" { print $2; exit }' "$REPORT" 2>/dev/null)" = "$STUB_HEX,$STUB_HEX" ]; then
+# report carries the peer ID three times - the count `announces=3` above states.
+if [ "$(awk -F= '$1 == "tracker_http/peer_id" { print $2; exit }' "$REPORT" 2>/dev/null)" = "$STUB_HEX,$STUB_HEX,$STUB_HEX" ]; then
   pass "the connector read the same peer ID out of each announce as the observer"
 else
   fail "the connector read the same peer ID out of each announce as the observer"
@@ -579,11 +580,12 @@ run_case 0 "" "a build that announces a different peer ID in each session is cap
 BIT_IDS_STUB_PEER_PER_SESSION=""
 _first=$(printf 'stub-adapter-00000001' | od -An -tx1 | tr -d ' \n')
 _second=$(printf 'stub-adapter-00000002' | od -An -tx1 | tr -d ' \n')
+_third=$(printf 'stub-adapter-00000003' | od -An -tx1 | tr -d ' \n')
 if [ "$(awk -F= '$1 == "tracker_http/peer_id" { print $2; exit }' \
-  "$CASE_OUT/bundle/connector/$CONNECTOR_ID.txt" 2>/dev/null)" = "$_first,$_second" ]; then
-  pass "and the connector reports both sessions' peer IDs, in the order they were sent"
+  "$CASE_OUT/bundle/connector/$CONNECTOR_ID.txt" 2>/dev/null)" = "$_first,$_second,$_third" ]; then
+  pass "and the connector reports every session's peer ID, in the order they were sent"
 else
-  fail "and the connector reports both sessions' peer IDs, in the order they were sent"
+  fail "and the connector reports every session's peer ID, in the order they were sent"
   [ "$JSON" = "1" ] || sed 's/^/          /' "$CASE_OUT/bundle/connector/$CONNECTOR_ID.txt" 2>/dev/null | head -4
 fi
 

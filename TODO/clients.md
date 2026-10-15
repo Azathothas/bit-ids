@@ -1257,9 +1257,31 @@ difference between the builds:
    span lengthens a fixed run and is not caught. Its odds are about one in
    sixty-four per edge with two distinct values.
 
-⚠ Both change what a capture may claim, so they are the operator's to settle,
-asked on 2026-10-15, and the answer lands in `TODO/PROGRESS.md`'s settled
-decisions.
+⭐ **Settled by the operator on 2026-10-15, and built the same day:** the peer
+surface is dialled in every session, and a capture runs three sessions.
+
+- **The probe.** `client-capture` dials after the first announce, as before, and
+  again after every later announce carrying `event=started`, by the rule
+  `assemble-capture` reads sessions with. Each session starts again from
+  `127.0.0.1` and redials from `127.0.0.2`, because a new process has seen no
+  address. It prints `peer-sessions`.
+- **The runner.** `capture-client.sh` records `peer_sessions` and
+  `peer_connections` in the attestation, and says so when fewer sessions were
+  dialled than started. Its default is three sessions.
+- **The assembler.** It places each connection in the session whose opening
+  announce came last before the connection's first segment. Both transcripts
+  share one clock, the lab's.
+
+Driven on this host against `aria2-next` 3.0.3, release route, 60 seconds, in
+the namespace: 3 sessions dialled, 2 connections each, 6 peer streams, and each
+session announced its own peer ID. A mutant that dialled in the first session
+alone gave `peer-sessions 1` and `peer-connections 2` on the same drive.
+`check-assemble` adds a case of three sessions with two connections each,
+69 of 69. The manifest's plan reads three sessions of two, and the mutant
+that puts every connection in session 0 reads one of six and is killed.
+Reassembling run 38667886527's artifacts, dialled in one session, gives the
+same records as before, byte for byte. `check-capture-client` moves its
+session counts to three. ⚠ The pair needs capturing again under this.
 
 ## CLIENT-07: Deluge capture adapter
 

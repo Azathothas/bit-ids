@@ -1000,6 +1000,70 @@ case_is 1 "the peer handshake" "a second connection opening with something else 
 write_lane good-release release "$GH" "" "$DIGEST_A" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
 write_lane good-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
 
+# -- ⭐ THE PEER SURFACE IN EVERY SESSION -----------------------------------------
+#
+# ⛔ `client-capture` dials after every session's opening announce since
+# 2026-10-15, and a connection belongs to the session whose announce opened last
+# before it. Transmission 4.1.3 keeps one peer ID per session, so a capture that
+# dialled once saw one value and called it constant. Settled by the operator on
+# 2026-10-15. Here three sessions each announce their own peer ID and answer two
+# connections with it, on one clock across both transcripts.
+# ⚠ The plan is what tells the readings apart: three sessions of two connections
+# read this way, and one session of six read the old way.
+segments_at() { # path endpoint connection:offset:hex...
+  _path=$1
+  _endpoint=$2
+  shift 2
+  _total=$#
+  {
+    printf '{\n  "schema": "bit-ids/transcript/1",\n'
+    printf '  "endpoint": "%s",\n  "segments": [\n' "$_endpoint"
+    _n=0
+    for _seg in "$@"; do
+      _n=$((_n + 1))
+      _rest=${_seg#*:}
+      printf '    {\n      "connection": %s,\n' "${_seg%%:*}"
+      printf '      "offset_ms": %s,\n' "${_rest%%:*}"
+      printf '      "direction": "from_target",\n'
+      printf '      "bytes": "%s"\n' "${_rest#*:}"
+      if [ "$_n" = "$_total" ]; then printf '    }\n'; else printf '    },\n'; fi
+    done
+    printf '  ]\n}\n'
+  } >"$_path"
+}
+S0='-XX0000-dddddddddddd'
+S1='-XX0000-eeeeeeeeeeee'
+S2='-XX0000-ffffffffffff'
+for _lane in good-release good-source; do
+  _bundle="$WORK/$_lane-capture/capture/bundle"
+  segments_at "$_bundle/tracker-http.transcript.json" tracker-http \
+    "1:1000:$(announce_hex "$S0" started)" "2:5000:$(announce_hex "$S1" started)" \
+    "3:9000:$(announce_hex "$S2" started)"
+  segments_at "$_bundle/peer-wire-dialled.transcript.json" peer-wire-dialled \
+    "4:1200:$(handshake_hex "$S0")" "5:1300:$(handshake_hex "$S0")" \
+    "6:5200:$(handshake_hex "$S1")" "7:5300:$(handshake_hex "$S1")" \
+    "8:9200:$(handshake_hex "$S2")" "9:9300:$(handshake_hex "$S2")"
+  _agent=$(hexof 'fixture-client/1.2.3')
+  {
+    printf 'tracker_http/peer_id=%s,%s,%s\n' "$(hexof "$S0")" "$(hexof "$S1")" "$(hexof "$S2")"
+    printf 'tracker_http/user_agent=%s,%s,%s\n' "$_agent" "$_agent" "$_agent"
+    printf 'peer_wire/peer_id=%s,%s,%s,%s,%s,%s\n' "$(hexof "$S0")" "$(hexof "$S0")" \
+      "$(hexof "$S1")" "$(hexof "$S1")" "$(hexof "$S2")" "$(hexof "$S2")"
+    printf 'peer_wire/reserved=%s,%s,%s,%s,%s,%s\n' "$RESERVED_HEX" "$RESERVED_HEX" \
+      "$RESERVED_HEX" "$RESERVED_HEX" "$RESERVED_HEX" "$RESERVED_HEX"
+  } >"$_bundle/connector/fixture-oracle.txt"
+done
+case_is 0 "" "three sessions, each dialled twice, assemble" persession good-release good-source
+_plan=$(find "$WORK/store-persession" -name manifest.json -type f -exec cat {} + 2>/dev/null |
+  tr -d ' \n' | grep -o '"sessions":[0-9]*,"torrents":1,"connections":[0-9]*' | sort -u)
+if [ "$_plan" = '"sessions":3,"torrents":1,"connections":2' ]; then
+  pass "and each connection is placed in its own session: three sessions of two"
+else
+  fail "and each connection is placed in its own session: three sessions of two (got [$_plan])"
+fi
+write_lane good-release release "$GH" "" "$DIGEST_A" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+write_lane good-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+
 # ⛔ A TRANSCRIPT THIS PROJECT DID NOT WRITE IS NOT EVIDENCE. The reader is the
 # writer's inverse, so a document with uppercase hex - which digests differently
 # and would have been written as a different artifact - is refused rather than

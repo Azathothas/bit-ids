@@ -748,9 +748,11 @@ fn peer_observations(
         .map_err(|error| format!("the peer transcript: {error}"))?;
     let (_, peer) = parse_transcript_document(&peer)
         .map_err(|error| format!("the peer transcript: {error}"))?;
+    let starts = session_starts(lane)?;
     let mut handshake_ids = Vec::new();
     let mut reserved = Vec::new();
     let mut opened = Vec::new();
+    let mut session = 0_u32;
     let mut index = 0_usize;
     for segment in peer
         .segments()
@@ -779,21 +781,34 @@ fn peer_observations(
         let handshake = Handshake::parse_prefix(segment.bytes())
             .map_err(|error| format!("the peer handshake: {error}"))?
             .0;
-        // ⚠ ONE SESSION ON THIS SURFACE, and that is a fact about the capture
-        // rather than a default. `client-capture` dials as soon as the first
-        // announce arrives and opens every peer connection back to back, so all
-        // of them belong to whichever session was live then. Nothing in a peer
-        // handshake delimits a restart the way an announce event does, so
-        // attributing them across sessions would be a guess.
+        // ⭐ THE SESSION IS THE ONE WHOSE ANNOUNCE OPENED LAST BEFORE THIS
+        // CONNECTION. Nothing in a peer handshake delimits a restart, and this
+        // said all connections belonged to one session until 2026-10-15, which
+        // was true while `client-capture` dialled once. It dials after every
+        // session's opening announce now, so the opening offsets in the tracker
+        // transcript, on the same clock as this one, place each connection.
+        // ⚠ A connection whose first segment came before any later session's
+        // opening belongs to the first, which is the old reading exactly.
+        let at = u32::try_from(
+            starts
+                .iter()
+                .filter(|start| **start <= segment.offset_ms())
+                .count(),
+        )
+        .map_err(|error| format!("the peer: {error}"))?;
+        if at != session {
+            session = at;
+            index = 0;
+        }
         let connection = u32::try_from(index).map_err(|error| format!("the peer: {error}"))?;
         index += 1;
         handshake_ids.push(Observation {
-            session: 0,
+            session,
             connection,
             value: handshake.peer_id().to_vec(),
         });
         reserved.push(Observation {
-            session: 0,
+            session,
             connection,
             value: handshake.reserved().to_vec(),
         });
@@ -1109,6 +1124,43 @@ impl Sessions {
             connection: self.connection,
         }
     }
+}
+
+/// The offsets at which the build's announces opened a second and every later
+/// session, by the rule [`Sessions`] reads them with.
+///
+/// ⛔ Read from the tracker transcript rather than from the attestation's
+/// `sessions_started`, for the reason [`Sessions`] gives: a document is
+/// available, and the claim would be wrong whenever a session announced nothing.
+fn session_starts(lane: &Lane) -> Result<Vec<u64>, String> {
+    use bit_ids_lab::evidence::parse_transcript_document;
+    use bit_ids_wire::tracker_http::HttpRequest;
+    use bit_ids_wire::tracker_udp::Direction;
+
+    let tracker = std::fs::read_to_string(lane.bundle.join("tracker-http.transcript.json"))
+        .map_err(|error| format!("the tracker transcript: {error}"))?;
+    let (_, tracker) = parse_transcript_document(&tracker)
+        .map_err(|error| format!("the tracker transcript: {error}"))?;
+    let mut sessions = Sessions::new();
+    let mut current = 0_u32;
+    let mut starts = Vec::new();
+    for segment in tracker
+        .segments()
+        .iter()
+        .filter(|segment| segment.direction() == Direction::FromTarget)
+    {
+        let request = HttpRequest::parse(segment.bytes())
+            .map_err(|error| format!("the announce is not an HTTP request: {error}"))?;
+        if request.query_values(b"peer_id").is_empty() {
+            continue;
+        }
+        let at = sessions.observe(&request);
+        if at.session != current {
+            current = at.session;
+            starts.push(segment.offset_ms());
+        }
+    }
+    Ok(starts)
 }
 
 /// Builds one sampled field and keeps the observations corroboration compares.

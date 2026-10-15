@@ -432,6 +432,11 @@ from that many symbols, an estimate, so the bar is about one chance in four
 thousand. A leading or trailing run is never absorbed. ⚠ A coincidence at the
 edge of a varying span, which lengthens a fixed prefix by one byte, is not
 caught, and stays a residual.
+⭐ **Narrowed on 2026-10-15:** it divided Transmission's pair, `CLIENT-06`, and
+the operator settled on three sessions per capture rather than a change here.
+That takes the odds at an edge from about one in sixty-four to about one in
+four thousand. The peer surface is also dialled in every session, so its
+fields get three values too.
 
 | `cargo test -p bit-ids --test variability`, 27 cases | |
 | --- | --- |

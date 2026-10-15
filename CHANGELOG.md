@@ -5,6 +5,17 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T03:24:40Z
+
+- ⭐ **A capture runs three sessions, and the peer surface is dialled in every
+  one.** A build that keeps one peer ID per session showed one value on that
+  surface, and two such captures stated two different constants. The assembler
+  now places each connection in the session it was dialled in. A third session
+  makes it far less likely that a byte two random values happen to share is
+  called fixed. Settled by the operator.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-06`. No version bump and
+  no deploy.
+
 ### 2026-10-15T03:02:36Z
 
 - ⛔ **The assembler read every segment on a peer connection as a handshake.**
