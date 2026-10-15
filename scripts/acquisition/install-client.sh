@@ -442,7 +442,7 @@ fi
 # ⛔ THE RULES ARE `capture-client`'s, AND SINCE 2026-10-14 THEY ARE ONE FILE.
 # Two spellings of "what a credential looks like" would drift, and the day they
 # did, the one a reader trusts would be whichever they saw first; this carried a
-# copy written to be identical until `scan-bundle.sh` took both.
+# copy written to be identical until `scan-bundle` took both.
 #
 # -- ⛔ AND THE SCOPE IS THIS DIRECTORY'S TOP LEVEL, NOT THE TREE BELOW IT ----
 #
@@ -476,7 +476,14 @@ fi
 # the value rule here did too, so a source tree's own test configuration was in
 # scope for a scan over documents that ship; both halves had the defect, and
 # `--top-level` is one flag over both now rather than a fix applied twice.
-sh "$ROOT/scripts/capture/scan-bundle.sh" --top-level "$WORKDIR"
+# ⛔ THE SCAN IS `bit-check scan-bundle` SINCE 2026-10-15, `CI-11`, and it is
+# found through BIT_CHECK and never built here: a build under containment would
+# be fetching on the host the capture exists to contain. The workflow builds it
+# with the observer.
+if [ -z "${BIT_CHECK:-}" ] || [ ! -x "$BIT_CHECK" ]; then
+  cannot "BIT_CHECK names no bit-check binary; it is built before the capture, never here"
+fi
+"$BIT_CHECK" scan-bundle --top-level "$WORKDIR"
 SCAN_RC=$?
 case "$SCAN_RC" in
   0) : ;;

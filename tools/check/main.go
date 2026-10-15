@@ -44,6 +44,7 @@
 //	bit-check check-remote-items [--repo OWNER/NAME]
 //	bit-check mine-repo OWNER/NAME [--out DIR] [--route auto|gh|proxy] [--no-clone] [--json]
 //	bit-check mine-repo --selftest [--json]
+//	bit-check scan-bundle [--top-level] <dir>
 //	bit-check --rows
 //
 // ⛔ Read the exit code from this process, unpiped. ⚠ `go run . <check>` is a
@@ -161,6 +162,11 @@ func main() {
 	}
 	if args[0] == "assemble-bundle" {
 		os.Exit(assembleBundle(args[1:]))
+	}
+	// ⭐ And the capture path, leaf by leaf, so a client capture runs on
+	// Windows. `CI-11`; scanbundle.go is the first.
+	if args[0] == "scan-bundle" {
+		os.Exit(scanBundle(args[1:]))
 	}
 
 	name := args[0]

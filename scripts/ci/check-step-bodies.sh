@@ -350,10 +350,20 @@ cp "$ROOT/scripts/acquisition/install-step.sh" "$TREE/scripts/acquisition/" || e
 # scratch tree without it would make both install cases fail on a missing file
 # rather than on what they are about.
 cp "$ROOT/scripts/ci/report-holders.sh" "$TREE/scripts/ci/" || exit 2
-# ⚠ AND THE RULE-12 SCAN `install-client.sh` ASKS, for the same reason: it left
-# that file for `scan-bundle.sh` on 2026-10-14, and without it every install case
-# here answered 2, which is the scan saying it could not run.
-cp "$ROOT/scripts/capture/scan-bundle.sh" "$TREE/scripts/capture/" || exit 2
+# ⚠ AND THE RULE-12 SCAN `install-client.sh` ASKS, for the same reason: without
+# it every install case here answered 2, which is the scan saying it could not
+# run. It is `bit-check scan-bundle` since 2026-10-15, `CI-11`, found through
+# BIT_CHECK as the workflow's own *Build the observer* step exports it.
+command -v go >/dev/null 2>&1 || {
+  printf 'check-step-bodies: go is not on this host, so bit-check cannot be built\n' >&2
+  exit 2
+}
+(cd "$ROOT/tools/check" && go build -o "$TREE/bin/bit-check" .) >/dev/null 2>&1 || {
+  printf 'check-step-bodies: cannot build bit-check\n' >&2
+  exit 2
+}
+BIT_CHECK="$TREE/bin/bit-check"
+export BIT_CHECK
 
 PATH="$TREE/bin:$PATH"
 export PATH

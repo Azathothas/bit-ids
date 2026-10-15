@@ -550,7 +550,7 @@ would be the gate-on-one-path shape this guard was added to close.
 
 ⚠ **Amended 2026-10-14: the two rules are one file now.** They were copied into
 `install-client.sh` from `capture-client.sh` and kept identical by a comment;
-both call [`../scripts/capture/scan-bundle.sh`](../scripts/capture/scan-bundle.sh),
+both call `scan-bundle.sh`, `bit-check scan-bundle` since 2026-10-15 (`CI-11`),
 this one with `--top-level`, which is the scope this section settled stated as
 one flag over both rules. `CI-09` carries why a third caller needed it.
 

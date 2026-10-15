@@ -58,6 +58,12 @@ store_require sha256sum curl install
 WORK=$(store_workdir checkrootless) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
+# ⚠ `install-client` asks `bit-check scan-bundle` for its rule-12 scan since
+# 2026-10-15, `CI-11`, and finds it through BIT_CHECK. Built into the workdir,
+# which the drive user can traverse, and passed to every case below.
+mkdir -p "$WORK/bin" || exit 2
+BIT_CHECK=$(store_bitcheck "$ROOT" "$WORK/bin") || exit 2
+
 ROOTLESS="$ROOT/scripts/acquisition/install-rootless.sh"
 INSTALLER="$ROOT/scripts/acquisition/install-client.sh"
 GUARD="$ROOT/scripts/acquisition/assert-disposable.sh"
@@ -136,7 +142,7 @@ run_as() { # script-path out err [env-string]
   _script=$1
   _out=$2
   _err=$3
-  _env=${4:-}
+  _env="BIT_CHECK=$BIT_CHECK ${4:-}"
   chmod a+rx "$_script" 2>/dev/null || :
   if [ -n "$DRIVE_USER" ]; then
     su "$DRIVE_USER" -s /bin/sh \

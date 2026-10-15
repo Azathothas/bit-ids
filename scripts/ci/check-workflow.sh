@@ -388,9 +388,9 @@ scan_gate() { # workflow job upload-if
   fi
   # shellcheck disable=SC2016
   case "$(step_command "$1" "$2" "$SCAN_STEP")" in
-    *'scripts/capture/scan-bundle.sh "$RUNNER_TEMP/capture"'*) : ;;
+    *'"$BIT_CHECK" scan-bundle "$RUNNER_TEMP/capture"'*) : ;;
     *)
-      printf '[%s] does not run scan-bundle.sh over the bundle' "$SCAN_STEP"
+      printf '[%s] does not run bit-check scan-bundle over the bundle' "$SCAN_STEP"
       return
       ;;
   esac
@@ -1259,7 +1259,7 @@ if unit static-readers; then
       fail "probe    the rule-12 gate reader accepted an upload on always() with no scan"
     fi
     # shellcheck disable=SC2016
-    sed 's|run: sh scripts/capture/scan-bundle.sh "$RUNNER_TEMP/capture"|run: "true"|' \
+    sed 's|^\( *\)"$BIT_CHECK" scan-bundle "$RUNNER_TEMP/capture"$|\1true|' \
       "$CLIENTWF" >"$MUTWF"
     _probe_if=$(step_if "$MUTWF" linux "Upload the evidence bundle")
     if cmp -s "$CLIENTWF" "$MUTWF"; then

@@ -1,8 +1,8 @@
 # Current progress
 
 State instant: 2026-10-14
-Total: 66
-Open: 21
+Total: 67
+Open: 22
 In progress: 0
 Blocked: 0
 Done: 45
@@ -98,7 +98,7 @@ the job's last step, in the request that carries its last snapshot, so one
 still open is a host that never reached it.
 
 ⛔ **Rule 12 is asked of everything a capture uploads, success or refusal.**
-`scripts/capture/scan-bundle.sh` is its one home.
+`bit-check scan-bundle` is its one home, in `sh` until 2026-10-15 (`CI-11`).
 
 ## Work order
 
@@ -122,15 +122,18 @@ still open is a host that never reached it.
    on `capture` run 38722969612: the blocked `curl.exe` exited 7 and the
    capture still verified over loopback. The
    orphaned-subprocess residual and the `sh -c` and `bash -e` split are closed.
-3. **`OBS-10`**, which needs a second platform, so it follows the captures.
-4. **`CI-07`**: its Approach and Prove were rewritten on 2026-10-14 to the route
+3. **`CI-11`**: the capture path in Go, leaves first, then a Windows lane of
+   `capture-client.yml` capturing qBittorrent. Every client entry's
+   two-platform Prove, and `OBS-10`, wait on it.
+4. **`OBS-10`**, which needs a Windows client capture, so it follows `CI-11`.
+5. **`CI-07`**: its Approach and Prove were rewritten on 2026-10-14 to the route
    `CI-10` made. `check-corpus`, `check-indexes`, `check-release`,
    `check-formats` and `check-staleness` are ported and run on both lanes;
    `check-connector` too, and `check-assemble` on 2026-10-15, the last portable
    row. Then `check-bitcheck`.
-5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
+6. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
-6. The remaining client and engine breadth, then refinements.
+7. The remaining client and engine breadth, then refinements.
 
 ## Settled decisions
 
@@ -148,6 +151,8 @@ Do not re-raise one.
 | whether to append capture run 38's `aria2-next` 3.0.3 bundle to `data` | yes, now. Settled by the operator on 2026-10-15. `CI-09`. |
 | how `check-assemble`'s dispatch rows reach the Windows lane | `assemble-dispatch.sh` is rewritten in Go, so nothing on that path is shell, and `check-assemble` ports whole. Settled by the operator on 2026-10-15. `CI-07`. |
 | how `capture.yml`'s Windows job is contained | firewall rules blocking outbound traffic for the capture's own executables, with the egress guard reading those rules, in place of cutting the host's route. Settled by the operator on 2026-10-15. `CI-08`. |
+| how the Windows client capture lane runs the capture path | the capture path is ported into Go first, then the Windows lane is added; not `sh` under Git for Windows, not PowerShell twins. Settled by the operator on 2026-10-15. `CI-11`. |
+| which client is the first Windows capture | qBittorrent, so `CLIENT-01`'s Linux and Windows Prove closes first. Settled by the operator on 2026-10-15. `CI-11`. |
 | who authors a commit | the operator, `Azathothas`, per `AGENTS.md` rule 11, whatever a host's hook asks. Settled by the operator on 2026-10-15. |
 | how Transmission's source route orders a history git cannot date | a scheme floor: the adapter declares the lowest major its scheme covers, and an unorderable tag below it gets its own verdict rather than blocking. Under `bit-ids/resolution/2`. Settled by the operator on 2026-10-15. `CLIENT-06`. |
 | which qBittorrent version the pair targets, and its second route | 5.2.4, the newest stable, built on the `source` lane from the signed `release-5.2.4` tag against Qt's own prebuilt archives. Settled by the operator on 2026-10-15. `CLIENT-01`. |

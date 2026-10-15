@@ -3947,7 +3947,7 @@ run 11 measured.
 
 | where | what changed |
 | --- | --- |
-| [`scan-bundle.sh`](../scripts/capture/scan-bundle.sh) | the two rule-12 rules, out of `capture-client.sh` and `install-client.sh` - which carried copies a comment kept identical - into one file, with `--top-level` for the install workdir's scope; a missing directory is exit 2, never clean, and both rules are reported when both fire |
+| `scan-bundle.sh`, `bit-check scan-bundle` since 2026-10-15 (`CI-11`) | the two rule-12 rules, out of `capture-client.sh` and `install-client.sh` - which carried copies a comment kept identical - into one file, with `--top-level` for the install workdir's scope; a missing directory is exit 2, never clean, and both rules are reported when both fire |
 | `capture-client.yml` | *Scan the evidence of a refused capture* runs only when *Capture* failed, and *Upload the evidence bundle* runs on a capture that succeeded or a scan that passed |
 | `check-workflow` | an evidence upload carrying an `if:` must name the scan's outcome, and the scan step must carry its id, run `scan-bundle.sh` over the bundle, and sit between the capture and the upload; refuted by an upload on `always()` and a scan step that runs `true` |
 
@@ -5696,3 +5696,70 @@ green, which this table cannot be.
 stated. The class-A Windows rows are `CI-07`'s, whose route this entry changed:
 a row closes by its harness joining `bit-check`.
 
+## CI-11: The capture path in Go, so a client capture runs on Windows
+
+Source: operator direction on 2026-10-15, choosing how the Windows client
+capture lane is built
+Priority: P1 | Effort: XL | Status: OPEN
+
+Problem: Every client entry's Prove asks for agreeing Linux and Windows
+profiles, and `OBS-10` asks for the same normalized events on both. The client
+capture path is POSIX `sh` end to end: `capture-client.yml` runs
+`install-step.sh`, `install-client.sh`, the adapters, `capture-client.sh` and
+`scan-bundle.sh`, and nothing of it runs on a Windows runner. ⛔ That is one
+missing lane holding every client entry open.
+
+Premise: the operator chose on 2026-10-15 among three shapes: the `sh` scripts
+under Git for Windows' `sh.exe`, PowerShell twins, or a Go port that runs
+natively on both. **The Go port first**, then the Windows lane. The first
+Windows client capture is qBittorrent, so `CLIENT-01`'s two-platform Prove
+closes first.
+
+Approach:
+
+1. ⭐ **Into `bit-check`, as helpers, as `assemble-dispatch` went.** One binary
+   is already built on both lanes and by the publishing workflows; a second Go
+   module would be a second build every workflow and harness has to spell.
+2. ⛔ **Leaves first, each by `CI-10`'s method**: written in Go, driven by the
+   existing `sh` harness against both halves, compared on verdicts and rows,
+   mutation-proved, and only then the `sh` half deleted and its callers moved.
+   The order is `scan-bundle`, the two resolvers, `install-step`,
+   `install-client`, the adapters, then `capture-client`.
+3. ⚠ **A caller still in `sh` finds the binary through `BIT_CHECK`** and never
+   builds it: a capture that built a dependency under containment would be
+   fetching on the host it exists to contain. The workflows build `bit-check`
+   with the observer. A caller with no `BIT_CHECK` is could-not-run.
+4. Then the Windows lane of `capture-client.yml`, contained by
+   `firewall-contain.ps1` (`CI-08`), with qBittorrent's Windows installer as
+   its first route.
+
+Prove: `capture-client.yml` runs no `sh` script on its capture path, and a
+dispatch captures qBittorrent 5.2.4 on Linux and on Windows from one workflow,
+each lane contained and its bundle verified.
+
+### ⭐ `scan-bundle` is the first leaf in Go. 2026-10-15
+
+`bit-check scan-bundle`, in [`../tools/check/scanbundle.go`](../tools/check/scanbundle.go),
+replaces `scripts/capture/scan-bundle.sh`. Its callers moved with it:
+`install-client.sh` and `capture-client.sh` run `"$BIT_CHECK" scan-bundle`, and
+`capture-client.yml`'s *Scan the evidence of a refused capture* step does too.
+*Build the observer* builds `bit-check` and exports `BIT_CHECK` through
+`GITHUB_ENV`. A caller whose `BIT_CHECK` names no binary is could-not-run, and
+`check-capture-client` has a case for that.
+
+| held against the shell half before it was deleted | result |
+| --- | --- |
+| 600 random trees, whole and `--top-level`, both halves | 0 disagreements in exit code, files named, or messages; 460 refused by the name rule, the value rule or both, 219 clean |
+| the five argument errors and `--help` | the same exit codes and the same stderr |
+| `sh scripts/capture/check-capture-client.sh` | 134 cases, 134 passed, one of them new: no `BIT_CHECK` is exit 2 |
+| `sh scripts/acquisition/check-rootless.sh`, as root and as `ubuntu` | 26 of 26 each; with `BIT_CHECK` pointed at nothing, both install rows fail |
+| `sh scripts/ci/check-step-bodies.sh` | 43 of 43; with `BIT_CHECK` pointed at nothing, the install rows fail |
+
+⚠ **Three differences, chosen on purpose.** The header of `scanbundle.go` gives
+the reasons:
+
+- A directory the scan cannot read whole is exit 2. The shell half sent
+  `find`'s errors to `/dev/null` and answered clean over files it never read.
+- The paths are named in lexical order.
+- A file is binary when it holds a NUL byte. That is the C locale's reading of
+  `grep -I`, and it scans more files than a UTF-8 locale would.

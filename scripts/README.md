@@ -150,14 +150,18 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   build was measured rather than assumed: an announce must carry a peer ID this
   observer did not generate, and the raw transcript on disk must hold those
   exact bytes.
-- [`capture/scan-bundle.sh`](capture/scan-bundle.sh) is rule 12 over a
-  directory about to be uploaded: a file whose name says it holds a credential,
+- `bit-check scan-bundle`, in
+  [`../tools/check/scanbundle.go`](../tools/check/scanbundle.go), is rule 12
+  over a directory about to be uploaded: a file whose name says it holds a credential,
   and a document carrying a secret-shaped value, both always asked. ⛔ It is the
   one home for both rules, and three callers ask it: `capture-client.sh` over its
   bundle, `install-client.sh` over its workdir's top level with `--top-level`,
   and `capture-client.yml`'s *Scan the evidence of a refused capture*, without
   which a refused capture's bundle would be uploaded unscanned. ⚠ A directory
-  that is not there is exit 2, never clean.
+  that is not there, or one it cannot read whole, is exit 2, never clean. ⭐ It
+  was `capture/scan-bundle.sh` until 2026-10-15, the first leaf of the capture
+  path to leave `sh` (`CI-11`); its callers find it through `BIT_CHECK`, which
+  the workflow's *Build the observer* step exports, and never build it.
 - [`capture/adapters/`](capture/adapters/) holds one file per target and is the
   only place that knows how a particular product is installed, asked its
   version, started and stopped. Its [README](capture/adapters/README.md) carries

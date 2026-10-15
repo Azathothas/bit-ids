@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T11:33:17Z
+
+- ⭐ **The capture path starts leaving `sh`, so a client capture can run on
+  Windows.** Rule 12's scan of what a capture uploads is `bit-check scan-bundle`
+  now. The operator chose a Go port of the whole capture path, with qBittorrent
+  as the first Windows capture.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T11:13:41Z
 
 - ⭐ **The Windows firewall containment is proved on a runner**: `capture` run

@@ -97,6 +97,14 @@ OBSERVER="${CARGO_TARGET_DIR:-$ROOT/target}/debug/examples/client-capture"
 WORK=$(store_workdir checkclient) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
+# ⛔ THE RULE-12 SCAN IS `bit-check scan-bundle` SINCE 2026-10-15, `CI-11`, and
+# the runner and the installer find it through BIT_CHECK and never build it,
+# which is the contract the workflow keeps. So it is built here, beside the
+# observer.
+mkdir -p "$WORK/bin" || exit 2
+BIT_CHECK=$(store_bitcheck "$ROOT" "$WORK/bin") || exit 2
+export BIT_CHECK
+
 # ⚠ SHORT ON PURPOSE, and `check-capture` carries what lengthening it costs:
 # measured on 2026-09-09, this harness is 48 seconds at `5` and **168 at `20`**,
 # because several cases here are ones the deadline itself has to end. ⛔ That is
@@ -667,17 +675,16 @@ BIT_IDS_STUB_DROP_NAMED=""
 
 # -- ⛔ THE SCAN ITSELF, ASKED DIRECTLY ---------------------------------------
 #
-# ⛔ `scan-bundle.sh` IS THE ONE HOME FOR BOTH RULES, and three callers ask it:
+# ⛔ `bit-check scan-bundle` IS THE ONE HOME FOR BOTH RULES, and three callers ask it:
 # this runner, `install-client`, and the workflow step that scans a REFUSED
 # capture before its evidence is uploaded. That third caller reaches it with no
 # runner around it, so what it answers alone is what these cases hold.
-SCAN="$ROOT/scripts/capture/scan-bundle.sh"
 SCANDIR="$WORK/scan"
 rm -rf "$SCANDIR"
 mkdir -p "$SCANDIR/deep/er" || exit 2
 printf 'nothing here\n' >"$SCANDIR/observer.log"
 
-sh "$SCAN" "$SCANDIR" >/dev/null 2>"$WORK/scan.err"
+"$BIT_CHECK" scan-bundle "$SCANDIR" >/dev/null 2>"$WORK/scan.err"
 _clean=$?
 if [ "$_clean" = 0 ]; then
   pass "scan      a directory holding nothing rule 12 forbids is clean"
@@ -688,7 +695,7 @@ fi
 # ⛔ A PATH THAT IS NOT THERE IS COULD-NOT-RUN. A scan over nothing finds
 # nothing, and a workflow reading 0 would upload whatever a mistyped path did not
 # name.
-sh "$SCAN" "$WORK/there-is-no-bundle-here" >/dev/null 2>"$WORK/scan.err"
+"$BIT_CHECK" scan-bundle "$WORK/there-is-no-bundle-here" >/dev/null 2>"$WORK/scan.err"
 if [ $? = 2 ] && grep -q -F -e 'is not a directory' "$WORK/scan.err"; then
   pass "scan      a directory that is not there is could-not-run, not clean"
 else
@@ -700,7 +707,7 @@ fi
 od -An -tx1 -N16 /dev/urandom | tr -d ' \n' >"$SCANDIR/rpc-token"
 printf '{"rpc-secret":"%s"}\n' "$(od -An -tx1 -N12 /dev/urandom | tr -d ' \n')" \
   >"$SCANDIR/options.json"
-sh "$SCAN" "$SCANDIR" >/dev/null 2>"$WORK/scan.err"
+"$BIT_CHECK" scan-bundle "$SCANDIR" >/dev/null 2>"$WORK/scan.err"
 if [ $? = 1 ] && grep -q -F -e 'name says it holds a credential' "$WORK/scan.err" &&
   grep -q -F -e 'carrying a secret-shaped value' "$WORK/scan.err"; then
   pass "scan      a credential-named file and a secret-shaped value are both reported"
@@ -719,15 +726,25 @@ rm -f "$SCANDIR/rpc-token" "$SCANDIR/options.json"
 # scanned whole; an install workdir ships its top level, and `--top-level` must
 # stop reading below it and only below it.
 od -An -tx1 -N16 /dev/urandom | tr -d ' \n' >"$SCANDIR/deep/er/server.key"
-sh "$SCAN" "$SCANDIR" >/dev/null 2>"$WORK/scan.err"
+"$BIT_CHECK" scan-bundle "$SCANDIR" >/dev/null 2>"$WORK/scan.err"
 _whole=$?
-sh "$SCAN" --top-level "$SCANDIR" >/dev/null 2>"$WORK/scan.err"
+"$BIT_CHECK" scan-bundle --top-level "$SCANDIR" >/dev/null 2>"$WORK/scan.err"
 _top=$?
 if [ "$_whole" = 1 ] && [ "$_top" = 0 ]; then
   pass "scan      a file below the top level is read whole and not with --top-level"
 else
   fail "scan      a file below the top level is read whole ($_whole) and not with --top-level ($_top)"
 fi
+
+# ⛔ AND A RUNNER THAT CANNOT FIND THE SCAN IS COULD-NOT-RUN, never a capture
+# that shipped unscanned. BIT_CHECK names the binary the workflow built; a
+# capture that went looking for one, or built one, would be doing it under
+# containment.
+_bc=$BIT_CHECK
+BIT_CHECK=$WORK/no-bit-check-here
+run_case 2 "BIT_CHECK names no bit-check binary" \
+  "a runner whose BIT_CHECK names nothing is could-not-run"
+BIT_CHECK=$_bc
 
 # -- ⛔ THE CONNECTOR REFUSALS, DRIVEN THROUGH A STUB -------------------------
 #
@@ -1353,12 +1370,10 @@ else
   # by walking up two levels from its own path. A copy dropped anywhere else
   # exits 2 for a missing guard, which is could-not-run and would have been read
   # as a refusal.
-  # ⚠ And the rule-12 scan it asks, under the same shape, for the same reason.
   mkdir -p "$WORK/planted/scripts/acquisition" "$WORK/planted/scripts/capture"
   sed 's/^  ACQUIRED=no$/  ACQUIRED=yes/' "$INSTALLER" \
     >"$WORK/planted/scripts/acquisition/install-client.sh"
   cp "$GUARD" "$WORK/planted/scripts/acquisition/assert-disposable.sh"
-  cp "$ROOT/scripts/capture/scan-bundle.sh" "$WORK/planted/scripts/capture/scan-bundle.sh"
   if cmp -s "$INSTALLER" "$WORK/planted/scripts/acquisition/install-client.sh"; then
     fail "the acquired-verdict plant applied to install-client"
   else

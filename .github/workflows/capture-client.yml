@@ -154,11 +154,17 @@ jobs:
       # ⚠ Both resolver examples are built on the package lane too, which costs
       # seconds and keeps this step's command free of a condition. A build that
       # sometimes ran is a build whose absence is a matrix leg nobody reads.
+      #
+      # ⭐ AND `bit-check`, WHICH CARRIES THE CAPTURE PATH AS IT LEAVES `sh`
+      # (`CI-11`). Every later step finds it through BIT_CHECK; nothing on the
+      # capture path builds it.
       - name: Build the observer
         run: |
           set -eu
           cargo build -p bit-ids-probe --locked --example client-capture
           cargo build -p bit-ids --locked --example resolve-stable --example select-asset
+          (cd tools/check && go build -o "$RUNNER_TEMP/bit-check" .)
+          printf 'BIT_CHECK=%s\n' "$RUNNER_TEMP/bit-check" >>"$GITHUB_ENV"
 
       # ⛔ AND SO DOES THE INSTALL, FOR THE SAME REASON AND ONE MORE. capture-client
       # refuses to install anything, so a product that is not here by now is not
@@ -399,7 +405,8 @@ jobs:
       - name: Scan the evidence of a refused capture
         id: scan
         if: failure() && steps.capture.outcome == 'failure'
-        run: sh scripts/capture/scan-bundle.sh "$RUNNER_TEMP/capture"
+        run: |
+          "$BIT_CHECK" scan-bundle "$RUNNER_TEMP/capture"
 
       # ⚠ ONLY AFTER THE MEASUREMENT IS FINISHED. The host never lost its route,
       # so nothing has to be restored first.

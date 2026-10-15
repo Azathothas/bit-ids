@@ -667,10 +667,17 @@ EVIDENCE=$(grep -c . "$SUMS")
 #
 # ⛔ A CAPTURE'S OUTPUT DIRECTORY IS ITS EVIDENCE BUNDLE, AND A PRODUCT THIS
 # PROJECT DID NOT WRITE HAS BEEN WRITING INTO IT: `aria2-next` once left its
-# per-run RPC token there and it shipped. `scan-bundle.sh` carries the measurement
+# per-run RPC token there and it shipped. `bit-check scan-bundle` carries the measurement
 # and both rules; it is the one home for them, and the workflow asks it again
 # about a capture that refused before reaching this line.
-sh "$ROOT/scripts/capture/scan-bundle.sh" "$OUT"
+# ⛔ THE SCAN IS `bit-check scan-bundle` SINCE 2026-10-15, `CI-11`, and it is
+# found through BIT_CHECK and never built here: a build under containment would
+# be fetching on the host the capture exists to contain. The workflow builds it
+# with the observer.
+if [ -z "${BIT_CHECK:-}" ] || [ ! -x "$BIT_CHECK" ]; then
+  cannot "BIT_CHECK names no bit-check binary; it is built before the capture, never here"
+fi
+"$BIT_CHECK" scan-bundle "$OUT"
 SCAN_RC=$?
 case "$SCAN_RC" in
   0) : ;;
