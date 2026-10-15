@@ -244,8 +244,29 @@ were weighed and set aside:
   AppImage's delivery.
 - The vendor's container image builds libtorrent from a moving branch.
 
-⚠ Not measured yet: which libtorrent the AppImage carries, which decides
-whether the source build should link 1.2 or 2.0.
+⭐ **Measured on 2026-10-15, by reading each AppImage's squashfs without running
+it.** The squashfs starts where the ELF runtime's section headers end. Neither
+AppImage was executed.
+
+| asset | digest prefix | libtorrent | peer prefix it embeds | Qt | binary |
+| --- | --- | --- | --- | --- | --- |
+| `qbittorrent-5.2.4_x86_64.AppImage` | `9ab0e97a3245a1d5` | 1.2.20 | `-LT12K0-` | 6.10.3, GCC 11.4.0 | `usr/bin/qbittorrent` |
+| `qbittorrent-5.2.4_lt20_x86_64.AppImage` | `eda6c0ca39f9befb` | 2.0.15 | `-LT20F0-` | 6.10.3, GCC 11.4.0 | `usr/bin/qbittorrent` |
+
+⛔ **Three things the adapter assumed were wrong.** The release asset it selects
+carries libtorrent 1.2, and the settled source build linked 2.0. The reserved
+bytes a pair compares are libtorrent's, so the two routes would have diverged
+over the library rather than the product. Neither AppImage carries
+`qbittorrent-nox`; both carry the GUI `qbittorrent`. And the only platform
+plugins bundled are `libqxcb.so` and `libqwayland.so`, so the binary cannot start
+without a display server.
+
+⭐ **Settled by the operator the same day:**
+
+- the release route takes the `_lt20` AppImage;
+- the source route links libtorrent 2.0.15 built from its own tag;
+- both routes run the GUI build under Xvfb started inside the capture namespace;
+- Qt stays 6.11.2 from the prebuilt archives, though the AppImage bundles 6.10.3.
 
 ⛔ **And the source route's resolver fails closed today, measured on
 2026-10-15** while building `CLIENT-06`'s floor. The live refs carry 260
