@@ -61,6 +61,28 @@ store_build() { # root example [package]
   printf '%s\n' "$_bin"
 }
 
+# Builds `bit-check` into a directory and reports the path to it.
+#
+# ⭐ FOR A HARNESS WHOSE SUBJECT IS ONE OF ITS HELPERS. `assemble-dispatch` and
+# `assemble-bundle` were shell scripts and are `bit-check` helpers since
+# 2026-10-15, `CI-07`, and the two harnesses that drive them build it here
+# rather than each spelling its own `go build`.
+store_bitcheck() { # root dir
+  command -v go >/dev/null 2>&1 || {
+    printf '%s: go is not on this host, so bit-check cannot be built\n' "$ME" >&2
+    exit 2
+  }
+  if ! (cd "$1/tools/check" && go build -o "$2/bit-check" .) >/dev/null 2>&1; then
+    printf '%s: cannot build bit-check\n' "$ME" >&2
+    exit 2
+  fi
+  [ -x "$2/bit-check" ] || {
+    printf '%s: %s is not executable after a successful build\n' "$ME" "$2/bit-check" >&2
+    exit 2
+  }
+  printf '%s\n' "$2/bit-check"
+}
+
 # A scratch directory that removes itself. The caller installs the trap, because
 # a trap set inside a function is the caller's anyway and hiding that is worse
 # than writing it twice.

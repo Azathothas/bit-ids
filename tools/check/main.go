@@ -153,6 +153,14 @@ func main() {
 	if args[0] == "mine-repo" {
 		os.Exit(mineRepo(args[1:]))
 	}
+	// ⭐ And the two that turn a dispatch into a bundle, which write too.
+	// `CI-07`; dispatch.go says why they are Go.
+	if args[0] == "assemble-dispatch" {
+		os.Exit(assembleDispatch(args[1:]))
+	}
+	if args[0] == "assemble-bundle" {
+		os.Exit(assembleBundle(args[1:]))
+	}
 
 	name := args[0]
 	jsonOut := false

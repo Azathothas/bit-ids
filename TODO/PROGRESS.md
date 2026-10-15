@@ -121,9 +121,9 @@ still open is a host that never reached it.
 4. **`CI-07`**: its Approach and Prove were rewritten on 2026-10-14 to the route
    `CI-10` made. `check-corpus`, `check-indexes`, `check-release`,
    `check-formats` and `check-staleness` are ported and run on both lanes;
-   `check-connector` too. `check-assemble` is left, and its six dispatch rows
-   drive an `sh` script, so they either move to a class-C harness or the port
-   runs `sh` on Windows; `TODO/ci.md` `CI-07` carries it. Then `check-bitcheck`.
+   `check-connector` too. `check-assemble` is left; its dispatch rows drove an
+   `sh` script, which is `bit-check assemble-dispatch` since 2026-10-15, so it
+   ports whole next. Then `check-bitcheck`.
 5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
 6. The remaining client and engine breadth, then refinements.

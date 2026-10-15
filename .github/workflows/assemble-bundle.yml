@@ -72,8 +72,15 @@ jobs:
           run-id: ${{ inputs.capture_run_id }}
           github-token: ${{ github.token }}
 
+      # ⭐ GO SINCE 2026-10-15, `CI-07`, so nothing on this path is shell. The
+      # runner image carries Go, as the Linux gate's *Go formatting and vet*
+      # relies on. ⚠ Run from the checkout: it finds the repository from where
+      # it stands, to build the Rust examples it composes the bundle with.
+      - name: Build bit-check
+        run: cd tools/check && go build -o "$RUNNER_TEMP/bit-check" .
       - name: Assemble the bundle
-        run: sh scripts/capture/assemble-dispatch.sh "$RUNNER_TEMP/artifacts" "$RUNNER_TEMP/bundle"
+        run: '"$RUNNER_TEMP/bit-check" assemble-dispatch "$RUNNER_TEMP/artifacts" "$RUNNER_TEMP/bundle"'
+
 
       # ⛔ FATAL WHEN EMPTY. A green run with no bundle is the outcome a person
       # dispatching the publisher next would least expect.

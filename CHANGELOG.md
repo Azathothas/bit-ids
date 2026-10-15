@@ -5,6 +5,16 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T01:59:20Z
+
+- ⭐ **No shell is left on the path from a dispatch to a bundle.**
+  `assemble-dispatch.sh` and `assemble-bundle.sh` are now
+  `bit-check assemble-dispatch` and `bit-check assemble-bundle`. They were
+  compared with the shell halves on 41 inputs, including exit codes, messages
+  and bundle bytes, before those halves were deleted. Only two differences
+  remain, and both are intended.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-07`. No version bump and no deploy.
+
 ### 2026-10-15T01:34:57Z
 
 - ⭐ **A version scheme can declare a floor.** `transmission`'s refs carry 112

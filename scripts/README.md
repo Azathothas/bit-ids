@@ -96,7 +96,8 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   `SHA256SUMS` or a digest that does not match is refused before the push, the
   append rule is checked before the push, nothing re-enables force, and the branch is read back and verified
   before the run says it happened.
-- [`publishing/assemble-bundle.sh`](publishing/assemble-bundle.sh) composes the
+- `bit-check assemble-bundle`, in
+  [`../tools/check/dispatch.go`](../tools/check/dispatch.go), composes the
   publication tree over a store that is a valid corpus: the indexes, every
   rendering, the licence, `MANIFEST.json` and `SHA256SUMS`. It takes each
   target's version scheme from the resolutions it is handed, and removes a
@@ -233,13 +234,15 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   plants headers for a runtime the host lacks, a package without `curl.h`, two
   packages, a build missing an executable, and an archive with two trees, and
   checks that nothing reaches the prefix after any refusal.
-- [`capture/assemble-dispatch.sh`](capture/assemble-dispatch.sh) turns one
+- `bit-check assemble-dispatch`, beside it, turns one
   `capture-client` dispatch's downloaded artifacts into its records, their run
   manifests and the `bundle` the publisher downloads. It pairs the lanes by
   artifact name and refuses an adapter with one route, a capture with no install
   beside it, two attempts, and a lane whose resolver wrote no `resolution.json`.
   [`assemble-bundle.yml`](../.github/workflows/assemble-bundle.yml) runs it, and
-  `check-assemble` drives it.
+  `check-assemble` drives it. ⭐ Both were `sh` scripts until 2026-10-15, and
+  are Go so nothing on the path from a dispatch to a bundle is shell, which is
+  what lets `check-assemble` reach the Windows lane whole. `CI-07`.
 - `bit-check check-staleness` drives the staleness monitor over real stores
   and real resolutions: a new stable release opens one request, a preview and a
   release already measured open none, and a second run over a tracker holding
@@ -322,8 +325,7 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   holding a file three root processes are holding.
 - [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by **every** mutation
   harness except `acquisition/check-runner.sh`, and by
-  `publishing/publish-data.sh`, `publishing/assemble-bundle.sh` and
-  `capture/assemble-dispatch.sh`, which are not harnesses. It is never run.
+  `publishing/publish-data.sh`, which is not a harness. It is never run.
   ⚠ The two exceptions are named rather than counted, and the count that used to
   stand here is gone on purpose: it said "twelve" and went stale the next time a
   harness was added, which is the second time a number in this file has done

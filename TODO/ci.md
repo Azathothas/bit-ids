@@ -1452,6 +1452,42 @@ one. The other way is to move those six rows to a harness of their own, declared
 class C like `check-bundle`, whose subject they share. ⚠ Undecided, and the
 port waits on it rather than choosing by accident.
 
+⭐ **Settled on 2026-10-15 and built the same day: the dispatch path is Go.**
+`assemble-dispatch.sh` and the `assemble-bundle.sh` it called are
+`bit-check assemble-dispatch` and `bit-check assemble-bundle`, in
+[`../tools/check/dispatch.go`](../tools/check/dispatch.go). They are helpers
+like `mine-repo`, not rows, because they write. `assemble-bundle.yml` builds
+`bit-check` and runs it, and `check-assemble` and `check-bundle` drive it
+through `store_bitcheck`. ⛔ **Compared before either half was deleted.** A
+wrapper ran both halves on every input the two harnesses produce, 14 cases,
+and compared exit codes, stdout, stderr and a digest of every bundle file.
+Then 27 more cases written for the paths no harness reaches, an existing output among them: every name the
+lane reader refuses, an install from another run, a scheme no record orders
+under, three resolutions over two schemes, a hidden store entry, a store
+without `raw/` or `profiles/`, a string and a `false` in the scheme, argument
+errors, and a file that is not JSON. They all agree except two, and both are
+intended:
+
+- the usage line names the new command;
+- a resolution file holding two JSON documents is refused. `jq` read the first
+  and passed it; one file is one document.
+
+Eight mutants of the helpers were each killed by a harness case. The first
+mutant of the half-bundle cleanup did not compile, and its exit 2 was not
+counted as a kill; a compiling one was killed. ⚠ The helpers find the
+repository from the working directory, as every `bit-check` check does, where
+the shell halves found it from their own path. Both harnesses `cd` to the
+root, and the workflow step runs from the checkout.
+
+⚠ **A review found two small things, both fixed before the push.** A signal
+skipped the deferred removal, so an interrupted run could leave a half-built
+bundle; the shell halves trapped INT and TERM. Now a handler removes it and
+exits 2. That was driven, not cased, because it depends on timing:
+SIGTERM was sent at 50 ms steps through the window. The fix left no half
+bundle; a mutant without the handler left 4 in 12 runs. And a failed copy
+exited 2 with nothing said, where `cp` had named it. Next: `check-assemble`
+ports whole.
+
 Prove: ⛔ **Rewritten with the Approach.** Every portable-subject row is a
 `bit-check` row on the Windows lane, each port compared against its `sh` half
 before that half is deleted. `check-store` runs on Windows with a plant set
@@ -4137,9 +4173,9 @@ entry's residuals is the `bundle` artifact `publish-data.yml` downloads.
 
 [`assemble-bundle.yml`](../.github/workflows/assemble-bundle.yml) is a dispatch
 that takes a `capture-client` run's id. It downloads that run's captures and
-installs, and [`assemble-dispatch.sh`](../scripts/capture/assemble-dispatch.sh)
+installs, and `assemble-dispatch.sh` (since 2026-10-15 `bit-check assemble-dispatch`)
 pairs the lanes by artifact name and runs `assemble-capture` for every adapter
-into one store. [`assemble-bundle.sh`](../scripts/publishing/assemble-bundle.sh)
+into one store. `assemble-bundle.sh` (since 2026-10-15 `bit-check assemble-bundle`)
 then refuses a store that is not a valid corpus. It composes the indexes, every
 rendering, the licence, `MANIFEST.json` and `SHA256SUMS`, and the job uploads
 the tree as `bundle`. ⚠ It is a workflow of its own rather than a job in

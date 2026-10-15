@@ -1,5 +1,5 @@
 #!/bin/sh
-# check-bundle.sh - drive assemble-bundle.sh over a disposable corpus, plant each
+# check-bundle.sh - drive `bit-check assemble-bundle` over a disposable corpus, plant each
 # defect it exists to refuse, and hand the bundle it makes to the publisher.
 #
 # ⭐ THE GREEN CASE ENDS AT THE PUBLISHER, NOT AT THE ASSEMBLER. A bundle is only
@@ -48,11 +48,13 @@ ME=check-bundle
 
 store_require cargo sha256sum git jq tar
 BUILDER=$(store_build "$ROOT" build-store) || exit 2
-BUNDLER="$ROOT/scripts/publishing/assemble-bundle.sh"
 PUBLISHER="$ROOT/scripts/publishing/publish-data.sh"
 
 WORK=$(store_workdir checkbundle) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
+# ⭐ The assembler is `bit-check assemble-bundle` since 2026-10-15, `CI-07`. It
+# finds the repository from where it is run, hence the `cd`.
+BITCHECK=$(store_bitcheck "$ROOT" "$WORK") || exit 2
 
 # A resolution as `resolve-release.sh` writes it, carrying only what is read.
 # ⚠ The generation is the sixth argument, `bit-ids/resolution/2` by default.
@@ -71,7 +73,7 @@ fresh_store() {
 
 # ⛔ Unpiped. The output goes to a file and $? is read on the next line.
 run_bundle() { # resolution-args...
-  sh "$BUNDLER" "$@" "$WORK/store" "$WORK/bundle" >"$WORK/out" 2>&1
+  (cd "$ROOT" && "$BITCHECK" assemble-bundle "$@" "$WORK/store" "$WORK/bundle") >"$WORK/out" 2>&1
   RC=$?
 }
 

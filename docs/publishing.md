@@ -116,10 +116,10 @@ and `bit-check check-release`, in
 evidence and a publication is assembled from records, and the distance between
 those two was the whole of `CI-09`. ⭐ Since 2026-10-14 one dispatch closes it:
 [`assemble-bundle.yml`](../.github/workflows/assemble-bundle.yml) downloads one
-`capture-client` run's artifacts, and
-[`assemble-dispatch.sh`](../scripts/capture/assemble-dispatch.sh) writes the
+`capture-client` run's artifacts, and `bit-check assemble-dispatch`, in
+[`../tools/check/dispatch.go`](../tools/check/dispatch.go), writes the
 records and their run manifests with `assemble-capture`. Then
-[`assemble-bundle.sh`](../scripts/publishing/assemble-bundle.sh) refuses a store
+`bit-check assemble-bundle` refuses a store
 that is not a valid corpus and composes the indexes, the renderings, the
 licence and the two documents above. The result is uploaded as `bundle`.
 `capture-client` run 38's `aria2-next` 3.0.3 pair is the first bundle, 30

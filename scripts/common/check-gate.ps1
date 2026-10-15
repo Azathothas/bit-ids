@@ -311,7 +311,7 @@ Add-Unavailable 'check-store' 'its plants are a symlink and a named pipe; recons
 Add-Unavailable 'check-publish' 'its subject publish-data.sh has no PowerShell half; CI-07 class C'
 
 Add-Unavailable 'check-access' 'its subject publish-data.sh has no PowerShell half; CI-07 class C'
-Add-Unavailable 'check-bundle' 'its subjects assemble-bundle.sh and publish-data.sh have no PowerShell half; CI-07 class C'
+Add-Unavailable 'check-bundle' 'its subject publish-data.sh has no PowerShell half, and it drives bit-check assemble-bundle from sh; CI-07 class C'
 Add-Unavailable 'check-examples' 'it RUNS a document sh fenced blocks and there is no sh here; CI-07 class D'
 Add-Unavailable 'check-handbook' 'it RUNS a document sh fenced blocks and there is no sh here; CI-07 class D'
 

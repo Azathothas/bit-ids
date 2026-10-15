@@ -979,7 +979,9 @@ fi
 #
 # ⛔ The good pair again, under the names a dispatch uploads them as, with the
 # `resolution.json` each resolver writes beside its text record. `CI-09`.
-DISPATCH="$ROOT/scripts/capture/assemble-dispatch.sh"
+# ⭐ `bit-check assemble-dispatch` since 2026-10-15, `CI-07`. It finds the
+# repository from where it is run, hence the `cd` below.
+BITCHECK=$(store_bitcheck "$ROOT" "$WORK") || exit 2
 artifacts() { # dir run-attempt route...
   _dir=$1
   _ra=$2
@@ -997,7 +999,7 @@ artifacts() { # dir run-attempt route...
 # ⛔ Unpiped: the output goes to a file and $? is read on the next line.
 dispatch_is() { # expected-rc literal name dir
   rm -rf "$WORK/dispatch-bundle"
-  sh "$DISPATCH" "$4" "$WORK/dispatch-bundle" >"$WORK/dispatch.out" 2>&1
+  (cd "$ROOT" && "$BITCHECK" assemble-dispatch "$4" "$WORK/dispatch-bundle") >"$WORK/dispatch.out" 2>&1
   _rc=$?
   if [ "$_rc" != "$1" ]; then
     fail "$3 (exit $_rc, expected $1)"
