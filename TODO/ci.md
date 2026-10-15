@@ -2280,7 +2280,7 @@ install would have been ended by `install-client`'s own 420-second bound.
 
 ### ⭐ So the bound moves outside the shell entirely
 
-[`../scripts/acquisition/install-step.sh`](../scripts/acquisition/install-step.sh)
+`../scripts/acquisition/install-step.sh`
 holds what the step used to do inline, and the workflow runs it as
 `timeout -k 30 540 sh …`. ⛔ **The bounded process is now the step's own**, so
 nothing inside the step has to be reachable for the bound to work.
@@ -5913,3 +5913,26 @@ working directory and then from the adapter's own path, that carries
 on the path.** It uses `setsid`, `ps` over `/proc`, a sweep by session ID and
 `report-holders.sh`. Its Go form needs Unix sessions on one side and job
 objects on the other.
+
+### ⭐ `install-step` is the seventh leaf, and the install path is Go. 2026-10-15
+
+`bit-check install-step` is in [`../tools/check/installstep.go`](../tools/check/installstep.go),
+with its platform halves in `installstep_unix.go` and `installstep_windows.go`.
+It replaces `scripts/acquisition/install-step.sh`, and `capture-client.yml`'s
+*Install the client* now runs `timeout -k 30 "${OUTER_TIMEOUT:-1080}"
+"$BIT_CHECK" install-step`.
+
+On Unix the install's container is a session, as `setsid` made it. The sweep
+reads the session through a bounded `ps`, sends TERM, waits two seconds, and
+sends KILL to a fresh listing. The holder report is still
+`scripts/ci/report-holders.sh`, asked about the step log and about this
+process's own stdout. ⭐ On Windows the container is a job object. A process
+that a job member starts is in the job too, so the job is the whole population
+to sweep. The port calls kernel32 directly, because this module takes no
+dependencies. ⚠ It compiles for Windows but has not run there yet; the Windows
+lane is what will run it.
+
+| held against the shell half before it was deleted | result |
+| --- | --- |
+| `check-step-bodies` over the shell half, then over a shim to the port | identical row for row, 43 of 43: a product that leaks, a group left behind and then named in `orphans.log` and ended, the held-pipe control, the outer bound's 124, and a refused install's diagnosis |
+| three mutants: the sweep off, the step log never printed, the inner deadline answering 0 | the first two were refused. ⛔ The third passed every case, because nothing exercised the step's own deadline. A case now shortens that deadline under the shipped outer bound and requires 124 and *hung, not slow*. 45 of 45, and the mutant is refused |

@@ -52,6 +52,7 @@
 //	bit-check resolve-release --adapter <path> --workdir <dir> [...]
 //	bit-check resolve-source --adapter <path> --workdir <dir> [...]
 //	bit-check install-client --adapter <path> --route <name> --workdir <dir> [--record <file>]
+//	ADAPTER=<path> ROUTE=<name> RUNNER_TEMP=<dir> bit-check install-step
 //	bit-check --rows
 //
 // ⛔ Read the exit code from this process, unpiped. ⚠ `go run . <check>` is a
@@ -190,6 +191,9 @@ func main() {
 	}
 	if args[0] == "install-client" {
 		os.Exit(installClient(args[1:]))
+	}
+	if args[0] == "install-step" {
+		os.Exit(installStep(args[1:]))
 	}
 
 	name := args[0]

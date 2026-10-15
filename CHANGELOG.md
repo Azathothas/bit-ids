@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T13:41:08Z
+
+- ⭐ **The install step is Go**, a session on Unix and a job object on Windows,
+  so nothing on the install path is shell any more. A new case watches the
+  step's own deadline fire, which nothing had exercised.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T13:05:51Z
 
 - ⭐ **The install itself is Go**: `bit-check install-client` replaces its shell
@@ -2200,7 +2207,7 @@ Nothing is released yet. Entries accumulate here until the first
   a slow install would have been ended by the 420-second bound around the install
   call.
 - ⭐ **So the bound moves outside the shell entirely.**
-  [`scripts/acquisition/install-step.sh`](scripts/acquisition/install-step.sh)
+  `scripts/acquisition/install-step.sh`
   holds what the step did inline, and the workflow runs it under `timeout`, so
   the bounded process is the step's own and nothing inside it has to be reachable.
 - ⛔ What that buys is not a faster failure but a job that reaches its uploads at

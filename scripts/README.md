@@ -206,7 +206,8 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   `preexisting_version` and `acquired`: a route that installs nothing exits 0,
   and two of those agree on one binary's version while declaring two independent
   routes.
-- [`acquisition/install-step.sh`](acquisition/install-step.sh) is what
+- `bit-check install-step`, in [`../tools/check/installstep.go`](../tools/check/installstep.go)
+  and `acquisition/install-step.sh` until 2026-10-15 (`CI-11`), is what
   *Install the client* runs, in a file so the step's own process can be bounded
   from outside it. ⛔ Every bound tried before it was measured failing: `timeout`
   inside `install-client` ends its own child and cannot end a shell blocked

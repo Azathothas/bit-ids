@@ -341,10 +341,8 @@ TREE="$WORK/tree"
 mkdir -p "$TREE/scripts/acquisition" "$TREE/scripts/capture/adapters" "$TREE/bin" \
   "$TREE/state" "$TREE/temp" || exit 2
 mkdir -p "$TREE/scripts/ci" || exit 2
-# ⚠ AND THE STEP'S OWN FILE, WHICH IS WHAT THE BODY NOW RUNS. The install step is
-# one `timeout` around this script, so the scratch tree needs the real one or the
-# cases would be about a missing file rather than about what it does.
-cp "$ROOT/scripts/acquisition/install-step.sh" "$TREE/scripts/acquisition/" || exit 2
+# ⚠ THE STEP ITSELF IS `bit-check install-step` SINCE 2026-10-15, `CI-11`, so
+# the tree needs no copy of it: BIT_CHECK, built below, is what the body runs.
 # ⚠ THE HOLDER REPORT IS THE REAL ONE TOO. The install block calls it, so a
 # scratch tree without it would make both install cases fail on a missing file
 # rather than on what they are about.
@@ -517,7 +515,7 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
 
   # ⛔ AND WHAT IT LEAKED IS ENDED. The leak is an inner `timeout` with a group
   # of its own, which is the shape measured on 2026-09-16: a bound reaches its
-  # own group and never the one beneath. `install-step.sh` sweeps the install's
+  # own group and never the one beneath. `bit-check install-step` sweeps the install's
   # session, which every group in it shares. `CI-08`.
   stub_adapter "timeout 600 sleep 7123 >/dev/null 2>&1 &"
   rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
@@ -575,7 +573,7 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
     '>"$RUNNER_TEMP/install-step.log" 2>&1 </dev/null' \
     '3>&1 >"$RUNNER_TEMP/install-step.log" 2>&1 </dev/null'; then
     # ⚠ THE LEAK OPENS A SESSION OF ITS OWN, and has since 2026-10-14.
-    # `install-step.sh` now ends whatever the install leaves in its session,
+    # `bit-check install-step` ends whatever the install leaves in its session,
     # so a leaked `sleep` there no longer holds anything open, and this control
     # went red over a step that had stopped being able to hang. A process that
     # left the session is the one no sweep can find, and the redirection is
@@ -587,7 +585,6 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   else
     fail "sh       the leaked-descriptor plant did not apply"
   fi
-  cp "$ROOT/scripts/acquisition/install-step.sh" "$TREE/scripts/acquisition/" || exit 2
 
   # ⛔ AND THE STEP'S OWN BOUND IS SEEN TO FIRE, because a bound nobody has
   # watched fire is a bound nobody knows works - and this repository has shipped
@@ -620,6 +617,26 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
     ended "sh       the bound around the step's own process fires and it ends" 124
   else
     fail "sh       the step-bound plant did not apply"
+  fi
+
+  # ⛔ AND THE STEP'S OWN DEADLINE, INSIDE IT, IS SEEN TO FIRE TOO. The case
+  # above fires the OUTER bound; this one leaves that bound as shipped and
+  # shortens `install-step`'s own, which is what reports 124 and says the
+  # install is hung while the step can still print what it has. ⚠ Nothing
+  # exercised it until 2026-10-15, when a mutant of the Go port that answered 0
+  # at that deadline passed every case here.
+  stub_adapter 'sleep 20'
+  rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
+  BIT_IDS_STEP_TIMEOUT=3
+  BIT_IDS_INSTALL_INTERVAL=1
+  export BIT_IDS_STEP_TIMEOUT BIT_IDS_INSTALL_INTERVAL
+  run_body "$WORK/install.sh" default "$TREE"
+  unset BIT_IDS_STEP_TIMEOUT BIT_IDS_INSTALL_INTERVAL
+  ended "sh       the step's own deadline fires inside the outer bound" 124
+  if grep -q -F -e "it is hung, not slow" "$BODY_OUT"; then
+    pass "sh       ... and the step says the install is hung"
+  else
+    fail "sh       the step's own deadline fired without saying the install is hung"
   fi
 
   # ⛔ AND THE CONTROL: THE SHIPPED BOUND DOES NOT KILL A PRODUCT THAT FINISHES

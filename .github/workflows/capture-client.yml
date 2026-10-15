@@ -267,7 +267,7 @@ jobs:
           echo "compiles=$answer" >>"$GITHUB_OUTPUT"
 
       # ⭐ THE INSTALL, UNPRIVILEGED AND BOUNDED, WITH ITS OUTPUT IN A FILE.
-      # `install-step.sh` runs `bit-check install-client` for this lane's route and
+      # `bit-check install-step` runs `bit-check install-client` for this lane's route and
       # writes everything beneath it to `install-step.log`, which this shell prints
       # afterwards; nothing the product spawns can hold this step's output pipe,
       # which would keep a finished step open. `check-step-bodies` runs this body.
@@ -305,17 +305,18 @@ jobs:
         # as `bash -e`, so a failing install ended the shell on its own line and
         # the `cat` never ran: run 35's source lane failed to compile and its job
         # log printed none of it. `check-step-bodies` asks a refusal's output.
-        # ⚠ When the outer `timeout` fires, `install-step.sh` dies before it
+        # ⚠ When the outer `timeout` fires, `bit-check install-step` dies before it
         # prints its own step log, so a 124 here prints little; the install
         # artifact carries the rest.
         run: |
           set -u
           rc=0
-          timeout -k 30 "${OUTER_TIMEOUT:-1080}" sh scripts/acquisition/install-step.sh \
+          timeout -k 30 "${OUTER_TIMEOUT:-1080}" "$BIT_CHECK" install-step \
             >"$RUNNER_TEMP/install-step.log" 2>&1 </dev/null || rc=$?
           cat "$RUNNER_TEMP/install-step.log" || true
           exit "$rc"
-        # ⚠ The body this replaced is in that file, unchanged in what it does.
+        # ⚠ `bit-check install-step` is Go since 2026-10-15, `CI-11`; the body
+        # it replaced was `scripts/acquisition/install-step.sh`.
 
       # ⛔ THE BARRIER, BECAUSE EACH ROUTE INSTALLS ON ITS OWN RUNNER. A run
       # manifest says the build was acquired twice before it was observed, and

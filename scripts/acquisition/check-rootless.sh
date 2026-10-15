@@ -277,7 +277,7 @@ ROUTE_DRIVER
 CASE_ENV="BIT_IDS_STATE_DIR=$STATE BIT_IDS_PREFIX=$SCRATCH/prefix"
 
 # ⛔ THE DISPOSITION TRAVELS AS A RESOLUTION RECORD, BECAUSE THAT IS WHAT THE REAL
-# PATH PASSES. `install-step.sh` exports the resolution `bit-check resolve-release`
+# PATH PASSES. `bit-check install-step` exports the resolution `bit-check resolve-release`
 # wrote and the installer reads it; a harness that handed the installer flags
 # directly would be exercising a door the capture path does not use.
 #
@@ -383,8 +383,7 @@ fi
 # fired on its own enforcing file.
 SUDO_NEEDLE="^[[:space:]]*(sudo|setsid[[:space:]]+sudo)[[:space:]]"
 : >"$WORK/sudo-hits.txt"
-for _f in "$ROOT/scripts/acquisition/install-step.sh" \
-  "$ROOT/scripts/acquisition/assert-disposable.sh" \
+for _f in "$ROOT/scripts/acquisition/assert-disposable.sh" \
   "$ADAPTERS"/*.sh; do
   [ -f "$_f" ] || continue
   grep -nE -e "$SUDO_NEEDLE" "$_f" |
