@@ -1,1 +1,2 @@
 aria2-next:v:3:3
+transmission:-:3:3
