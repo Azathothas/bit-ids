@@ -3292,7 +3292,7 @@ the Windows job, which still cuts.
 
 ⛔ **Still open:** the Windows job's containment, which needs something other
 than a namespace, such as a firewall rule scoped to the capture's processes.
-⭐ Built on 2026-10-15, below.
+⭐ Built and proved on a runner on 2026-10-15, below.
 
 ⭐ **The orphaned-subprocess residual is closed.** Nested `timeout`s each start
 their own process group, so a bound reaches only the group it started. That was
@@ -3361,6 +3361,19 @@ observer and `curl.exe` start nothing; a Windows client capture must name its
 helpers too. The *Prove* step's passing path does not run off a runner, because
 its control needs the network: a `capture.yml` dispatch is what proves the rules
 are enforced.
+
+⭐ **Proved on a runner: `capture` run 38722969612 on `cdb59af`, both jobs
+`success`, and CI run 223 green on the same commit.** On `windows-2025`:
+
+| step | what the runner printed |
+| --- | --- |
+| *Contain the capture's programs* | `blocked D:\a\bit-ids\bit-ids\target\debug\examples\evidence-bundle.exe`, `blocked C:\Windows\system32\curl.exe` |
+| *Assert containment* | `no way off this host for 2 program(s) (read Get-NetFirewallRule)`: the live cmdlets' output agrees with the fixtures |
+| *Prove the firewall blocks* | `curl: (7) Failed to connect to api.github.com port 443 after 13 ms`, and the host itself reached the same address |
+| *Capture* | 2 segments, 2 artifacts, verified by `Get-FileHash`: the blocked observer and driver still met over loopback |
+
+The host kept its route throughout and the evidence uploaded. ⭐ **`CI-08`'s
+containment half is closed on both platforms.**
 
 ## CI-09: The capture-to-publisher path, end to end
 

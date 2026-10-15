@@ -118,8 +118,9 @@ still open is a host that never reached it.
 2. **`CI-08`**: `capture.yml`'s Linux job runs in `contained.sh`, proved on
    `capture` run 38612214714. ⭐ Its Windows job no longer cuts the host's
    route: on 2026-10-15 it blocks the capture's own programs at the firewall,
-   reads the rules back and proves them, the operator's settled shape. A
-   `capture.yml` dispatch is what proves it on a runner. The
+   reads the rules back and proves them, the operator's settled shape, proved
+   on `capture` run 38722969612: the blocked `curl.exe` exited 7 and the
+   capture still verified over loopback. The
    orphaned-subprocess residual and the `sh -c` and `bash -e` split are closed.
 3. **`OBS-10`**, which needs a second platform, so it follows the captures.
 4. **`CI-07`**: its Approach and Prove were rewritten on 2026-10-14 to the route

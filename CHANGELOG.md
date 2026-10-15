@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T11:13:41Z
+
+- ⭐ **The Windows firewall containment is proved on a runner**: `capture` run
+  38722969612's blocked `curl.exe` could not connect, and the capture still
+  verified over loopback.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-08`. No version bump and no deploy.
+
 ### 2026-10-15T10:00:05Z
 
 - ⭐ **The Windows capture no longer cuts the host's route.** It blocks the
