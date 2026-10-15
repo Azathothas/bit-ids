@@ -221,7 +221,7 @@ pub struct Isolation {
 
 /// What the pre-flight guard read off the host before the run.
 ///
-/// `scripts/acquisition/assert-disposable.sh` produces both values. The
+/// `bit-check assert-disposable` produces both values. The
 /// fingerprint is what a later job compares to see it is on a different
 /// machine; the instant is when the host was claimed, which is necessarily
 /// before the run it was claimed for.

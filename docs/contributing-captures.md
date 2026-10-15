@@ -59,8 +59,8 @@ leaks the capture onto the public network, and a firewalled host that already
 ran a capture contaminates this one with the last one's state.
 
 ```text
-sh scripts/acquisition/assert-disposable.sh --claim
-sh scripts/acquisition/assert-disposable.sh --egress
+bit-check assert-disposable --claim
+bit-check assert-disposable --egress
 ```
 
 ⚠ That block is shown rather than run. A session host has a public route, so

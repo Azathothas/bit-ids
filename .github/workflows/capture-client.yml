@@ -129,6 +129,18 @@ jobs:
           sleep 5
           cat "$RUNNER_TEMP/flight-recorder.log"
 
+      # ⭐ `bit-check` FIRST, BECAUSE THE CLAIM IS ONE OF ITS COMMANDS. The guard
+      # is `bit-check assert-disposable` since 2026-10-15, `CI-11`, and every
+      # later step finds the binary through BIT_CHECK; nothing on the capture
+      # path builds it. ⚠ This writes this project's own binary into RUNNER_TEMP
+      # before the claim, which is not a product's state: the claim's marker is
+      # what a survived host carries, and this build leaves none.
+      - name: Build bit-check
+        run: |
+          set -eu
+          (cd tools/check && go build -o "$RUNNER_TEMP/bit-check" .)
+          printf 'BIT_CHECK=%s\n' "$RUNNER_TEMP/bit-check" >>"$GITHUB_ENV"
+
       # ⛔ FIRST, BEFORE ANYTHING ELSE WRITES TO THE HOST, and before anything is
       # installed. The claim refuses a host that already ran a capture, and a
       # product installed before the claim would be state on a machine nothing
@@ -140,7 +152,8 @@ jobs:
       - name: Claim the host
         env:
           RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.adapter }}-${{ matrix.route }}
-        run: sh scripts/acquisition/assert-disposable.sh --claim "$RUN_ID"
+        run: |
+          "$BIT_CHECK" assert-disposable --claim "$RUN_ID"
 
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
@@ -154,17 +167,12 @@ jobs:
       # ⚠ Both resolver examples are built on the package lane too, which costs
       # seconds and keeps this step's command free of a condition. A build that
       # sometimes ran is a build whose absence is a matrix leg nobody reads.
-      #
-      # ⭐ AND `bit-check`, WHICH CARRIES THE CAPTURE PATH AS IT LEAVES `sh`
-      # (`CI-11`). Every later step finds it through BIT_CHECK; nothing on the
-      # capture path builds it.
+
       - name: Build the observer
         run: |
           set -eu
           cargo build -p bit-ids-probe --locked --example client-capture
           cargo build -p bit-ids --locked --example resolve-stable --example select-asset
-          (cd tools/check && go build -o "$RUNNER_TEMP/bit-check" .)
-          printf 'BIT_CHECK=%s\n' "$RUNNER_TEMP/bit-check" >>"$GITHUB_ENV"
 
       # ⛔ AND SO DOES THE INSTALL, FOR THE SAME REASON AND ONE MORE. capture-client
       # refuses to install anything, so a product that is not here by now is not
@@ -372,7 +380,7 @@ jobs:
       # so the guard reads the namespace's own empty route table and the agent
       # never loses its link.
       - name: Assert containment
-        run: sh scripts/capture/contained.sh -- sh scripts/acquisition/assert-disposable.sh --egress
+        run: sh scripts/capture/contained.sh -- "$BIT_CHECK" assert-disposable --egress
 
       # ⭐ AND HERE A PRODUCT THIS PROJECT DID NOT WRITE IS HANDED THE TORRENT.
       # It learns the tracker's address by reading the file, which is what a
@@ -495,7 +503,7 @@ jobs:
           ROUTE: ${{ matrix.route }}
         run: |
           set -eu
-          print=$(sh scripts/acquisition/assert-disposable.sh --fingerprint)
+          print=$("$BIT_CHECK" assert-disposable --fingerprint)
           echo "linux host fingerprint: $print"
           {
             echo "### ${{ matrix.adapter }} (${{ matrix.route }})"

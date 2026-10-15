@@ -88,13 +88,10 @@ ME=check-capture
 store_require cargo curl sha256sum awk sed od
 
 RUNNER="$ROOT/scripts/capture/capture-run.sh"
-GUARD="$ROOT/scripts/acquisition/assert-disposable.sh"
-for f in "$RUNNER" "$GUARD"; do
-  [ -f "$f" ] || {
-    printf 'check-capture: %s is not present\n' "$f" >&2
-    exit 2
-  }
-done
+[ -f "$RUNNER" ] || {
+  printf 'check-capture: %s is not present\n' "$RUNNER" >&2
+  exit 2
+}
 
 # ⛔ THE OBSERVER IS BUILT HERE AND NOT BY THE RUNNER, which is the same
 # contract the workflow keeps: the build happens while there is still a network.
@@ -114,6 +111,12 @@ OBSERVER="${CARGO_TARGET_DIR:-$ROOT/target}/debug/examples/evidence-bundle"
 
 WORK=$(store_workdir checkcapture) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
+
+# ⭐ THE HOST GUARD IS `bit-check assert-disposable` SINCE 2026-10-15, `CI-11`,
+# and the runner finds it through BIT_CHECK, as the workflow exports it.
+mkdir -p "$WORK/bin" || exit 2
+BIT_CHECK=$(store_bitcheck "$ROOT" "$WORK/bin") || exit 2
+export BIT_CHECK
 
 # ⚠ SHORT ON PURPOSE, AND THE COST OF LENGTHENING IT IS NOW MEASURED. The runner
 # waits on the observer's own line rather than on a delay, so a longer deadline
@@ -265,7 +268,7 @@ store_probe_guards "$RUNNER" \
 # actually runs: the real observer binds, curl puts real bytes through it, the
 # bundle is written, and sha256sum verifies it.
 rm -rf "$STATE"
-BIT_IDS_STATE_DIR="$STATE" sh "$GUARD" --claim "$RUN" >/dev/null 2>&1 || {
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" assert-disposable --claim "$RUN" >/dev/null 2>&1 || {
   printf 'check-capture: could not claim a scratch host\n' >&2
   exit 2
 }

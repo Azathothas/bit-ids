@@ -5936,3 +5936,28 @@ lane is what will run it.
 | --- | --- |
 | `check-step-bodies` over the shell half, then over a shim to the port | identical row for row, 43 of 43: a product that leaks, a group left behind and then named in `orphans.log` and ended, the held-pipe control, the outer bound's 124, and a refused install's diagnosis |
 | three mutants: the sweep off, the step log never printed, the inner deadline answering 0 | the first two were refused. ⛔ The third passed every case, because nothing exercised the step's own deadline. A case now shortens that deadline under the shipped outer bound and requires 124 and *hung, not slow*. 45 of 45, and the mutant is refused |
+
+### ⭐ The host guard is the eighth leaf: `bit-check assert-disposable`. 2026-10-15
+
+[`../tools/check/assertdisposable.go`](../tools/check/assertdisposable.go)
+replaces `scripts/acquisition/assert-disposable.sh` whole: `--claim`,
+`--egress`, `--fingerprint` and `--marker`, and the derivation of the marker,
+which `install-client` now reads in process. ⭐ On Windows it asks
+`assert-disposable.ps1`, the other half. That file's egress question is the
+firewall's (`CI-08`), and only PowerShell's cmdlets read the firewall.
+
+⚠ **Both capture workflows build `bit-check` before the claim now**, in a
+*Build bit-check* step straight after the checkout, because the claim is one of
+its commands. That writes this project's own binary into `RUNNER_TEMP` before
+the claim. It is not a product's state, and the claim's marker, which is what a
+survived host carries, is untouched. *Claim the host*, *Assert containment*
+(still inside `contained.sh`) and *Report the host fingerprint* all run
+`"$BIT_CHECK" assert-disposable`, as do `capture-run.sh`, `capture-client.sh`
+and five harnesses.
+
+| held against the shell half before it was deleted | result |
+| --- | --- |
+| the fingerprint, the marker, the claim's body, a second claim's stderr, a relative `HOME`, and eight argument errors | identical apart from the claim instant and the uptime, which only the clock moved |
+| `check-runner.sh` over the shell half, then over a shim to the port | identical except the three usage-text cases, which read the shell half's usage spelling and now read the port's |
+| five mutants: the gateway flag ignored, the marker check off, the run-ID slug unchecked, the destination unchecked, an unreadable table read as clean | four refused at once. ⛔ The marker check off passed, because the exclusive create also answers 1 for a second claim. That is the masking the PowerShell half's harness already recorded. The case now requires the marker check's own words, and the mutant is refused |
+| `check-runner` 13, `check-capture` 48, `check-capture-client` 134, `check-rootless` 26, `check-step-bodies` 45 | all passed |

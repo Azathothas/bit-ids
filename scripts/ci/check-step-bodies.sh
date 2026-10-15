@@ -449,14 +449,11 @@ fi
 # step's output. The second is the shape run 7 has and no existing check could
 # have seen it.
 #
-# ⛔ AND THE REAL GUARD GOES BACK, because `install-client` asks it where the
-# claim marker lives and that derivation is the one under test. ⚠ The restore
-# cases that stood above until 2026-10-15 left a stub answering 2 behind, and
-# the first version of this file ran these two cases against it: `--marker`
-# printed nothing, `install-client` reported it could not run, and both cases
-# failed for a reason neither was about. A harness that shares scratch state
-# with an earlier section owes the next one a known starting point.
-cp "$ROOT/scripts/acquisition/assert-disposable.sh" "$TREE/scripts/acquisition/" || exit 2
+# ⛔ THE REAL GUARD IS THE ONE `install-client` ASKS, because where the claim
+# marker lives is the derivation under test. It is `bit-check assert-disposable`
+# since 2026-10-15, `CI-11`, and `install-client` reads that derivation in
+# process, so the tree needs no copy of a guard; a stub one, as the restore
+# cases above once left behind, could no longer answer for it.
 : >"$TREE/state/host-claimed"
 
 stub_adapter() { # leak-line

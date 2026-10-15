@@ -73,13 +73,10 @@ ME=check-capture-client
 store_require cargo curl sha256sum awk sed od
 
 RUNNER="$ROOT/scripts/capture/capture-client.sh"
-GUARD="$ROOT/scripts/acquisition/assert-disposable.sh"
-for f in "$RUNNER" "$GUARD"; do
-  [ -f "$f" ] || {
-    printf 'check-capture-client: %s is not present\n' "$f" >&2
-    exit 2
-  }
-done
+[ -f "$RUNNER" ] || {
+  printf 'check-capture-client: %s is not present\n' "$RUNNER" >&2
+  exit 2
+}
 
 # ⛔ THE OBSERVER IS BUILT HERE AND NOT BY THE RUNNER, which is the contract the
 # workflow keeps: the build happens while there is still a network.
@@ -469,7 +466,7 @@ store_probe_guards "$RUNNER" \
 # runs: the real observer binds, writes a torrent, the stub decodes its announce
 # URL and announces to it, the bundle is written and sha256sum verifies it.
 rm -rf "$STATE"
-BIT_IDS_STATE_DIR="$STATE" sh "$GUARD" --claim "$RUN" >/dev/null 2>&1 || {
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" assert-disposable --claim "$RUN" >/dev/null 2>&1 || {
   printf 'check-capture-client: could not claim a scratch host\n' >&2
   exit 2
 }

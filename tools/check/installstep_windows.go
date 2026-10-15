@@ -108,3 +108,6 @@ func reportHolders(_, _, holdersLog string) int {
 	appendFile(holdersLog, "## this host has no /proc, so holders are not readable; the job object ended its members\n")
 	return 2
 }
+
+// rootDevice has no counterpart here; the Windows guard digests its own inputs.
+func rootDevice() (string, bool) { return "", false }

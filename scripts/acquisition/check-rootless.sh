@@ -64,12 +64,7 @@ trap 'rm -rf "$WORK"' EXIT INT TERM
 mkdir -p "$WORK/bin" || exit 2
 BIT_CHECK=$(store_bitcheck "$ROOT" "$WORK/bin") || exit 2
 
-GUARD="$ROOT/scripts/acquisition/assert-disposable.sh"
 ADAPTERS="$ROOT/scripts/capture/adapters"
-[ -f "$GUARD" ] || {
-  printf 'check-rootless: %s is missing\n' "$GUARD" >&2
-  exit 2
-}
 
 # -- how a case is run ---------------------------------------------------------
 #
@@ -242,7 +237,7 @@ DRIVER="$WORK/route-driver.sh"
 cat >"$DRIVER" <<'ROUTE_DRIVER'
 #!/bin/sh
 set -u
-: "${BIT_CHECK:?}" "${CR_GUARD:?}" "${CR_ADAPTER:?}"
+: "${BIT_CHECK:?}" "${CR_ADAPTER:?}"
 : "${CR_BINARY:?}" "${CR_URL:?}"
 PREFIX=$("$BIT_CHECK" install-rootless --prefix) || exit 2
 rm -rf "$PREFIX"
@@ -253,7 +248,7 @@ if [ -n "${CR_RESOLUTION:-}" ]; then
   export BIT_IDS_RELEASE_RESOLUTION
 fi
 W=$(mktemp -d) || exit 2
-sh "$CR_GUARD" --claim rootless-case >/dev/null 2>&1
+"$BIT_CHECK" assert-disposable --claim rootless-case >/dev/null 2>&1
 "$BIT_CHECK" install-client --adapter "$CR_ADAPTER" --route release \
   --workdir "$W/wd" --record "$W/rec"
 _rc=$?
@@ -296,7 +291,7 @@ write_resolution() { # file source [document] [asset] [sha256] [reason]
 
 route_case() { # label adapter url binary [resolution-file] [stub-dir]
   _label=$1
-  _env="$CASE_ENV CR_GUARD=$GUARD"
+  _env="$CASE_ENV"
   _env="$_env CR_ADAPTER=$ADAPTERS/$2.sh CR_URL=file://$3 CR_BINARY=$4"
   [ -z "${5:-}" ] || _env="$_env CR_RESOLUTION=$5"
   # ⚠ A SIXTH ARGUMENT PUTS STUBS IN FRONT OF BOTH RUNS' PATHS, for a route
@@ -383,8 +378,7 @@ fi
 # fired on its own enforcing file.
 SUDO_NEEDLE="^[[:space:]]*(sudo|setsid[[:space:]]+sudo)[[:space:]]"
 : >"$WORK/sudo-hits.txt"
-for _f in "$ROOT/scripts/acquisition/assert-disposable.sh" \
-  "$ADAPTERS"/*.sh; do
+for _f in "$ADAPTERS"/*.sh; do
   [ -f "$_f" ] || continue
   grep -nE -e "$SUDO_NEEDLE" "$_f" |
     sed "s|^|$(basename "$_f"):|" >>"$WORK/sudo-hits.txt" || :
@@ -415,9 +409,9 @@ fi
 cat >"$WORK/claim-probe.sh" <<CLAIM_PROBE
 #!/bin/sh
 set -u
-sh $GUARD --marker >/dev/null || exit 2
-sh $GUARD --claim rootless-probe >/dev/null || exit 1
-M=\$(sh $GUARD --marker) || exit 2
+"$BIT_CHECK" assert-disposable --marker >/dev/null || exit 2
+"$BIT_CHECK" assert-disposable --claim rootless-probe >/dev/null || exit 1
+M=\$("$BIT_CHECK" assert-disposable --marker) || exit 2
 [ -f "\$M" ] || exit 1
 printf 'claimed\n'
 CLAIM_PROBE

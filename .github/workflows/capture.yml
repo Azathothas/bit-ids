@@ -50,6 +50,17 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # ⭐ `bit-check` FIRST, BECAUSE THE CLAIM IS ONE OF ITS COMMANDS. The guard
+      # is `bit-check assert-disposable` since 2026-10-15, `CI-11`. ⚠ This writes
+      # this project's own binary into RUNNER_TEMP before the claim, which is
+      # not a product's state: the claim's marker is what a survived host
+      # carries, and this build leaves none.
+      - name: Build bit-check
+        run: |
+          set -eu
+          (cd tools/check && go build -o "$RUNNER_TEMP/bit-check" .)
+          printf 'BIT_CHECK=%s\n' "$RUNNER_TEMP/bit-check" >>"$GITHUB_ENV"
+
       # ⛔ FIRST, BEFORE ANYTHING ELSE WRITES TO THE HOST. The claim refuses a
       # host that already ran a capture, and it can only tell by finding its own
       # marker. A step that ran earlier and left state behind would not be
@@ -58,7 +69,8 @@ jobs:
       - name: Claim the host
         env:
           RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-linux
-        run: sh scripts/acquisition/assert-disposable.sh --claim "$RUN_ID"
+        run: |
+          "$BIT_CHECK" assert-disposable --claim "$RUN_ID"
 
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
@@ -84,7 +96,7 @@ jobs:
       # ⛔ THE GUARD MUST PASS, AND IT READS THE KERNEL OF THE NAMESPACE THE
       # CAPTURE RUNS IN, which is the routing table that matters.
       - name: Assert containment
-        run: sh scripts/capture/contained.sh -- sh scripts/acquisition/assert-disposable.sh --egress
+        run: sh scripts/capture/contained.sh -- "$BIT_CHECK" assert-disposable --egress
 
       - name: Capture
         env:
@@ -119,7 +131,7 @@ jobs:
       - name: Report the host fingerprint
         run: |
           set -eu
-          print=$(sh scripts/acquisition/assert-disposable.sh --fingerprint)
+          print=$("$BIT_CHECK" assert-disposable --fingerprint)
           echo "linux host fingerprint: $print"
           {
             echo "### Linux capture"

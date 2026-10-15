@@ -185,11 +185,13 @@ func hostMarker(root string) (string, error) {
 		}
 		cmd = exec.Command("pwsh", "-NoProfile", "-File", guard, "-Marker")
 	} else {
-		guard := filepath.Join(root, "scripts", "acquisition", "assert-disposable.sh")
-		if !isRegular(guard) {
-			return "", resolveExit{2, guard + " is not present"}
+		// ⭐ In process: the guard is this binary, and `claimMarker` is the
+		// derivation its `--marker` prints.
+		_, m, err := claimMarker()
+		if err != nil {
+			return "", resolveExit{2, "the guard could not report its marker path"}
 		}
-		cmd = exec.Command("sh", guard, "--marker")
+		return m, nil
 	}
 	out, err := cmd.Output()
 	if err != nil {

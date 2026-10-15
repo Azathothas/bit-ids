@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T14:03:09Z
+
+- ⭐ **The host guard is Go**: `bit-check assert-disposable` claims the host,
+  reads its routes and fingerprints it, byte for byte as its deleted shell half
+  did, and asks the PowerShell half on Windows. Both capture workflows build
+  `bit-check` first, because the claim is one of its commands.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T13:41:08Z
 
 - ⭐ **The install step is Go**, a session on Unix and a job object on Windows,

@@ -5,7 +5,7 @@ particular product is installed, asked its version, started and stopped.
 
 ⛔ **An adapter is the seam and never the boundary.** The guards that decide
 whether a capture may happen at all live in
-[`../../acquisition/assert-disposable.sh`](../../acquisition/assert-disposable.sh)
+`bit-check assert-disposable`, in [`../../../tools/check/assertdisposable.go`](../../../tools/check/assertdisposable.go),
 and are run by
 [`../capture-client.sh`](../capture-client.sh) before an adapter is asked to
 start anything. An adapter that tried to check the host would be a second

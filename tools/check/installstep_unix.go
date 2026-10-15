@@ -129,3 +129,12 @@ func reportHolders(adapter, stepLog, holdersLog string) int {
 	}
 	return 0
 }
+
+// rootDevice is `stat -c '%d' /`, the device the root filesystem is on.
+func rootDevice() (string, bool) {
+	var st syscall.Stat_t
+	if err := syscall.Stat("/", &st); err != nil {
+		return "", false
+	}
+	return strconv.FormatUint(uint64(st.Dev), 10), true
+}

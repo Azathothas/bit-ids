@@ -2,7 +2,7 @@
 # check-runner.sh - prove the disposable-host guards refuse what they exist to refuse.
 #
 # ⛔ A GUARD THAT HAS NEVER BEEN SEEN TO REFUSE IS A GUARD NOBODY KNOWS WORKS.
-# `assert-disposable.sh` stands between this project and installing an untrusted
+# `bit-check assert-disposable` stands between this project and installing an untrusted
 # client on a machine somebody keeps. It is the last thing that runs before a
 # capture and the first thing whose silence would be catastrophic, so it is
 # mutation-proven here rather than trusted.
@@ -42,11 +42,7 @@ while [ $# -gt 0 ]; do
 done
 
 HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-GUARD="$HERE/assert-disposable.sh"
-[ -f "$GUARD" ] || {
-  printf 'check-runner: %s is not present\n' "$GUARD" >&2
-  exit 2
-}
+ROOT=$(CDPATH='' cd -- "$HERE/../.." && pwd)
 
 WORK="${TMPDIR:-/tmp}/.checkrunner.$$"
 mkdir -p "$WORK" || {
@@ -54,6 +50,18 @@ mkdir -p "$WORK" || {
   exit 2
 }
 trap 'rm -rf "$WORK"' EXIT INT TERM
+
+# ⭐ THE GUARD IS `bit-check assert-disposable` SINCE 2026-10-15, `CI-11`, and
+# these cases held its shell half to the same rows before it was deleted.
+command -v go >/dev/null 2>&1 || {
+  printf 'check-runner: go is not on this host, so bit-check cannot be built\n' >&2
+  exit 2
+}
+(cd "$ROOT/tools/check" && go build -o "$WORK/bit-check" .) >/dev/null 2>&1 || {
+  printf 'check-runner: cannot build bit-check\n' >&2
+  exit 2
+}
+BIT_CHECK="$WORK/bit-check"
 
 PASS=0
 FAIL=0
@@ -80,7 +88,7 @@ expect_says() { # want-code  saying  name  args...
   _saying="$2"
   _name="$3"
   shift 3
-  sh "$GUARD" "$@" >"$WORK/out" 2>"$WORK/err"
+  "$BIT_CHECK" assert-disposable "$@" >"$WORK/out" 2>"$WORK/err"
   _got=$?
   if [ "$_got" != "$_want" ]; then
     ROWS="$ROWS  ❌ FAIL  $_name (wanted exit $_want, got $_got)
@@ -131,8 +139,8 @@ expect_says 2 "is unreadable" "an unreadable table is not a pass" --egress "$WOR
 # unwound the script.
 expect_says 2 "run id must be lowercase" "a run id that is not a slug is refused" \
   --claim "Capture 0001"
-expect_says 2 "assert-disposable.sh --claim" "no mode at all is refused"
-expect_says 2 "assert-disposable.sh --claim" "an unknown mode is refused" --nonsense
+expect_says 2 "assert-disposable --claim" "no mode at all is refused"
+expect_says 2 "assert-disposable --claim" "an unknown mode is refused" --nonsense
 
 # --- persistent state -------------------------------------------------------
 #
@@ -143,11 +151,17 @@ expect_says 2 "assert-disposable.sh --claim" "an unknown mode is refused" --nons
 # it is written and red forever, for a reason that looks like the guard being
 # broken rather than the test being. Found by running it twice.
 FRESH="$WORK/host-a"
-BIT_IDS_STATE_DIR="$FRESH" sh "$GUARD" --claim capture-0001 >"$WORK/out" 2>&1
+BIT_IDS_STATE_DIR="$FRESH" "$BIT_CHECK" assert-disposable --claim capture-0001 >"$WORK/out" 2>&1
 _first=$?
-BIT_IDS_STATE_DIR="$FRESH" sh "$GUARD" --claim capture-0002 >"$WORK/out2" 2>&1
+BIT_IDS_STATE_DIR="$FRESH" "$BIT_CHECK" assert-disposable --claim capture-0002 >"$WORK/out2" 2>&1
 _second=$?
-if [ "$_first" = "0" ] && [ "$_second" = "1" ]; then
+# ⛔ AND BY THE MARKER CHECK, NAMED BY ITS OWN WORDS. Two refusals guard a second
+# claim and both answer 1: the marker check and the exclusive create. A mutant
+# of the Go port with the marker check off passed this case on its exit code
+# alone, 2026-10-15, because the create refused instead; the PowerShell half's
+# harness had recorded the same masking. The message separates them.
+if [ "$_first" = "0" ] && [ "$_second" = "1" ] &&
+  grep -q -F -e 'already ran a capture' "$WORK/out2"; then
   ROWS="$ROWS  ✅ ok    a second capture on one host is refused
 "
   PASS=$((PASS + 1))
@@ -162,7 +176,7 @@ fi
 # is unblocked once it happens, which is the other half of the same guard: it
 # must refuse a survived host without refusing every host forever.
 rm -rf "$FRESH"
-BIT_IDS_STATE_DIR="$FRESH" sh "$GUARD" --claim capture-0002 >"$WORK/out3" 2>&1
+BIT_IDS_STATE_DIR="$FRESH" "$BIT_CHECK" assert-disposable --claim capture-0002 >"$WORK/out3" 2>&1
 _third=$?
 if [ "$_third" = "0" ]; then
   ROWS="$ROWS  ✅ ok    a torn-down host claims again for the next job
@@ -183,7 +197,7 @@ fi
 # and then requires the file this mode NAMES to be the one that appeared. A mode
 # returning a plausible path nothing writes to would pass any weaker check.
 MARKED="$WORK/host-c"
-MARKER_PATH=$(BIT_IDS_STATE_DIR="$MARKED" sh "$GUARD" --marker)
+MARKER_PATH=$(BIT_IDS_STATE_DIR="$MARKED" "$BIT_CHECK" assert-disposable --marker)
 if [ -n "$MARKER_PATH" ] && [ ! -e "$MARKER_PATH" ]; then
   ROWS="$ROWS  ✅ ok    the marker path is reported before anything is claimed
 "
@@ -194,7 +208,7 @@ else
   FAIL=$((FAIL + 1))
 fi
 
-BIT_IDS_STATE_DIR="$MARKED" sh "$GUARD" --claim capture-0004 >"$WORK/out" 2>&1
+BIT_IDS_STATE_DIR="$MARKED" "$BIT_CHECK" assert-disposable --claim capture-0004 >"$WORK/out" 2>&1
 _claimed=$?
 if [ "$_claimed" = "0" ] && [ -f "$MARKER_PATH" ]; then
   ROWS="$ROWS  ✅ ok    --marker names the file --claim actually wrote
@@ -206,10 +220,10 @@ else
   FAIL=$((FAIL + 1))
 fi
 
-expect_says 2 "assert-disposable.sh --claim" "--marker takes no argument" --marker extra
+expect_says 2 "assert-disposable --claim" "--marker takes no argument" --marker extra
 
 # The fingerprint the next job compares against.
-PRINT=$(sh "$GUARD" --fingerprint)
+PRINT=$("$BIT_CHECK" assert-disposable --fingerprint)
 case "$PRINT" in
   [0-9a-f]*)
     if [ "${#PRINT}" = "64" ]; then

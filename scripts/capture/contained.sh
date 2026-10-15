@@ -17,7 +17,7 @@
 # with one interface, `lo`, and no route at all. The observer and the client
 # both run inside it, so they reach each other over loopback and nothing else;
 # the runner agent stays in the host's namespace and never loses its link.
-# `assert-disposable.sh --egress` reads `/proc/net/route`, which inside the
+# `bit-check assert-disposable --egress` reads `/proc/net/route`, which inside the
 # namespace is the namespace's own table, so the guard asks the right question
 # of the process it guards.
 #

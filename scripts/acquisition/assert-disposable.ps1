@@ -1,7 +1,8 @@
 ﻿# assert-disposable.ps1 - refuse to install or run a client on a Windows host
 # somebody keeps.
 #
-# ⭐ THE TWIN OF assert-disposable.sh, and the reason it exists is that the sh
+# ⭐ THE WINDOWS HALF OF `bit-check assert-disposable`, which asks this file there;
+# its Unix half was assert-disposable.sh until 2026-10-15 (`CI-11`). It exists because the sh
 # half reads /proc/net/route and /etc/machine-id. Neither is on Windows, so a
 # Windows capture had no boundary to run before the install and was refused
 # outright. CI-03 owns the pair.

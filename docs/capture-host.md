@@ -15,8 +15,9 @@ cannot stop one.** By the time a manifest exists, an untrusted installer has
 already run somewhere. A record-layer refusal is a report.
 
 So the boundary is
-[`../scripts/acquisition/assert-disposable.sh`](../scripts/acquisition/assert-disposable.sh),
-which runs before anything is installed, and which
+`bit-check assert-disposable`, in
+[`../tools/check/assertdisposable.go`](../tools/check/assertdisposable.go) since
+2026-10-15 (`CI-11`), which runs before anything is installed, and which
 [`../scripts/acquisition/check-runner.sh`](../scripts/acquisition/check-runner.sh)
 mutation-proves on every gate.
 
@@ -100,8 +101,8 @@ directory moves - reporting a host nobody claimed as claimed.
 
 1. The host is created for one capture and destroyed after it. Not reset, not
    reimaged in place: destroyed.
-2. Before any download or install: `assert-disposable.sh --claim <run-id>` and
-   `assert-disposable.sh --egress`, both exit 0. Exit 2 is not a pass.
+2. Before any download or install: `bit-check assert-disposable --claim <run-id>`
+   and `bit-check assert-disposable --egress`, both exit 0. Exit 2 is not a pass.
 3. No route off the host except the loopback endpoints the run starts itself.
    A run that needs more records why, and `E-MAN-31` refuses one that does not.
 4. No credential of any kind is present. The run needs none: everything it

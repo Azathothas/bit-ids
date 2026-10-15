@@ -129,8 +129,11 @@ esac
 HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 ROOT=$(CDPATH='' cd -- "$HERE/.." && pwd)
 ROOT=$(CDPATH='' cd -- "$ROOT/.." && pwd)
-GUARD="$ROOT/scripts/acquisition/assert-disposable.sh"
-[ -f "$GUARD" ] || cannot "$GUARD is not present"
+# ⭐ THE HOST GUARD IS `bit-check assert-disposable` SINCE 2026-10-15, `CI-11`,
+# found through BIT_CHECK as the workflow exports it, and never built here.
+if [ -z "${BIT_CHECK:-}" ] || [ ! -x "$BIT_CHECK" ]; then
+  cannot "BIT_CHECK names no bit-check binary; it is built before the capture, never here"
+fi
 
 for tool in curl sha256sum awk od; do
   command -v "$tool" >/dev/null 2>&1 || cannot "$tool not found"
@@ -152,7 +155,7 @@ done
 # ⛔ THE MARKER'S PATH IS ASKED FOR, NEVER COMPOSED. `--marker` is the one
 # derivation; a second spelling here would go on reading the old location the
 # day the state directory moves and report an unclaimed host as claimed.
-MARKER=$(sh "$GUARD" --marker) || cannot "the guard could not report its marker path"
+MARKER=$("$BIT_CHECK" assert-disposable --marker) || cannot "the guard could not report its marker path"
 [ -n "$MARKER" ] || cannot "the guard reported an empty marker path"
 
 # ⛔ THE CLAIM IS CHECKED HERE AS WELL AS RUN EARLIER, and that is not
@@ -172,11 +175,11 @@ CLAIMED_RUN=$(awk -F= '$1 == "run" { print $2; exit }' "$MARKER")
 # that passed over a fixture table is visible rather than indistinguishable from
 # one that passed over the machine.
 if [ -n "$ROUTE_TABLE" ]; then
-  sh "$GUARD" --egress "$ROUTE_TABLE"
+  "$BIT_CHECK" assert-disposable --egress "$ROUTE_TABLE"
   EGRESS_RC=$?
   EGRESS_SOURCE="$ROUTE_TABLE"
 else
-  sh "$GUARD" --egress
+  "$BIT_CHECK" assert-disposable --egress
   EGRESS_RC=$?
   EGRESS_SOURCE=/proc/net/route
 fi
@@ -186,7 +189,7 @@ case "$EGRESS_RC" in
   *) cannot "egress could not be established from $EGRESS_SOURCE" ;;
 esac
 
-FINGERPRINT=$(sh "$GUARD" --fingerprint) || cannot "the host fingerprint could not be read"
+FINGERPRINT=$("$BIT_CHECK" assert-disposable --fingerprint) || cannot "the host fingerprint could not be read"
 
 mkdir -p "$OUT" || cannot "cannot create $OUT"
 OUT=$(CDPATH='' cd -- "$OUT" && pwd)
