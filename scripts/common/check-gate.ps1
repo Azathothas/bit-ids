@@ -265,6 +265,10 @@ Invoke-Ported 'check-staleness'
 # the Linux lane; its harness was sh alone. CI-07.
 Invoke-Ported 'check-connector'
 
+# ⭐ AND check-assemble, the last portable row, 2026-10-15. Its dispatch rows
+# drove an sh script until that became bit-check assemble-dispatch. CI-07.
+Invoke-Ported 'check-assemble'
+
 # ⭐ AND THE LAST `common/` TWIN THIS LANE RAN, 2026-09-29. This row ran
 # `check-remote-items.ps1`, compared case for case against both halves before
 # they were deleted. ⚠ It NEEDS gh AND THE NETWORK, so it exits 2 on a machine
@@ -383,12 +387,6 @@ Add-Unavailable 'check-capture-client' 'an sh harness whose subject has no Power
 # CI-07 writes that twin, and a Windows adapter is what would need one.
 Add-Unavailable 'check-release-route' 'an sh harness whose subject has no PowerShell half yet; CI-07'
 
-# ⛔ AND A FOURTH REASON. check-assemble's subject is a Rust example, which both
-# lanes build and neither lane runs anywhere else; what has no PowerShell half is
-# the harness that writes the synthetic lanes and plants in them. ⚠ It is
-# `store-lib.sh`'s again - the shared library CI-07 names as its first step -
-# rather than anything about the assembler, which is platform-independent.
-Add-Unavailable 'check-assemble' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
 Add-Unavailable 'check-transmission' 'its subject transmission.sh is an sh adapter with no PowerShell half; CI-07 class C'
 
 

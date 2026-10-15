@@ -1479,6 +1479,28 @@ repository from the working directory, as every `bit-check` check does, where
 the shell halves found it from their own path. Both harnesses `cd` to the
 root, and the workflow step runs from the checkout.
 
+⭐ **And `check-assemble` is ported, 2026-10-15: the last portable row.**
+`bit-check check-assemble`, in
+[`../tools/check/assemble.go`](../tools/check/assemble.go), carries all 69
+cases. Its fixtures are written byte for byte as the shell half wrote them, with
+hex and digests from Go, and its dispatch rows run `bit-check
+assemble-dispatch`. It was held to its shell half three ways before that half
+was deleted:
+
+- `check-bitcheck.sh --compare check-assemble`, 7 of 7, on a clean tree, two
+  plants in `assemble-capture.rs` and a clean tree again;
+- all 69 row labels, identical line for line;
+- five mutants of the port, each reported as a disagreement: a case dropped,
+  the connector version moved, `event=started` dropped, a plant made a no-op,
+  and a dispatch row's `resolution.json` not written.
+
+`check-bitcheck` keeps those rows. Once the shell half is gone it reports them
+as Go alone, as it does for the six before. The Linux gate runs the check from
+the `bit-check` loop, and the Windows lane runs it through `Invoke-Ported`,
+which closes its declared row. ⚠ Its checksum row still asks `sha256sum`, or
+`certutil` on Windows, through `verifySums`, for the reason `release.go`
+gives: this binary's own SHA-256 would be the writer checking itself.
+
 ⚠ **A review found two small things, both fixed before the push.** A signal
 skipped the deferred removal, so an interrupted run could leave a half-built
 bundle; the shell halves trapped INT and TERM. Now a handler removes it and
@@ -3352,7 +3374,7 @@ trigger and its `dry_run` default.
 is what this entry was missing**: it reads a lane's capture artifact and its
 install artifact and writes the `Profile` they support, deriving every field
 from a document rather than from a lane's name.
-[`check-assemble.sh`](../scripts/capture/check-assemble.sh) proves it over
+`check-assemble.sh` (since 2026-10-15 `bit-check check-assemble`) proves it over
 synthetic lanes - 15 cases, and the control is the half that matters, because
 every refusal below passes equally over an assembler that refuses everything.
 

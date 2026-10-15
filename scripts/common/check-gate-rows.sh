@@ -165,8 +165,10 @@ else
   fail "sh       the dropped-prover plant did not apply"
 fi
 
-if replace_once "$WORK/gate.ps1" "Add-Unavailable 'check-assemble'" \
-  "Add-Unavailable 'check-only-in-powershell' 'planted'; Add-Unavailable 'check-assemble'"; then
+# ⚠ Anchored on `check-transmission`'s declaration since 2026-10-15. It was
+# `check-assemble`'s, which left the declared list when it was ported.
+if replace_once "$WORK/gate.ps1" "Add-Unavailable 'check-transmission'" \
+  "Add-Unavailable 'check-only-in-powershell' 'planted'; Add-Unavailable 'check-transmission'"; then
   rows_ps "$WORK/gate.ps1" "$WORK/ps.plant"
   compare "pwsh     a row declared on the PowerShell lane alone is caught" \
     "$WORK/sh.rows" "$WORK/ps.plant" differ

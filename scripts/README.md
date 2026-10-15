@@ -219,7 +219,9 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   listing are each refused. ⚠ Its listings are generated rather than recorded,
   because an object name is forty hex digits and `check-no-secrets --public`
   refuses that shape.
-- [`capture/check-assemble.sh`](capture/check-assemble.sh) proves
+- `bit-check check-assemble`, in
+  [`../tools/check/assemble.go`](../tools/check/assemble.go) since 2026-10-15
+  and on both lanes, proves
   [`assemble-capture`](../crates/bit-ids-probe/examples/assemble-capture.rs),
   which is what turns a dispatched capture's artifacts into records. ⭐ Its
   control is the half that matters: two routes, two resolvers, two connectors and

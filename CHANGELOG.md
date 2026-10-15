@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T08:30:05Z
+
+- ⭐ **`check-assemble` runs on the Windows lane**, ported whole into
+  `bit-check` with all 69 cases. It was compared against its shell half on the
+  verdict, on every row label and by five mutants before that half was deleted.
+  It was the last portable row.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-07`. No version bump and no deploy.
+
 ### 2026-10-15T07:57:36Z
 
 - ⭐ **Transmission 4.1.3 is published**, beside aria2-next 3.0.3: `data` holds
@@ -1917,7 +1925,7 @@ Nothing is released yet. Entries accumulate here until the first
   [`assemble-capture`](crates/bit-ids-probe/examples/assemble-capture.rs) reads a
   lane's capture artifact and its install artifact and writes the `Profile` they
   support, deriving every field from a document rather than from a lane's name.
-  [`check-assemble.sh`](scripts/capture/check-assemble.sh) proves it over
+  `check-assemble.sh` proves it over
   synthetic lanes: 15 cases, and the control - two routes, two resolvers, two
   connectors, one identity on the wire - is accepted and reaches
   `build_equivalent`.

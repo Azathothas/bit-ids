@@ -74,6 +74,7 @@
 #   sh scripts/common/check-bitcheck.sh
 #   sh scripts/common/check-bitcheck.sh --harnesses
 #   sh scripts/common/check-bitcheck.sh --compare
+#   sh scripts/common/check-bitcheck.sh --compare check-assemble
 #   sh scripts/common/check-bitcheck.sh --json
 #
 # Exit codes: 0 every case held, 1 one did not, 2 could not run.
@@ -85,6 +86,12 @@ set -u
 JSON=0
 COMPARE=0
 HARNESSES=0
+# ⚠ A PORT IN PROGRESS IS COMPARED ON ITS OWN. A check name runs that check's
+# cases and nothing else, so a port can be held against its shell half without
+# paying for every other comparison. ⛔ Only a harness in the port table below
+# may be named, because a case list that ran part of itself under a name it did
+# not know would report a comparison of nothing.
+ONLY=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --json) JSON=1 ;;
@@ -93,6 +100,7 @@ while [ $# -gt 0 ]; do
       HARNESSES=1
       ;;
     --harnesses) HARNESSES=1 ;;
+    check-*) ONLY=$1 ;;
     -h | --help)
       awk 'NR>1 { if (/^#/) { sub(/^# ?/, ""); print } else exit }' "$0"
       exit 0
@@ -365,6 +373,63 @@ unplant_tracked() { # relative-path
   (cd "$TREE" && git rm -q --cached --ignore-unmatch -- "$1")
   rm -f "$TREE/$1"
 }
+
+# ============================================================================
+# check-assemble
+# ============================================================================
+#
+# ⭐ PORTED 2026-10-15, `CI-07` and `CI-10`, and the last portable row. Its
+# plants go into the assembler it drives, `assemble-capture`: one stops refusing
+# a host nothing says is destroyed, which only the self-hosted case may notice;
+# one rewords the refusal an `acquired` that is neither value is given, which
+# only that case's literal may notice. ⚠ A function rather than a section,
+# because the port table below runs it alone; the harness section calls it in
+# its place in the list.
+harness_assemble() {
+  agree "assemble clean tree" check-assemble capture/check-assemble 0
+  go_said "assemble clean tree" '{"schema":"check-assemble/1","total":69,"passed":69,"failed":0}'
+
+  ASM="$TREE/crates/bit-ids-probe/examples/assemble-capture.rs"
+  cp "$ASM" "$WORK/assemble.orig" || exit 2
+  if replace_once "$ASM" 'if environment != "github-hosted" {' 'if false && environment != "github-hosted" {'; then
+    agree "assemble a self-hosted runner taken as disposable" check-assemble capture/check-assemble 1
+    go_said "assemble a self-hosted runner taken as disposable" '{"schema":"check-assemble/1","total":69,"passed":68,"failed":1}'
+  else
+    fail "assemble a self-hosted runner taken as disposable: NOT PLANTED"
+  fi
+  cp "$WORK/assemble.orig" "$ASM"
+
+  if replace_once "$ASM" 'which is neither yes nor no",' 'which is neither yes or no",'; then
+    agree "assemble an unknown acquired value refused under other words" check-assemble capture/check-assemble 1
+    go_said "assemble an unknown acquired value refused under other words" '{"schema":"check-assemble/1","total":69,"passed":68,"failed":1}'
+  else
+    fail "assemble an unknown acquired value refused under other words: NOT PLANTED"
+  fi
+  cp "$WORK/assemble.orig" "$ASM"
+
+  agree "assemble clean tree again" check-assemble capture/check-assemble 0
+}
+
+# -- ⭐ THE PORT TABLE ----------------------------------------------------------
+#
+# A harness that may be compared on its own, and the function holding its
+# cases. ⚠ Its rows build a Rust subject, so they get the target directory of
+# this run's own that the harness section below explains, and the report is
+# this harness's rows alone.
+if [ -n "$ONLY" ]; then
+  CARGO_TARGET_DIR="$WORK/target"
+  export CARGO_TARGET_DIR
+  case "$ONLY" in
+    check-assemble) harness_assemble ;;
+    *)
+      printf 'check-bitcheck: %s is not in the port table; one of: check-assemble\n' "$ONLY" >&2
+      exit 2
+      ;;
+  esac
+  store_report check-bitcheck/1 cases \
+    "$([ "$JSON" = "1" ] && printf 1 || printf 0)"
+  exit $?
+fi
 
 # ============================================================================
 # check-control-bytes
@@ -972,6 +1037,13 @@ else
   cp "$WORK/connector.orig" "$CON"
 
   agree "connector clean tree again" check-connector capture/check-connector 0
+fi
+
+# check-assemble's cases, defined with the port table above.
+if [ "$HARNESSES" = "0" ]; then
+  printf 'check-bitcheck: the check-assemble cases were NOT run; --harnesses or --compare runs them\n' >&2
+else
+  harness_assemble
 fi
 
 # ============================================================================

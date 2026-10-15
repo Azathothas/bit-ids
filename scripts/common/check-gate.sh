@@ -318,12 +318,13 @@ fi
 # `check-formats`, `check-staleness` and `check-connector` followed on
 # 2026-10-14, `CI-07`, each compared against its one half; none had a
 # PowerShell twin, so this is what closed the Windows lane's declared row for
-# each.
+# each. ⭐ `check-assemble` was the last portable one, on 2026-10-15, once its
+# dispatch rows' subject became `bit-check assemble-dispatch`.
 # ⚠ `check-remote-items` joined the same day and NEEDS gh AND THE NETWORK, so it
 # exits 2 on a machine without them and that reads as a skip rather than a pass.
 # That is correct: nothing was verified. Its logic is proved without either by
 # `check-bitcheck`, which serves it from a stub `gh` and a stub `curl`.
-for c in check-adapters check-cache check-catalogue check-changelog \
+for c in check-adapters check-assemble check-cache check-catalogue check-changelog \
   check-connector check-control-bytes check-corpus check-docs check-formats \
   check-ignores check-indexes check-licences check-markers check-no-secrets \
   check-one-home check-placeholders check-project check-release \
@@ -430,7 +431,7 @@ for spec in acquisition/check-release-route \
   publishing/check-publish publishing/check-access \
   publishing/check-bundle \
   ci/check-step-bodies \
-  capture/check-assemble capture/check-transmission \
+  capture/check-transmission \
   common/check-examples \
   common/check-handbook common/check-gate-rows common/check-public-row \
   common/check-bitcheck; do
