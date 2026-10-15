@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T17:40:00Z
+
+- **An adapter's `stop` never signals pid 0 or 1**, which would have reached
+  the caller's whole process group. qBittorrent's `version` no longer leaves a
+  temporary file behind, and its source clone reports a timeout as a timeout.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T16:55:03Z
 
 - ⭐ **The capture adapters are Go**: `bit-check adapter aria2`, `aria2-next`,

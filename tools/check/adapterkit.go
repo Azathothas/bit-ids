@@ -390,9 +390,14 @@ func readPID(file string) string {
 }
 
 // signalPID is `kill [-SIG] PID`, answering whether it succeeded.
+//
+// ⛔ A PID AT OR BELOW 1 IS NEVER SIGNALLED. `kill 0` signals the caller's whole
+// process group and `kill 1` signals init, and a pid file holding `0` passes
+// the all-digits guard the shell halves used. Reported by the Go port on
+// 2026-10-15; no `start` writes either value, so it is not a running build.
 func signalPID(pid string, sig syscall.Signal) bool {
 	n, err := strconv.Atoi(pid)
-	if err != nil {
+	if err != nil || n <= 1 {
 		return false
 	}
 	return syscall.Kill(n, sig) == nil

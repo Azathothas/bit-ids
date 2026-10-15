@@ -6173,3 +6173,28 @@ scan-bundle (Join-Path $env:RUNNER_TEMP 'capture')`, and `scan_gate` accepted
 only the sh spelling. The guard rule already took both spellings and the scan
 rule had not been extended. It now accepts both, and the step body was matched
 directly before the rerun.
+
+### ⚠ Three latent adapter defects the port found, fixed. 2026-10-15
+
+The Go port of the four Linux adapters carried over five defects from their
+shell halves. Three are fixed here:
+
+- ⛔ **A pid file of `0` was signalled.** It passes the all-digits guard, and
+  `kill 0` signals the caller's whole process group. `signalPID` now refuses any
+  pid at or below 1, and no `start` ever writes one. A new check-transmission
+  case runs that `stop` inside a session of its own, and the mutant that drops
+  the guard fails it.
+- **qBittorrent's `version` left its temporary file** when Xvfb could not start.
+  The file is now removed by a `defer`, which runs on the refusal's unwind too.
+- **qBittorrent's source clone did not tell a timeout from a failure.** It now
+  answers "did not finish within 600s" on 124, as the other two source routes
+  do.
+
+The other two stay as they are:
+
+- **aria2-next without a resolution.** It declares no
+  `release_digest_unpublished`, so a standalone release drive with no
+  resolution is could-not-run. A route with no digest disposition must not run,
+  and the workflow always resolves first, so this is the safe outcome.
+- **The old shell reader that missed `timeout 120 curl`.** It is gone, and the
+  Go reader counts those fetches.

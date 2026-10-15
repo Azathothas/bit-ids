@@ -286,4 +286,20 @@ else
   fail "stop     exit $RC with no jq, and the settings file is still there"
 fi
 
+# ⛔ A PID FILE OF `0` IS NOT A BUILD. It passes an all-digits guard, and
+# `kill 0` signals the caller's whole process group. ⚠ The stop runs in a
+# session of its own, so a guard that let it through ends that sacrificial
+# group and never this harness: the rc file then never appears.
+_wd="$WORK/stop-zero"
+mkdir -p "$_wd" || exit 2
+printf '0\n' >"$_wd/pid"
+# shellcheck disable=SC2016 # the inner shell expands them, from its own arguments
+setsid -w sh -c '"$1" adapter "$2" stop "$3" >"$3/stop.out" 2>&1; echo "$?" >"$3/rc"' \
+  sh "$BIT_CHECK" "$ADAPTER" "$_wd" >/dev/null 2>&1
+if [ "$(cat "$_wd/rc" 2>/dev/null)" = 0 ]; then
+  pass "stop     a pid file of 0 signals nothing and is done"
+else
+  fail "stop     a pid file of 0 ended the stop's own process group (rc [$(cat "$_wd/rc" 2>/dev/null)])"
+fi
+
 store_report check-transmission/1 cases "$JSON"

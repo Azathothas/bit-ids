@@ -423,11 +423,14 @@ func qbittorrentSource(k *adapterKit, workdir string) {
 	if repo == "" {
 		k.cannot("this adapter declares no release_repo to clone from")
 	}
-	// ⚠ Unlike the other two source routes this one has never told a clone that
-	// hit its bound from one that failed; the shell half did not either.
+	// ⚠ A clone that hit its bound is told from one that failed, as the other
+	// two source routes tell it; the shell half did not. 2026-10-15.
 	c := exec.Command("timeout", "600", "git", "clone", "--depth", "1", "--branch", tag,
 		"https://github.com/"+repo+".git", filepath.Join(workdir, "src"))
-	if run(c, stdio{in: os.DevNull, out: filepath.Join(workdir, "install.log"), err: "&1"}) != 0 {
+	if rc := run(c, stdio{in: os.DevNull, out: filepath.Join(workdir, "install.log"), err: "&1"}); rc != 0 {
+		if rc == 124 {
+			k.refuse("the source route's clone of " + tag + " did not finish within 600s")
+		}
 		k.refuse("the source route could not clone " + tag)
 	}
 	k.cloneCommit(workdir, tag)
@@ -644,6 +647,10 @@ func qbittorrentVersion(k *adapterKit) {
 	}
 	xpid := tmp.Name()
 	tmp.Close()
+	// ⚠ DEFERRED, so a display that never starts, whose refusal unwinds from
+	// inside qbittorrentStartDisplay, leaves no temporary file behind either.
+	// The shell half left it. 2026-10-15.
+	defer os.Remove(xpid)
 	display := qbittorrentStartDisplay(k, xpid)
 	rt, ok := qbittorrentRuntimeDir(k)
 	if !ok {
@@ -652,7 +659,6 @@ func qbittorrentVersion(k *adapterKit) {
 	c := exec.Command(binary, "--version")
 	output, rc := capture(c, stdio{in: os.DevNull, err: "&1", env: qbittorrentBuildEnv(display, rt)})
 	qbittorrentStopDisplay(xpid)
-	_ = os.Remove(xpid)
 	if rc != 0 {
 		// ⚠ `printf '%s' "$OUTPUT" | head -3 | tr '\n' ' '`: the first three
 		// lines with their newlines, or the whole answer when it is shorter.
