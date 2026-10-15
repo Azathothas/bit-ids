@@ -900,10 +900,13 @@ fi
 # first. These cases run the workflow's own *Arrive* and *Wait* bodies against a
 # stub `curl` that keeps the check runs it is sent in a directory and answers a
 # query by name, which is the one place two runners can meet.
+# ⚠ The bodies run `"$BIT_CHECK" install-barrier` since 2026-10-15 (`CI-11`), so
+# the tree needs no copy of a script: BIT_CHECK, built above, is what they run.
+# Its `curl` takes the token from a header file, `-H @file`, which the stub's
+# `-H` arm skips as it skipped the literal header.
 BARBIN="$WORK/barbin"
 BARDB="$WORK/bardb"
-mkdir -p "$BARBIN" "$TREE/scripts/ci" || exit 2
-cp "$ROOT/scripts/ci/install-barrier.sh" "$TREE/scripts/ci/" || exit 2
+mkdir -p "$BARBIN" || exit 2
 cat >"$BARBIN/curl" <<'STUBCURL'
 #!/bin/sh
 # Keeps posted check runs by name; answers a query for one name with it.

@@ -6041,3 +6041,50 @@ process.
 - `check-workflow`'s script-name probe had been renaming a script that ci.yml
   never named, so its `sed` changed nothing. It now renames `check-gate.sh`,
   which ci.yml does run.
+
+### ⭐ The Windows lane of `capture-client.yml` is built, and not yet dispatched. 2026-10-15
+
+A `windows` job on `windows-2025` runs adapter `qbittorrent` over the routes
+`release` and `package`. It follows the Linux job's step order and guards:
+claim, build, resolve, install, barrier, contain, assert, prove, capture, scan,
+upload. Each step is `bit-check` or PowerShell, every pwsh block ends in an
+explicit `exit`, and nothing on the path is `sh`. ⚠ The job runs only when
+`windows_adapters` names an adapter. Its default is `[]`, so a bare dispatch
+runs what it ran before. The adapter itself and the routes are under
+`CLIENT-01` in [`clients.md`](clients.md).
+
+| piece | what it is |
+| --- | --- |
+| [`adapter_qbittorrent_windows.go`](../tools/check/adapter_qbittorrent_windows.go) | the Windows half of `qbittorrent`; its pure decisions are in `qbtwindows.go`, and `bit-check qbittorrent-windows --selftest` checks them on any host |
+| `bit-check capture-client --programs` | the one derivation of what a client capture runs: the observer, `bit-check` itself (which runs the adapter and the capture), the build the adapter names in `binary=`, the connector's interpreter, and any `helpers=` the adapter declares |
+| `capture-client` on Windows | the guard is asked `--egress --program <list>`, the same list derived again, and the ps1 sees `-Program`; the marker and the fingerprint come from `assert-disposable.ps1` |
+| `bit-check probe-egress <host:port>` | the prover. The capture's own blocked `bit-check` tries to leave. Only a connect this host refused passes; a DNS failure or a timeout does not |
+| [`installbarrier.go`](../tools/check/installbarrier.go) | `bit-check install-barrier`, which replaces `scripts/ci/install-barrier.sh`; both lanes run it. The Windows lane arrives as `<adapter>-windows`, so its pair meets itself and not the Linux lanes |
+| *Install the client* | `bit-check install-step` (the job object), bounded from outside by `WaitForExit` and a kill of the whole tree, because `timeout.exe` is a pause on Windows |
+
+⚠ **The flight recorder stays Linux-only.** It reads `/proc`, and this lane
+never cuts its route, which is what the recorder was built to see through. The
+workflow says so.
+
+| held before commit | result |
+| --- | --- |
+| the barrier, both halves under `check-step-bodies`' own stub `curl`: the four harness scenarios plus four argument errors and a missing token | identical output and exit codes. The shell half was then deleted |
+| `sh scripts/ci/check-step-bodies.sh` on the Go barrier | 45 of 45 |
+| a mutant that reads a failed route as missing | refused by its own case, 44 of 45 |
+| `bit-check qbittorrent-windows --selftest` | 35 of 35. Two mutants were refused: DHT left on, and `$PLUGINSDIR` read as the payload |
+| `capture-client --programs` over stub adapters | the list in a fixed order with duplicates removed; an adapter naming no build, and a missing `--observer`, each exit 2 |
+| `gofmt -l`, `go vet ./...`, `GOOS=windows go vet ./...`, `GOOS=windows go build` | clean |
+
+⛔ **`check-workflow` now knows this workflow's firewall job.** The list needle
+is derived per workflow: `capture-run.ps1 -Programs` for `capture.yml` and
+`capture-client --programs` for `capture-client.yml`. The guard is matched in
+either spelling. In a job that installs, *Install the client* and *Wait at the
+install barrier* must come before *Contain the capture's programs*. One new
+probe swaps the install and the containment in the Windows job. ⚠ That rule set
+has not been run here. The parent session runs `check-workflow`.
+
+⛔ **Not established off a runner.** The pwsh blocks have not run. Neither has
+winget, nor the GUI build in a runner's session, nor the 7-Zip extraction's
+layout, nor the Web UI's shutdown, nor the rules over `bit-check.exe` and
+`qbittorrent.exe`. A dispatch with `windows_adapters: ["qbittorrent"]` is what
+proves them. `CLIENT-01` lists them in reading order.

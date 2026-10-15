@@ -12,6 +12,20 @@ Nothing is released yet. Entries accumulate here until the first
   mutants were each caught.
 - Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
 
+### 2026-10-15T16:39:32Z
+
+- ⭐ **`capture-client.yml` has a Windows lane** for qBittorrent 5.2.4: the
+  vendor's `_lt20` installer, extracted with 7-Zip, and winget's
+  `qBittorrent.qBittorrent.lt2`. Both deliver one installer's bytes. The
+  capture's programs are blocked at the firewall, the guard reads the rules
+  back, and the capture's own `bit-check` proves the block. The lane runs only
+  when `windows_adapters` names an adapter, so a default dispatch is unchanged.
+- The install barrier is `bit-check install-barrier` on both lanes. It matched
+  its deleted shell half case for case.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11` and
+  [`TODO/clients.md`](TODO/clients.md) `CLIENT-01`. Not yet dispatched. No
+  version bump and no deploy.
+
 ### 2026-10-15T16:05:00Z
 
 - **A contained capture finds `bit-check` again**: `contained.sh` passes

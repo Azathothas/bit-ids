@@ -169,6 +169,16 @@ blocks* has the capture's own blocked `curl.exe` try to reach GitHub and accepts
 only exit 7, could not connect, with the host itself reaching the same address
 as the control.
 
+⭐ **A Windows client capture is contained the same way**, by the `windows` job
+of [`../.github/workflows/capture-client.yml`](../.github/workflows/capture-client.yml).
+The list is `bit-check capture-client --programs`: the observer, `bit-check`
+itself (which runs the adapter and the capture), the installed product, the
+connector's interpreter and any `helpers=` the adapter declares. Every step
+that writes, reads or proves the rules asks for it, and the capture asks the
+guard again over the same list. The prover is the capture's own blocked
+`bit-check probe-egress`, which passes only on a connect this host refused.
+The job runs when the dispatch's `windows_adapters` names an adapter.
+
 ⚠ Until 2026-10-15 `-Egress` read `Get-NetRoute`, and `CI-06`'s dispatch
 measured that cmdlet's output against the route fixtures on a runner whose
 default routes had just been removed.

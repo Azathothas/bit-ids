@@ -328,13 +328,16 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   recorder reads the closure back, so a run still open after its job is a host
   that never reached that step and one that closed shows the state its job ended
   in. `check-step-bodies` drives both steps against a stub `curl`.
-- [`ci/install-barrier.sh`](ci/install-barrier.sh) holds each lane of a
-  `capture-client` dispatch until every route of its adapter has installed,
-  across runners that share nothing but the commit: each posts a check run named
-  for its run attempt, adapter and route, and waits for the others. ⚠ It never
-  fails a lane; it writes `passed`, `failed` or `timeout` into
-  `install-barrier.txt`, which the install artifact uploads. `check-step-bodies`
-  drives both steps against a stub `curl`. `CI-09`.
+- `bit-check install-barrier`, in
+  [`../tools/check/installbarrier.go`](../tools/check/installbarrier.go), holds
+  each lane of a `capture-client` dispatch until every route of its adapter has
+  installed, across runners that share nothing but the commit: each posts a
+  check run named for its run attempt, adapter and route, and waits for the
+  others. ⚠ It never fails a lane; it writes `passed`, `failed` or `timeout`
+  into `install-barrier.txt`, which the install artifact uploads.
+  `check-step-bodies` drives both steps against a stub `curl`. `CI-09`. ⭐ Go
+  since 2026-10-15 (`CI-11`), because the Windows lane waits at it too; it was
+  `ci/install-barrier.sh`, compared case for case before that was deleted.
 - [`ci/report-holders.sh`](ci/report-holders.sh) names the processes still
   holding an open descriptor on a file, and prints the process table beside them.
   ⚠ It reports and never refuses: a step that went red because its diagnostic

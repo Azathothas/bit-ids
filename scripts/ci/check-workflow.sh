@@ -784,9 +784,19 @@ if unit capture-fork; then
     # derived from the file's own name rather than assumed: `capture.yml` runs
     # `capture-run` and `capture-client.yml` runs `capture-client`. A single
     # needle would pass on both by matching the shorter one inside the longer.
+    # ⛔ AND SO DOES THE ONE DERIVATION OF THE PROGRAMS A FIREWALL-CONTAINED JOB
+    # BLOCKS: `capture-run.ps1 -Programs` for the fixture capture, and `bit-check
+    # capture-client --programs` for a client capture, whose list carries the
+    # installed product. `CI-11`, 2026-10-15.
     case "$CAPNAME" in
-      capture-client.*) CAPRUNNER=capture-client ;;
-      *) CAPRUNNER=capture-run ;;
+      capture-client.*)
+        CAPRUNNER=capture-client
+        CAPLIST='capture-client --programs'
+        ;;
+      *)
+        CAPRUNNER=capture-run
+        CAPLIST='capture-run.ps1 -Programs'
+        ;;
     esac
     # ⚠ Every job key the file declares, so a workflow that grew a platform is
     # checked on it. `job_steps` is keyed on these.
@@ -860,18 +870,31 @@ if unit capture-fork; then
         # wrote its own list could block one set of programs and run another.
         for _fw in "Contain the capture's programs" "Assert containment" "Prove the firewall blocks"; do
           case "$(step_command "$CAPWF" "$job" "$_fw")" in
-            *"capture-run.ps1 -Programs"*) pass "workflow  $CAPNAME $job: [$_fw] asks the runner which programs it runs" ;;
-            *) fail "workflow  $CAPNAME $job: [$_fw] does not ask capture-run.ps1 -Programs for the list" ;;
+            *"$CAPLIST"*) pass "workflow  $CAPNAME $job: [$_fw] asks the runner which programs it runs" ;;
+            *) fail "workflow  $CAPNAME $job: [$_fw] does not ask $CAPLIST for the list" ;;
           esac
         done
         case "$(step_command "$CAPWF" "$job" "Contain the capture's programs")" in
           *"scripts/capture/firewall-contain.ps1 -Program"*) pass "workflow  $CAPNAME $job: the rules are written by firewall-contain.ps1" ;;
           *) fail "workflow  $CAPNAME $job: [Contain the capture's programs] does not run firewall-contain.ps1" ;;
         esac
+        # ⚠ Two spellings of one guard: the PowerShell half directly, or
+        # `bit-check assert-disposable`, which asks that half on Windows.
         case "$(step_command "$CAPWF" "$job" "Assert containment")" in
-          *"assert-disposable.ps1 -Egress -Program"*) pass "workflow  $CAPNAME $job: the guard reads the rules for the programs" ;;
+          *"assert-disposable.ps1 -Egress -Program"* | *"assert-disposable --egress --program"*)
+            pass "workflow  $CAPNAME $job: the guard reads the rules for the programs"
+            ;;
           *) fail "workflow  $CAPNAME $job: [Assert containment] does not run the guard over the programs" ;;
         esac
+        # ⛔ AND A JOB THAT INSTALLS A PRODUCT BLOCKS IT AFTER IT EXISTS. The
+        # rule writer refuses a path nothing is at, so a containment ahead of
+        # the install fails loudly; this says where the fault is.
+        if [ -n "$(step_index "$CAPWF" "$job" "Install the client")" ]; then
+          order_case "$job" "Install the client" "Contain the capture's programs"
+        fi
+        if [ -n "$(step_index "$CAPWF" "$job" "Wait at the install barrier")" ]; then
+          order_case "$job" "Wait at the install barrier" "Contain the capture's programs"
+        fi
       else
         order_case "$job" "Build the observer" "Assert containment"
         order_case "$job" "Assert containment" "Capture"
@@ -1130,6 +1153,18 @@ if unit static-readers; then
       pass "probe    the order reader sees a capture moved ahead of the install barrier"
     else
       fail "probe    the order reader missed a capture moved ahead of the install barrier"
+    fi
+
+    # ⛔ AND THE WINDOWS LANE'S RULES ARE BLOCKED ONLY ONCE THE PRODUCT IS
+    # INSTALLED, which a probe on the firewall job of this workflow refutes.
+    # `CI-11`.
+    swap_steps "Install the client" "Contain the capture's programs" "$MUTWF"
+    _a=$(step_index "$MUTWF" windows "Install the client")
+    _b=$(step_index "$MUTWF" windows "Contain the capture's programs")
+    if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+      pass "probe    the order reader sees an install moved after the programs are contained"
+    else
+      fail "probe    the order reader missed an install moved after the programs are contained"
     fi
 
     swap_steps "Read whether this route compiles" "Install the client" "$MUTWF"

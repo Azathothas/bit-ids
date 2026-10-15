@@ -57,6 +57,10 @@
 //	bit-check adapter <name> <describe|install|version|start|stop> [args...]
 //	bit-check capture-client --run-id <id> --out <dir> --observer <path> --adapter <path> --connector <path> [...]
 //	bit-check capture-run --run-id <id> --out <dir> --observer <path> [--seconds <n>] [--route-table <path>]
+//	bit-check capture-client --programs --observer <path> --adapter <path> --connector <path>
+//	bit-check install-barrier arrive <adapter> <route> <success|failure> | wait <adapter> <routes-json> <record>
+//	bit-check probe-egress <host:port>
+//	bit-check qbittorrent-windows --selftest
 //	bit-check --rows
 //
 // ⛔ Read the exit code from this process, unpiped. ⚠ `go run . <check>` is a
@@ -210,6 +214,17 @@ func main() {
 	}
 	if args[0] == "capture-run" {
 		os.Exit(captureRun(args[1:]))
+	}
+	// ⭐ And what the Windows lane needs beside them: the cross-lane barrier,
+	// the firewall's prover, and the Windows adapter's own selftest. `CI-11`.
+	if args[0] == "install-barrier" {
+		os.Exit(installBarrier(args[1:]))
+	}
+	if args[0] == "probe-egress" {
+		os.Exit(probeEgress(args[1:]))
+	}
+	if args[0] == "qbittorrent-windows" {
+		os.Exit(qbittorrentWindows(args[1:]))
 	}
 
 	name := args[0]

@@ -56,6 +56,27 @@ on:
         required: true
         default: "51413"
         type: string
+      # ⭐ THE WINDOWS LANE, `CI-11`. Its own adapter list, because only a
+      # target with a Windows half can run there: `qbittorrent` is the one
+      # today. ⚠ THE DEFAULT IS NONE, so a bare dispatch runs what it ran
+      # before this lane existed; pass `["qbittorrent"]` to run it. Decided
+      # unattended on 2026-10-15 and recorded in `TODO/PROGRESS.md`.
+      windows_adapters:
+        description: >-
+          Which adapters to run on Windows, as a JSON array, e.g.
+          ["qbittorrent"]. [] runs no Windows lane.
+        required: true
+        default: '[]'
+        type: string
+      # ⚠ ITS OWN ROUTES TOO: the Windows half's second route is a package
+      # manager, winget, where Linux's is a source build.
+      windows_routes:
+        description: >-
+          Which acquisition routes the Windows lane runs, as a JSON array, of
+          package and release.
+        required: true
+        default: '["release","package"]'
+        type: string
 
 permissions:
   contents: read
@@ -331,7 +352,9 @@ jobs:
       # run 37's release lane observed while the source route was still
       # compiling elsewhere. Settled by the operator on 2026-10-14: every lane's
       # capture waits for every route's install. `CI-09`, and
-      # `scripts/ci/install-barrier.sh` says how the runners meet.
+      # `bit-check install-barrier` (tools/check/installbarrier.go) says how
+      # the runners meet. ⚠ Go since 2026-10-15, `CI-11`, because the Windows
+      # lane below waits at it too; the shell script it replaced is deleted.
       # ⚠ Neither step fails the job: a route that cannot be satisfied fails its
       # own lane, and the others' measurements stay intact with a verdict that
       # says why their order is not proven.
@@ -352,7 +375,7 @@ jobs:
           INSTALL_CONCLUSION: ${{ steps.install.outcome == 'success' && 'success' || 'failure' }}
         run: |
           rc=0
-          sh scripts/ci/install-barrier.sh arrive "$BARRIER_ADAPTER" "$ROUTE" "$INSTALL_CONCLUSION" || rc=$?
+          "$BIT_CHECK" install-barrier arrive "$BARRIER_ADAPTER" "$ROUTE" "$INSTALL_CONCLUSION" || rc=$?
           [ "$rc" = 0 ] || echo "install-barrier: could not arrive (exit $rc); the other lanes will time out"
 
       - name: Wait at the install barrier
@@ -365,7 +388,7 @@ jobs:
           ROUTES: ${{ inputs.routes }}
         run: |
           rc=0
-          sh scripts/ci/install-barrier.sh wait "$BARRIER_ADAPTER" "$ROUTES" "$RUNNER_TEMP/install-barrier.txt" || rc=$?
+          "$BIT_CHECK" install-barrier wait "$BARRIER_ADAPTER" "$ROUTES" "$RUNNER_TEMP/install-barrier.txt" || rc=$?
           [ "$rc" = 0 ] || echo "install-barrier: could not wait (exit $rc); this capture's order is not proven"
 
       # ⛔ THE CAPTURE IS CONTAINED, NOT THE HOST. This workflow used to delete
@@ -544,4 +567,362 @@ jobs:
             echo 'the flight recorder did not confirm within 60s; its check run may still be open'
           fi
           cat "$RUNNER_TEMP/flight-recorder.log" 2>/dev/null || true
+          exit 0
+
+  # ⭐ THE WINDOWS LANE, `CI-11`: the same capture path as the Linux job, step
+  # for step, in `bit-check` and PowerShell because a Windows runner has no
+  # `sh`. The adapter is the Go one, `bit-check adapter qbittorrent`, named by
+  # its registered name rather than a path.
+  #
+  # ⛔ CONTAINED AT THE FIREWALL, AS capture.yml's WINDOWS JOB IS. Windows has no
+  # network namespace, and cutting the host's route severs the runner agent
+  # (`CI-08`). So every program the capture runs gets an outbound block rule,
+  # the guard reads the rules back, and the capture's own blocked program
+  # proves the host enforces them. ⭐ The list is `bit-check capture-client
+  # --programs`, the one derivation: the observer, `bit-check` (which runs the
+  # adapter and the capture), the installed `qbittorrent.exe` and the
+  # connector's interpreter. Every step that writes, reads or proves the rules
+  # asks it, and the capture asks the guard again over the same list.
+  #
+  # ⚠ NO FLIGHT RECORDER HERE. `scripts/ci/flight-recorder.sh` reads `/proc`
+  # and stays Linux-only; this lane never cuts its route, which is what the
+  # recorder was built to see through, so the job log reaches GitHub whole.
+  windows:
+    name: Windows client capture (${{ matrix.adapter }}, ${{ matrix.route }})
+    if: inputs.windows_adapters != '[]'
+    runs-on: windows-2025
+    # ⚠ Nothing on this lane compiles, so the bound is a download lane's with
+    # room for winget, whose first call also refreshes its index.
+    timeout-minutes: 45
+    # ⛔ READ ONLY, with `checks: write` for the install barrier's check runs.
+    permissions:
+      contents: read
+      checks: write
+    strategy:
+      fail-fast: false
+      matrix:
+        adapter: ${{ fromJSON(inputs.windows_adapters) }}
+        route: ${{ fromJSON(inputs.windows_routes) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # ⭐ `bit-check` FIRST, BECAUSE THE CLAIM IS ONE OF ITS COMMANDS, as on
+      # Linux. It is also the adapter, the barrier and the prover on this lane.
+      - name: Build bit-check
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $out = Join-Path $env:RUNNER_TEMP 'bit-check.exe'
+          Push-Location tools/check
+          & go build -o $out .
+          $rc = $LASTEXITCODE
+          Pop-Location
+          if ($rc -ne 0) { exit 1 }
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "BIT_CHECK=$out"
+          exit 0
+
+      # ⛔ FIRST, BEFORE ANYTHING ELSE WRITES TO THE HOST, and before anything is
+      # installed. On Windows `bit-check assert-disposable` asks
+      # assert-disposable.ps1, whose marker is under ProgramData.
+      - name: Claim the host
+        shell: pwsh
+        env:
+          RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.adapter }}-windows-${{ matrix.route }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          & $env:BIT_CHECK assert-disposable --claim $env:RUN_ID
+          $rc = $LASTEXITCODE
+          exit $rc
+
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: rustup show active-toolchain
+
+      # ⛔ THE BUILD HAPPENS HERE, WHILE THE NETWORK STILL EXISTS, and it is every
+      # binary this job runs: the observer and both resolver examples.
+      - name: Build the observer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          & cargo build -p bit-ids-probe --locked --example client-capture
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & cargo build -p bit-ids --locked --example resolve-stable --example select-asset
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          exit 0
+
+      # ⛔ THE ARTIFACT IS CHOSEN HERE, out of the adapter's own `describe`, which
+      # names the `_lt20` installer. ⚠ The URL is written with a bare `\n`
+      # rather than through `>`, which on Windows would end it with `\r\n` and
+      # hand `install-rootless` a URL with a carriage return in it.
+      - name: Resolve the release artifact
+        if: matrix.route == 'release'
+        shell: pwsh
+        env:
+          ADAPTER: ${{ matrix.adapter }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $dir = Join-Path $env:RUNNER_TEMP 'release'
+          $null = New-Item -ItemType Directory -Force -Path $dir
+          $url = & $env:BIT_CHECK resolve-release --adapter $env:ADAPTER --workdir $dir --record (Join-Path $dir 'resolution.txt')
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          [System.IO.File]::WriteAllText((Join-Path $dir 'url.txt'), ((@($url) -join '') + "`n"))
+          Get-Content -LiteralPath (Join-Path $dir 'resolution.txt')
+          exit 0
+
+      # ⭐ THE INSTALL, BOUNDED, WITH ITS OUTPUT IN FILES. `bit-check
+      # install-step` runs the install in a JOB OBJECT, so everything the route
+      # starts is swept when it ends. ⛔ AND THIS STEP BOUNDS THAT PROCESS FROM
+      # OUTSIDE IT, as `timeout -k 30` does on Linux: Windows' `timeout.exe` is
+      # a pause, not a bound, so the outer bound is `WaitForExit` and a kill of
+      # the whole tree. ⚠ Each bound outlasts the one inside it: install-client's
+      # own bounds sum to about 930 seconds, under BIT_IDS_STEP_TIMEOUT, under
+      # OUTER_TIMEOUT, under the step's `timeout-minutes`, under the job's.
+      # ⚠ The version bound is 120 seconds, not 60, because this build is asked
+      # its version by starting it and reading its Web UI.
+      - name: Install the client
+        id: install
+        shell: pwsh
+        env:
+          ADAPTER: ${{ matrix.adapter }}
+          ROUTE: ${{ matrix.route }}
+          BIT_IDS_INSTALL_TIMEOUT: "600"
+          BIT_IDS_VERSION_TIMEOUT: "120"
+          BIT_IDS_STEP_TIMEOUT: "1080"
+          OUTER_TIMEOUT: "1200"
+        timeout-minutes: 22
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $log = Join-Path $env:RUNNER_TEMP 'install-step.log'
+          $err = Join-Path $env:RUNNER_TEMP 'install-step.err'
+          # ⚠ An empty file for stdin, so a prompt anywhere beneath gets end of
+          # file rather than a wait.
+          $in = Join-Path $env:RUNNER_TEMP 'install-step.in'
+          $null = New-Item -ItemType File -Force -Path $in
+          $p = Start-Process -FilePath $env:BIT_CHECK -ArgumentList 'install-step' -NoNewWindow -PassThru `
+            -RedirectStandardOutput $log -RedirectStandardError $err -RedirectStandardInput $in
+          # ⚠ The handle is read at once: a process object whose handle was never
+          # opened reports no exit code once the process has gone.
+          $null = $p.Handle
+          if ($p.WaitForExit([int]$env:OUTER_TIMEOUT * 1000)) {
+            $rc = $p.ExitCode
+          }
+          else {
+            $p.Kill($true)
+            $rc = 124
+            [Console]::Error.WriteLine("install-step was still running after $($env:OUTER_TIMEOUT)s and was ended with its tree")
+          }
+          Get-Content -LiteralPath $log -ErrorAction SilentlyContinue
+          Get-Content -LiteralPath $err -ErrorAction SilentlyContinue
+          exit $rc
+
+      # ⛔ THE BARRIER, AS ON LINUX, AND THIS LANE'S ROUTES MEET EACH OTHER. The
+      # Windows pair is its own run manifest, so it arrives under
+      # `<adapter>-windows` and never satisfies, or waits on, a Linux lane.
+      # ⛔ EVERY LANE ARRIVES, INSTALLED OR NOT.
+      - name: Arrive at the install barrier
+        if: always()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BARRIER_RUN: ${{ github.run_id }}-${{ github.run_attempt }}
+          BARRIER_ADAPTER: ${{ matrix.adapter }}-windows
+          ROUTE: ${{ matrix.route }}
+          INSTALL_CONCLUSION: ${{ steps.install.outcome == 'success' && 'success' || 'failure' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          & $env:BIT_CHECK install-barrier arrive $env:BARRIER_ADAPTER $env:ROUTE $env:INSTALL_CONCLUSION
+          if ($LASTEXITCODE -ne 0) { Write-Output "install-barrier: could not arrive (exit $LASTEXITCODE); the other lanes will time out" }
+          exit 0
+
+      - name: Wait at the install barrier
+        if: steps.install.outcome == 'success'
+        timeout-minutes: 30
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BARRIER_RUN: ${{ github.run_id }}-${{ github.run_attempt }}
+          BARRIER_ADAPTER: ${{ matrix.adapter }}-windows
+          ROUTES: ${{ inputs.windows_routes }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          & $env:BIT_CHECK install-barrier wait $env:BARRIER_ADAPTER $env:ROUTES (Join-Path $env:RUNNER_TEMP 'install-barrier.txt')
+          if ($LASTEXITCODE -ne 0) { Write-Output "install-barrier: could not wait (exit $LASTEXITCODE); this capture's order is not proven" }
+          exit 0
+
+      # ⛔ THE ROUTE IS NEVER CUT ON THIS HOST. Every program the capture runs
+      # gets an outbound block rule and the host keeps its own way out, the
+      # runner agent's included. ⭐ The list is asked of `bit-check
+      # capture-client --programs`, after the install, because the product's
+      # executable is on it and does not exist before.
+      - name: Contain the capture's programs
+        shell: pwsh
+        env:
+          OBSERVER: ${{ github.workspace }}\target\debug\examples\client-capture.exe
+          ADAPTER: ${{ matrix.adapter }}
+          CONNECTOR: scripts/capture/connectors/cpython-stdlib.py
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $programs = @(& $env:BIT_CHECK capture-client --programs --observer $env:OBSERVER --adapter $env:ADAPTER --connector $env:CONNECTOR)
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & pwsh -NoProfile -File ./scripts/capture/firewall-contain.ps1 -Program ($programs -join '|')
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          exit 0
+
+      - name: Assert containment
+        shell: pwsh
+        env:
+          OBSERVER: ${{ github.workspace }}\target\debug\examples\client-capture.exe
+          ADAPTER: ${{ matrix.adapter }}
+          CONNECTOR: scripts/capture/connectors/cpython-stdlib.py
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $programs = @(& $env:BIT_CHECK capture-client --programs --observer $env:OBSERVER --adapter $env:ADAPTER --connector $env:CONNECTOR)
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & $env:BIT_CHECK assert-disposable --egress --program ($programs -join '|')
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          exit 0
+
+      # ⭐ AND THIS IS WHAT NO READING OF THE RULES CAN ESTABLISH: that the host
+      # enforces them. The capture's own blocked `bit-check` tries to leave with
+      # `probe-egress`, which passes only on a connection this host refused - a
+      # name that does not resolve or a dial that times out is something else
+      # failing - and the host itself reaching the same address is the control.
+      # ⚠ `bit-check` is the prover because it is the program on the list that
+      # can be asked to try; it has to BE on the list, and this step checks so.
+      - name: Prove the firewall blocks
+        shell: pwsh
+        env:
+          OBSERVER: ${{ github.workspace }}\target\debug\examples\client-capture.exe
+          ADAPTER: ${{ matrix.adapter }}
+          CONNECTOR: scripts/capture/connectors/cpython-stdlib.py
+          PROBE_HOST: api.github.com:443
+          PROBE_URL: https://api.github.com/zen
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $programs = @(& $env:BIT_CHECK capture-client --programs --observer $env:OBSERVER --adapter $env:ADAPTER --connector $env:CONNECTOR)
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $self = [System.IO.Path]::GetFullPath($env:BIT_CHECK)
+          $listed = @($programs | Where-Object { [string]::Equals([System.IO.Path]::GetFullPath($_), $self, [System.StringComparison]::OrdinalIgnoreCase) })
+          if ($listed.Count -ne 1) {
+            [Console]::Error.WriteLine('bit-check is not on the capture''s program list, so it cannot prove the block')
+            exit 1
+          }
+          & $env:BIT_CHECK probe-egress $env:PROBE_HOST
+          $blocked = $LASTEXITCODE
+          if ($blocked -ne 0) {
+            [Console]::Error.WriteLine("the blocked bit-check was not refused by this host (probe-egress exit $blocked)")
+            exit 1
+          }
+          try {
+            $null = Invoke-WebRequest -Uri $env:PROBE_URL -UseBasicParsing -TimeoutSec 20
+          }
+          catch {
+            [Console]::Error.WriteLine('the host itself cannot reach the address, so the refusal proves nothing')
+            exit 1
+          }
+          Write-Output ('blocked: ' + $self + ' was refused; the host itself reached ' + $env:PROBE_URL)
+          exit 0
+
+      # ⭐ AND HERE A PRODUCT THIS PROJECT DID NOT WRITE IS HANDED THE TORRENT,
+      # with its programs blocked and the guard asked again over the same list.
+      - name: Capture
+        id: capture
+        shell: pwsh
+        env:
+          RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.adapter }}-windows-${{ matrix.route }}
+          SECONDS_TO_SERVE: ${{ inputs.seconds }}
+          PEER_PORT: ${{ inputs.peer_port }}
+          OBSERVER: ${{ github.workspace }}\target\debug\examples\client-capture.exe
+          ADAPTER: ${{ matrix.adapter }}
+          CONNECTOR: scripts/capture/connectors/cpython-stdlib.py
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          & $env:BIT_CHECK capture-client --run-id $env:RUN_ID --out (Join-Path $env:RUNNER_TEMP 'capture') --observer $env:OBSERVER --adapter $env:ADAPTER --connector $env:CONNECTOR --peer-port $env:PEER_PORT --seconds $env:SECONDS_TO_SERVE
+          $rc = $LASTEXITCODE
+          exit $rc
+
+      # ⛔ A CAPTURE THAT REFUSED IS EVIDENCE TOO, AND RULE 12 IS ASKED OF IT
+      # FIRST, as on Linux.
+      - name: Scan the evidence of a refused capture
+        id: scan
+        if: failure() && steps.capture.outcome == 'failure'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          & $env:BIT_CHECK scan-bundle (Join-Path $env:RUNNER_TEMP 'capture')
+          $rc = $LASTEXITCODE
+          exit $rc
+
+      - name: Upload the evidence bundle
+        if: always() && (steps.capture.outcome == 'success' || steps.scan.outcome == 'success')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: capture-client-${{ matrix.adapter }}-windows-${{ matrix.route }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/capture
+            ${{ runner.temp }}/install-${{ matrix.route }}.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      # ⚠ Logs and records, named, at the top level of each directory, for the
+      # reasons the Linux job's step gives. ⛔ `continue-on-error` here and
+      # nowhere else: this upload is a diagnostic aid.
+      - name: Upload the install logs
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: install-${{ matrix.adapter }}-windows-${{ matrix.route }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/install-${{ matrix.route }}/*.log
+            ${{ runner.temp }}/install-${{ matrix.route }}/*.err
+            ${{ runner.temp }}/install-${{ matrix.route }}/*.txt
+            ${{ runner.temp }}/install-${{ matrix.route }}.txt
+            ${{ runner.temp }}/install-step.log
+            ${{ runner.temp }}/install-step.err
+            ${{ runner.temp }}/install-barrier.txt
+            ${{ runner.temp }}/release/*.txt
+            ${{ runner.temp }}/release/*.json
+            ${{ runner.temp }}/release/*.err
+          if-no-files-found: warn
+          retention-days: 30
+
+      # ⛔ THIS FINGERPRINT IS NOT A FRESHNESS SIGNAL, for the reason capture.yml's
+      # Windows job gives: on a cloned image it identifies the image. The claim
+      # is what refuses a survived host.
+      - name: Report the host fingerprint
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $print = @(& $env:BIT_CHECK assert-disposable --fingerprint)
+          $rc = $LASTEXITCODE
+          Write-Output "windows host fingerprint: $print"
+          $body = New-Object System.Collections.ArrayList
+          [void]$body.Add('### ${{ matrix.adapter }} on Windows (${{ matrix.route }})')
+          [void]$body.Add('')
+          [void]$body.Add('host fingerprint `' + ($print -join '') + '` - this identifies the runner IMAGE, not the host')
+          foreach ($file in @('release/resolution.txt', 'install-${{ matrix.route }}.txt', 'capture/attestation.txt')) {
+            [void]$body.Add('')
+            [void]$body.Add('```')
+            $path = Join-Path $env:RUNNER_TEMP $file
+            if (Test-Path -LiteralPath $path) { $body.AddRange(@(Get-Content -LiteralPath $path)) } else { [void]$body.Add("no $file") }
+            [void]$body.Add('```')
+          }
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value $body
+          if ($rc -ne 0) { Write-Output "the fingerprint could not be read (exit $rc)" }
           exit 0

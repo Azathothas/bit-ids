@@ -355,6 +355,69 @@ that spelling is passed over and the stable newest still wins, and a tag with
 no marker, `v2.0.0x1`, still blocks. 26 of 26. A mutant that reads letters from
 a token's start only is killed by the unit test.
 
+### ⭐ The Windows half of the adapter is built, and not yet run. 2026-10-15
+
+[`../tools/check/adapter_qbittorrent_windows.go`](../tools/check/adapter_qbittorrent_windows.go)
+registers `qbittorrent` on Windows, run as `bit-check adapter qbittorrent`.
+[`../tools/check/qbtwindows.go`](../tools/check/qbtwindows.go) holds what it
+decides without Windows in it, and `bit-check qbittorrent-windows --selftest`
+asks each of those functions on any host: 35 cases, all held, and two mutants
+were refused (DHT left on, and the NSIS plugin directory read as payload).
+`check-bitcheck` runs the selftest.
+
+| route | what it does | `package` |
+| --- | --- | --- |
+| `release` | `qbittorrent_5.2.4_lt20_x64_setup.exe` from GitHub, fetched by `install-rootless --fetch` under the resolution's digest, then extracted by the runner's 7-Zip into `<prefix>\opt\qbittorrent`. No installer code runs | `nsis-payload` |
+| `package` | `winget install --id qBittorrent.qBittorrent.lt2`, with no `--version`, so winget's own index is the resolver, into `%ProgramFiles%\qBittorrent` | `nsis-installer` |
+
+⭐ **winget is the one manager that installs the `_lt20` build at 5.2.4**,
+measured through `AGENTS.md` rule 8's route on 2026-10-15:
+
+| manager | 5.2.4 | build |
+| --- | --- | --- |
+| winget | `manifests/q/qBittorrent/qBittorrent/lt2/5.2.4/`, PackageIdentifier `qBittorrent.qBittorrent.lt2`, PackageName *qBittorrent (libtorrent 2)* | `_lt20`. Its installer URL is SourceForge's `qbittorrent_5.2.4_lt20_x64_setup.exe`, and its InstallerSha256 `28888FE5...928CFA` is the digest GitHub's listing states for the release route's asset |
+| Chocolatey | `qbittorrent` 5.2.4 | default only: the package embeds `qbittorrent_5.2.4_x64_setup.exe`, and `chocolateyinstall.ps1` takes no parameter that chooses another |
+| Scoop (extras) | `qbittorrent` 5.2.4 | default only: `qbittorrent_5.2.4_x64_setup.exe` from SourceForge |
+
+So both Windows routes deliver one installer's bytes, resolved by two indexes
+and delivered by two hosts. That makes this the strongest pair `ACQ-03` can be
+given: the same build, acquired twice.
+
+⛔ **The Windows GUI build has no `--version`.** That was read from
+`release-5.2.4`'s source. `cmdoptions.cpp` declares the option under
+`#if !defined(Q_OS_WIN) || defined(DISABLE_GUI)`, so on Windows the flag is an
+unknown parameter, and `main.cpp` answers an unknown parameter with a modal
+*Bad command line* box. So `version` starts the build in a throwaway profile,
+with the Web UI on a free loopback port and every surface off, and asks
+`/api/v2/app/version`. That route returns `QBT_VERSION`, compiled into the
+executable. It also keeps `/api/v2/app/buildInfo` (Qt, libtorrent, Boost,
+OpenSSL, zlib) on stderr, which is what tells `_lt20` from the default build.
+The adapter then stops the build through `/api/v2/app/shutdown`. ⚠ This is
+the one adapter whose `version` starts the product, and the contract says so.
+
+⚠ **The GUI build will not start its Web UI with no password hash**
+(`webui.cpp`: *Credentials are not set*). So the profile holds a PBKDF2 hash
+of 32 random bytes that are discarded, and `LocalHostAuth=false` admits
+loopback without a session. `stop` scrubs every password key out of the
+profile before the workdir is packed, and `capture-client`'s rule-12 scan is
+the second check. The source showed that five settings default differently
+from what a capture needs: the tray and close-to-tray, the exit confirmation,
+the update check and the GeoIP fetch. The profile turns each of them off, and
+the file logger too.
+
+⛔ **What needs a runner, in the order to read a dispatch:**
+
+1. Whether `winget` exists and works on `windows-2025` under the runner's
+   account. The package lane's `install.log` and `winget-show.txt` show it.
+2. Whether the GUI build creates its window and opens its Web UI in the
+   runner's session. `version.err` beside the install record carries
+   `buildInfo`, or the build's output if it never answered.
+3. Whether `7z x` lays the payload out as `qbittorrent.exe` with its DLLs
+   beside it. `extract.txt` names the executable found.
+4. Whether the Web UI's shutdown ends the build, so it announces `stopped`.
+   `client/stop.txt` says `webui-shutdown` or `killed`.
+5. The capture itself: announces from `-qB5240-` under the firewall rules.
+
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository

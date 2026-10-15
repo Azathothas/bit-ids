@@ -35,12 +35,32 @@
 //     `sha256sum -c` or, on Windows, `certutil`, and `evidence_verified_by`
 //     names which one did.
 //
+// -- ⭐ ON WINDOWS THE CONTAINMENT IS THE FIREWALL'S, AND THE LIST IS ASKED HERE
+//
+// A Windows host has no namespace to run the capture in, so `CI-08` contains
+// it with one outbound block rule per program the capture runs, written by
+// firewall-contain.ps1 and read back by assert-disposable.ps1. ⛔ `--programs`
+// PRINTS THAT LIST AND IS ITS ONLY DERIVATION, as capture-run.ps1 `-Programs`
+// is for the fixture capture: the observer, this binary (which runs the capture
+// and, as `bit-check adapter`, the adapter), the build the adapter names in
+// `binary=`, the connector's interpreter, and any `helpers=` the adapter
+// declares. The workflow hands the list to the rule writer, the guard and the
+// prover, and a run asks the guard again over the same list, derived again,
+// before it starts anything, so what was blocked and what runs cannot drift
+// apart. ⚠ A rule covers the executable it names and nothing that executable
+// starts under another name, which is why an adapter declares its helpers
+// rather than this guessing them.
+//
 // Usage:
 //
 //	bit-check capture-client --run-id <id> --out <dir> --observer <path>
 //	                         --adapter <path> --connector <path>
 //	                         [--seconds <n>] [--sessions <n>] [--peer-port <n>]
 //	                         [--route-table <path>]
+//	bit-check capture-client --programs --observer <path> --adapter <path> --connector <path>
+//
+// `--route-table` is the egress source: the routing table on Linux, and on
+// Windows a file of firewall state in the guard's fixture form.
 //
 // Exit codes: 0 the capture ran and its evidence verifies, 1 a guard refuses,
 // 2 could not run.
@@ -64,6 +84,8 @@ const captureClientUsage = `usage: bit-check capture-client --run-id <id> --out 
                                --adapter <path> --connector <path>
                                [--seconds <n>] [--sessions <n>] [--peer-port <n>]
                                [--route-table <path>]
+       bit-check capture-client --programs --observer <path> --adapter <path>
+                               --connector <path>
 
 Exit codes: 0 the capture ran and its evidence verifies, 1 a guard refuses,
 2 could not run.
@@ -170,16 +192,124 @@ func wholeNumber(s string) bool { return s != "" && strings.Trim(s, "0123456789"
 
 // pythonInterpreter is the connector's interpreter. ⚠ `python3` where it is,
 // and `python` on a Windows image, which names the same interpreter so.
+//
+// ⛔ ON WINDOWS, NEVER AN APP EXECUTION ALIAS. `%LOCALAPPDATA%\Microsoft\
+// WindowsApps` can hold `python.exe` and `python3.exe` stubs that open the
+// Store rather than run anything, and that directory can be on a runner's
+// PATH; a stub found first would be the program the firewall blocks, and the
+// connector would never run. So `python` is asked first there, and a path under
+// `WindowsApps` is passed over.
 func pythonInterpreter() string {
-	if p, err := exec.LookPath("python3"); err == nil {
-		return p
+	if runtime.GOOS != "windows" {
+		if p, err := exec.LookPath("python3"); err == nil {
+			return p
+		}
+		return ""
 	}
-	if runtime.GOOS == "windows" {
-		if p, err := exec.LookPath("python"); err == nil {
+	for _, name := range []string{"python", "python3"} {
+		if p, err := exec.LookPath(name); err == nil &&
+			!strings.Contains(strings.ToLower(p), `\windowsapps\`) {
 			return p
 		}
 	}
 	return ""
+}
+
+// captureMarker is where the host guard keeps its claim. ⛔ ASKED, NEVER
+// COMPOSED: on Unix the guard is this binary and the derivation is in process;
+// on Windows it is assert-disposable.ps1's `-Marker`, under ProgramData.
+func captureMarker() (string, error) {
+	if runtime.GOOS == "windows" {
+		root, err := captureRoot()
+		if err != nil {
+			return "", err
+		}
+		return hostMarker(root)
+	}
+	_, m, err := claimMarker()
+	return m, err
+}
+
+// captureFingerprint is the guard's fingerprint of this host, from the half
+// that claimed it: a Windows claim digests the registry's inputs, which this
+// process's Unix reading does not have.
+func captureFingerprint() string {
+	if runtime.GOOS != "windows" {
+		return hostFingerprint()
+	}
+	root, err := captureRoot()
+	if err != nil {
+		return ""
+	}
+	out, err := exec.Command("pwsh", "-NoProfile", "-File",
+		filepath.Join(root, "scripts", "acquisition", "assert-disposable.ps1"), "-Fingerprint").Output()
+	if err != nil {
+		return ""
+	}
+	first, _, _ := strings.Cut(strings.TrimSpace(string(out)), "\n")
+	return strings.TrimSpace(first)
+}
+
+// capturePrograms is the one derivation of what a client capture runs, which
+// `--programs` prints and a Windows run hands the guard. See the header.
+func capturePrograms(observer, adapter, python string, describeSeconds, grace int) ([]string, error) {
+	tmp, err := os.MkdirTemp("", "capture-programs-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(tmp)
+	prog, argv := adapterArgv(adapter, "describe")
+	out, errf := filepath.Join(tmp, "describe"), filepath.Join(tmp, "describe.err")
+	if rc := boundedCall(out, false, errf, false, describeSeconds, grace, prog, argv...); rc != 0 {
+		return nil, fmt.Errorf("the adapter could not describe itself (exit %d)", rc)
+	}
+	desc, _ := os.ReadFile(out)
+	return captureProgramList(observer, python, desc)
+}
+
+// captureProgramList composes the list from what is already known: each path
+// absolute, each once, in a fixed order.
+func captureProgramList(observer, python string, desc []byte) ([]string, error) {
+	self, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("cannot find this binary")
+	}
+	obs, err := filepath.Abs(observer)
+	if err != nil {
+		return nil, fmt.Errorf("cannot resolve %s", observer)
+	}
+	build := keyField(desc, "binary")
+	if build == "" {
+		// ⛔ A CAPTURE WITH NO BUILD NAMED IS NOT CONTAINED BY NAMING THE REST:
+		// the product is the program the containment exists for.
+		return nil, fmt.Errorf("the adapter names no installed build, so there is no product to contain")
+	}
+	if python == "" {
+		return nil, fmt.Errorf("no python interpreter, so the connector cannot run")
+	}
+	list := []string{obs, self, build, python}
+	for _, h := range strings.Split(keyField(desc, "helpers"), "|") {
+		if h != "" {
+			list = append(list, h)
+		}
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, p := range list {
+		if !filepath.IsAbs(p) {
+			return nil, fmt.Errorf("program [%s] is not an absolute path", p)
+		}
+		key := filepath.Clean(p)
+		if runtime.GOOS == "windows" {
+			key = strings.ToLower(key)
+		}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, filepath.Clean(p))
+	}
+	return out, nil
 }
 
 // verifyBundleSums runs the host's verifier over OUT/SHA256SUMS, writing what
@@ -226,6 +356,18 @@ func captureClient(args []string) int {
 func runCaptureClient(args []string) error {
 	var runID, out, observer, adapter, connector, peerPort, routeTable string
 	seconds, sessions := "25", "3"
+	// ⚠ `--programs` takes no value, so it is lifted out before the flags that
+	// do are read.
+	programsMode := false
+	var rest []string
+	for _, a := range args {
+		if a == "--programs" {
+			programsMode = true
+			continue
+		}
+		rest = append(rest, a)
+	}
+	args = rest
 	help, err := parseResolveArgs("capture-client", args, map[string]*string{
 		"--run-id": &runID, "--out": &out, "--observer": &observer, "--adapter": &adapter,
 		"--connector": &connector, "--seconds": &seconds, "--sessions": &sessions,
@@ -239,6 +381,27 @@ func runCaptureClient(args []string) error {
 	}
 	cannot := func(f string, x ...any) error { return resolveExit{2, fmt.Sprintf(f, x...)} }
 	refuse := func(f string, x ...any) error { return resolveExit{1, fmt.Sprintf(f, x...)} }
+	if programsMode {
+		switch {
+		case observer == "":
+			return cannot("--programs needs --observer")
+		case adapter == "":
+			return cannot("--programs needs --adapter")
+		case connector == "":
+			return cannot("--programs needs --connector, whose interpreter the capture runs")
+		case !adapterPresent(adapter):
+			return cannot("the adapter %s is not present", adapter)
+		}
+		list, err := capturePrograms(observer, adapter, pythonInterpreter(),
+			envSeconds("BIT_IDS_ADAPTER_TIMEOUT", 120), envSeconds("BIT_IDS_KILL_AFTER", 20))
+		if err != nil {
+			return cannot("%v", err)
+		}
+		for _, p := range list {
+			fmt.Println(p)
+		}
+		return nil
+	}
 	switch {
 	case runID == "":
 		return cannot("--run-id is required")
@@ -301,7 +464,7 @@ func runCaptureClient(args []string) error {
 	//
 	// ⛔ THE MARKER'S PATH IS ASKED FOR, NEVER COMPOSED, and the guard is this
 	// binary, so it is asked in process.
-	_, marker, err := claimMarker()
+	marker, err := captureMarker()
 	if err != nil || marker == "" {
 		return cannot("the guard could not report its marker path")
 	}
@@ -325,18 +488,34 @@ func runCaptureClient(args []string) error {
 	// the workflow's own step and this one put it back.
 	egressArgs := []string{"--egress"}
 	egressSource := "/proc/net/route"
-	if routeTable != "" {
+	openWhy := "the default route is still there"
+	if runtime.GOOS == "windows" {
+		// ⛔ ON WINDOWS THE GUARD IS ASKED ABOUT THIS RUN'S OWN PROGRAMS, the
+		// list `--programs` printed for the workflow's rules, derived again
+		// here rather than handed in, so a list the workflow lost cannot pass.
+		programs, err := capturePrograms(observer, adapter, python, adapterSeconds, killAfter)
+		if err != nil {
+			return cannot("the programs this capture runs could not be named: %v", err)
+		}
+		egressArgs = append(egressArgs, "--program", strings.Join(programs, "|"))
+		egressSource = "Get-NetFirewallRule"
+		openWhy = "a program this capture runs is not blocked"
+		if routeTable != "" {
+			egressArgs = append(egressArgs, "--firewall-state", routeTable)
+			egressSource = routeTable
+		}
+	} else if routeTable != "" {
 		egressArgs = append(egressArgs, routeTable)
 		egressSource = routeTable
 	}
 	switch rc := assertDisposable(egressArgs); rc {
 	case 0:
 	case 1:
-		return refuse("egress is open; the default route is still there and a capture would leak")
+		return refuse("egress is open; %s and a capture would leak", openWhy)
 	default:
 		return cannot("egress could not be established from %s", egressSource)
 	}
-	fingerprint := hostFingerprint()
+	fingerprint := captureFingerprint()
 	if fingerprint == "" {
 		return cannot("the host fingerprint could not be read")
 	}

@@ -2018,6 +2018,16 @@ var timeoutAfter = regexp.MustCompile(`timeout 600 git clone (.*)$`)
 func (b *bitcheck) adapters() {
 	b.agree("adapters clean tree", "check-adapters", 0)
 
+	// ⭐ THE WINDOWS ADAPTER'S DECISIONS, ASKED ON THIS HOST. The adapter builds
+	// for Windows alone; what it decides without Windows in it - the profile, the
+	// answer, the payload, the scrub - is qbtwindows.go, and its selftest is the
+	// one place a Linux gate sees it. `CI-11`.
+	if rc, out := b.run("qbittorrent-windows", "--selftest"); rc == 0 && strings.Contains(out, `"failed":0}`) {
+		b.h.ok("adapters the Windows qbittorrent adapter's selftest holds: go (exit 0)")
+	} else {
+		b.h.bad(fmt.Sprintf("adapters the Windows qbittorrent adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
+	}
+
 	// ⛔ A RELEASE FETCH WITH NO TIME LIMIT. ⚠ Planted in the installer, because
 	// `ACQ-06` moved every release retrieval there, and in its Go file since
 	// `CI-11` moved the installer into this binary: the fetch is an

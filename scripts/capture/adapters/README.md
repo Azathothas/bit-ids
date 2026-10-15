@@ -75,8 +75,9 @@ that installed nothing is detected, and a target that is absent then is the
 ordinary case rather than an error: exit 2, and the caller records that the host
 had nothing. ⚠ An adapter whose `version` started a daemon, wrote a profile or
 assumed containment would be changing the host at the one moment the caller is
-trying to observe it unchanged. Every shipped adapter runs `<binary> --version`
-and nothing else.
+trying to observe it unchanged. Every shipped Linux adapter runs `<binary>
+--version` and nothing else. ⚠ `qbittorrent`'s Windows half cannot: its build
+has no `--version`, so *A Windows half, in Go* below says what it does instead.
 
 ⚠ **That is also the limit of "driven over RPC".** `aria2-next` is driven over
 its own RPC interface wherever RPC answers the same question, and `version` is
@@ -119,6 +120,32 @@ well as on a run, which is a control on one of two paths into the same product.
 ⭐ And since 2026-10-15 `qbittorrent` runs the GUI build, the only one either
 5.2.4 AppImage carries, so the adapter starts its own Xvfb for `version` and for
 each session, and asks the build not to open its add-torrent dialog.
+
+## ⭐ A Windows half, in Go
+
+A Windows runner has no `sh`, so an adapter's Windows half is Go, registered
+by name and run as `bit-check adapter <name> <subcommand>`, under the same
+contract. `qbittorrent` has one,
+[`../../../tools/check/adapter_qbittorrent_windows.go`](../../../tools/check/adapter_qbittorrent_windows.go).
+Three things in it differ from Linux, and each is a fact of the build:
+
+- ⛔ **`version` starts the build.** The Windows GUI build compiles
+  `--version` out, and on Windows the flag opens a modal *Bad command line*
+  box. So `version` runs the build in a throwaway profile with every surface
+  off and asks `/api/v2/app/version` on loopback. That is still the
+  executable answering, and nothing else is read. It is the one exception to
+  *a pure read* above, and it ends what it started on every path out.
+- **`stop` asks the build to shut down over the same Web UI**, which is
+  Windows' graceful exit, and kills it only after a grace period. `stop.txt`
+  in the workdir says which of the two happened. The Web UI's password hash,
+  of a password nobody keeps, is scrubbed from the profile before the workdir
+  ships.
+- **Two more `describe` keys.** `routes=` names the routes this half has.
+  `helpers=` names, `|`-separated and absolute, every executable other than
+  the build that `start` or `stop` runs. ⛔ The second is what the firewall
+  blocks beside the build: `bit-check capture-client --programs` reads it, and
+  a rule covers only the executable it names.
+
 ## ⛔ The workdir IS the evidence bundle
 
 **Anything an adapter writes into the workdir is uploaded as an artifact.**
