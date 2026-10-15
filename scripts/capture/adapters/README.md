@@ -89,7 +89,7 @@ the moment the caller needs it.
 ⛔ **`install` is never called under containment.** By the time a capture runs
 there is no route off the host, so an install that needed one would have to
 restore egress on the machine that exists to have none.
-[`../../acquisition/install-client.sh`](../../acquisition/install-client.sh) is
+`bit-check install-client`, in [`../../../tools/check/installclient.go`](../../../tools/check/installclient.go), is
 the caller, and it runs in an earlier workflow step.
 
 ## Every call is bounded, and the bound is the caller's

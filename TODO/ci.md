@@ -5868,3 +5868,39 @@ the adapters are the next leaves and that call is the one door to them.
 ⚠ The Windows lane still declares both harness rows. Their reasons now give the
 real event: the resolver is Go, while the harness and the adapters whose
 `describe` it reads are still `sh`. The rows close with `CI-11`.
+
+### ⭐ `install-client` is the sixth leaf. 2026-10-15
+
+`bit-check install-client`, in [`../tools/check/installclient.go`](../tools/check/installclient.go),
+replaces `scripts/acquisition/install-client.sh`. `install-step.sh` runs it
+through `BIT_CHECK`, and so do `check-capture-client`, `check-rootless` and the
+`check-step-bodies` install cases. The adapter is still `sh <adapter>
+<subcommand>`, bounded as `timeout -k` bounded it, and the bound keeps
+coreutils' vocabulary: 124 when it fired and TERM ended the call, 137 when KILL
+had to.
+
+⛔ **The record self-check needed a plant that is not `sed` over a script.** The
+shell half's plant changed `ACQUIRED=no` to `ACQUIRED=yes` on the deriving line
+alone. `check-capture-client` now makes that change in a scratch copy of
+`tools/check`, replacing `acquired := acquiredVerdict(...)` with
+`acquired := "yes"`, builds the copy, and requires the re-derivation from the
+record read back to refuse it.
+
+⚠ **The tree is found by walking up, not through `git`.** The shell halves
+found their tree from their own path, and a binary built into `$RUNNER_TEMP`
+has no such path. `check-step-bodies` runs the install in a scratch tree that
+is not a repository, and `git rev-parse` failed there, which turned all its
+install cases into exit 2. So the tree is now the nearest directory, from the
+working directory and then from the adapter's own path, that carries
+`scripts/acquisition/`.
+
+| held against the shell half before it was deleted | result |
+| --- | --- |
+| `check-capture-client`, `check-rootless` and `check-step-bodies`, each over the shell half and then over a shim to the port | `check-rootless` and `check-step-bodies` identical row for row. `check-capture-client` was identical except for the `sed` plant, which cannot reach a binary and is ported as above |
+| the six capture-path harnesses on the final form | `check-capture-client` 134, `check-rootless` 26, `check-step-bodies` 43, `check-transmission` 14, `check-release-route` 35 and `check-source-route` 26, all passed |
+| five mutants of the port: the digest branch of the verdict removed, the package slug check off, a hang's 124 not recognised, the claim not checked, an abbreviated commit accepted | each refused by its own case |
+
+⚠ **`install-step.sh` is the next leaf and it is the most platform-bound file
+on the path.** It uses `setsid`, `ps` over `/proc`, a sweep by session ID and
+`report-holders.sh`. Its Go form needs Unix sessions on one side and job
+objects on the other.

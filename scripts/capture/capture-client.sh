@@ -13,7 +13,7 @@
 # ⛔ IT INSTALLS NOTHING AND BUILDS NOTHING. By the time this runs there is no
 # network: the workflow deleted the default route before calling it. Acquisition
 # and installation happen in an earlier step, while the network still exists,
-# through `scripts/acquisition/install-client.sh`. A capture that discovered a
+# through `bit-check install-client`. A capture that discovered a
 # missing package here would have to restore egress to fix it, on the host that
 # exists to have none.
 #

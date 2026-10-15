@@ -49,8 +49,9 @@
 //     adapters are shell until they port, and this is the one door to them.
 //   - Digests are Go's SHA-256, as `sha256sum` printed them, and the bounds are
 //     this process's rather than coreutils `timeout`'s, which Windows lacks.
-//   - The repository the examples are found in is the one `git` names from
-//     where this runs, where the shell halves found theirs from their own path.
+//   - The tree the examples are found in is the nearest one, from where this
+//     runs, carrying `scripts/acquisition/`; the shell halves found theirs from
+//     their own path.
 //
 // Usage:
 //
@@ -111,12 +112,49 @@ func keyField(body []byte, key string) string {
 	return ""
 }
 
+// captureRoot is the tree the capture path runs in: the nearest directory, from
+// where this process stands, that carries `scripts/acquisition/`.
+//
+// ⚠ NOT `git rev-parse`, because a harness drives these helpers in scratch trees
+// that are not repositories, and the shell halves found their tree from their
+// own path, which a binary built into $RUNNER_TEMP does not have. A workflow
+// step stands in the checkout, so there the two agree.
+func captureRoot(from ...string) (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", resolveExit{2, "cannot read the working directory"}
+	}
+	// ⚠ And then from each path a caller names, such as the adapter's own
+	// directory, for a caller standing outside any tree.
+	for _, start := range append([]string{cwd}, from...) {
+		if abs, err := filepath.Abs(start); err == nil {
+			if root, ok := treeAbove(abs); ok {
+				return root, nil
+			}
+		}
+	}
+	return "", resolveExit{2, "no directory from here up carries scripts/acquisition, so there is no tree to run in"}
+}
+
+func treeAbove(dir string) (string, bool) {
+	for {
+		if fi, err := os.Stat(filepath.Join(dir, "scripts", "acquisition")); err == nil && fi.IsDir() {
+			return dir, true
+		}
+		up := filepath.Dir(dir)
+		if up == dir {
+			return "", false
+		}
+		dir = up
+	}
+}
+
 // builtExample is a Rust example that is ALREADY built, or could-not-run. ⛔ A
 // resolver never builds: the build happens with the observer, while the
 // network is there, and a step that discovered a missing binary later would be
 // building on the host the capture exists to contain.
 func builtExample(name string) (string, error) {
-	root, err := helperRoot()
+	root, err := captureRoot()
 	if err != nil {
 		return "", err
 	}

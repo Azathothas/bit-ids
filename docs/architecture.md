@@ -831,7 +831,7 @@ the more completely nothing was acquired, which is why no check above can be the
 one that catches it.
 
 ⭐ **So acquisition is measured rather than assumed, at the step that performs
-it.** [`../scripts/acquisition/install-client.sh`](../scripts/acquisition/install-client.sh)
+it.** `bit-check install-client`, in [`../tools/check/installclient.go`](../tools/check/installclient.go),
 asks the adapter for a version before the route runs and after, and records
 `preexisting_version` and `acquired` beside `reported_version`. Absent then
 present is an install; a changed version is an upgrade and also an install; the
@@ -875,8 +875,7 @@ a comparison of two launchers, and reading it as a statement about the
 implementation is the error the split invites. `ACQ-03` carries it as a residual.
 
 ⚠ **The acquisition step already measures more than the record can hold.** The
-install record written by
-[`../scripts/acquisition/install-client.sh`](../scripts/acquisition/install-client.sh)
+install record written by `bit-check install-client`
 carries the executable and its digest from before the route ran and from after,
 because a route that installs a different build of the same version is otherwise
 indistinguishable from one that installed nothing. That is a fact about the

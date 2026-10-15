@@ -267,7 +267,7 @@ jobs:
           echo "compiles=$answer" >>"$GITHUB_OUTPUT"
 
       # ⭐ THE INSTALL, UNPRIVILEGED AND BOUNDED, WITH ITS OUTPUT IN A FILE.
-      # `install-step.sh` runs `install-client.sh` for this lane's route and
+      # `install-step.sh` runs `bit-check install-client` for this lane's route and
       # writes everything beneath it to `install-step.log`, which this shell prints
       # afterwards; nothing the product spawns can hold this step's output pipe,
       # which would keep a finished step open. `check-step-bodies` runs this body.

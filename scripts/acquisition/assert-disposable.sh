@@ -38,7 +38,7 @@
 # -- ⭐ IT IS THE USER'S OWN STATE DIRECTORY, NOT `/var/lib`. `ACQ-06`. --------
 #
 # `/var/lib/bit-ids` needs root to create, so every caller of this guard needed
-# `sudo` - including `install-client.sh`, which reads the marker before a route
+# `sudo` - including `bit-check install-client`, which reads the marker before a route
 # runs. `$HOME/.local/state/bit-ids` keeps both properties the marker rests on:
 # it is not cleared by a reboot, and it goes when the host does. What it does not
 # need is a privilege.

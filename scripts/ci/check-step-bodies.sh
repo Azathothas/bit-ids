@@ -334,14 +334,13 @@ fi
 #
 # ⛔ THE GUARDS AND THE PRODUCT ARE STUBS AND NOTHING ELSE IS. The scripts these
 # bodies call are the real ones: the *Install the client* case runs this
-# repository's own `install-client.sh`, so the command chain under test - the
+# repository's own `bit-check install-client`, so the command chain under test - the
 # bound, the command substitutions, the record it writes - is the one a runner
 # executes.
 TREE="$WORK/tree"
 mkdir -p "$TREE/scripts/acquisition" "$TREE/scripts/capture/adapters" "$TREE/bin" \
   "$TREE/state" "$TREE/temp" || exit 2
 mkdir -p "$TREE/scripts/ci" || exit 2
-cp "$ROOT/scripts/acquisition/install-client.sh" "$TREE/scripts/acquisition/" || exit 2
 # ⚠ AND THE STEP'S OWN FILE, WHICH IS WHAT THE BODY NOW RUNS. The install step is
 # one `timeout` around this script, so the scratch tree needs the real one or the
 # cases would be about a missing file rather than about what it does.
@@ -350,7 +349,7 @@ cp "$ROOT/scripts/acquisition/install-step.sh" "$TREE/scripts/acquisition/" || e
 # scratch tree without it would make both install cases fail on a missing file
 # rather than on what they are about.
 cp "$ROOT/scripts/ci/report-holders.sh" "$TREE/scripts/ci/" || exit 2
-# ⚠ AND THE RULE-12 SCAN `install-client.sh` ASKS, for the same reason: without
+# ⚠ AND THE RULE-12 SCAN `bit-check install-client` ASKS, for the same reason: without
 # it every install case here answered 2, which is the scan saying it could not
 # run. It is `bit-check scan-bundle` since 2026-10-15, `CI-11`, found through
 # BIT_CHECK as the workflow's own *Build the observer* step exports it.

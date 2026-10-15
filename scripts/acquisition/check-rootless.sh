@@ -64,15 +64,12 @@ trap 'rm -rf "$WORK"' EXIT INT TERM
 mkdir -p "$WORK/bin" || exit 2
 BIT_CHECK=$(store_bitcheck "$ROOT" "$WORK/bin") || exit 2
 
-INSTALLER="$ROOT/scripts/acquisition/install-client.sh"
 GUARD="$ROOT/scripts/acquisition/assert-disposable.sh"
 ADAPTERS="$ROOT/scripts/capture/adapters"
-for _f in "$INSTALLER" "$GUARD"; do
-  [ -f "$_f" ] || {
-    printf 'check-rootless: %s is missing\n' "$_f" >&2
-    exit 2
-  }
-done
+[ -f "$GUARD" ] || {
+  printf 'check-rootless: %s is missing\n' "$GUARD" >&2
+  exit 2
+}
 
 # -- how a case is run ---------------------------------------------------------
 #
@@ -245,7 +242,7 @@ DRIVER="$WORK/route-driver.sh"
 cat >"$DRIVER" <<'ROUTE_DRIVER'
 #!/bin/sh
 set -u
-: "${BIT_CHECK:?}" "${CR_INSTALLER:?}" "${CR_GUARD:?}" "${CR_ADAPTER:?}"
+: "${BIT_CHECK:?}" "${CR_GUARD:?}" "${CR_ADAPTER:?}"
 : "${CR_BINARY:?}" "${CR_URL:?}"
 PREFIX=$("$BIT_CHECK" install-rootless --prefix) || exit 2
 rm -rf "$PREFIX"
@@ -257,7 +254,7 @@ if [ -n "${CR_RESOLUTION:-}" ]; then
 fi
 W=$(mktemp -d) || exit 2
 sh "$CR_GUARD" --claim rootless-case >/dev/null 2>&1
-sh "$CR_INSTALLER" --adapter "$CR_ADAPTER" --route release \
+"$BIT_CHECK" install-client --adapter "$CR_ADAPTER" --route release \
   --workdir "$W/wd" --record "$W/rec"
 _rc=$?
 printf 'rc=%s\n' "$_rc"
@@ -299,7 +296,7 @@ write_resolution() { # file source [document] [asset] [sha256] [reason]
 
 route_case() { # label adapter url binary [resolution-file] [stub-dir]
   _label=$1
-  _env="$CASE_ENV CR_INSTALLER=$INSTALLER CR_GUARD=$GUARD"
+  _env="$CASE_ENV CR_GUARD=$GUARD"
   _env="$_env CR_ADAPTER=$ADAPTERS/$2.sh CR_URL=file://$3 CR_BINARY=$4"
   [ -z "${5:-}" ] || _env="$_env CR_RESOLUTION=$5"
   # ⚠ A SIXTH ARGUMENT PUTS STUBS IN FRONT OF BOTH RUNS' PATHS, for a route
@@ -387,7 +384,6 @@ fi
 SUDO_NEEDLE="^[[:space:]]*(sudo|setsid[[:space:]]+sudo)[[:space:]]"
 : >"$WORK/sudo-hits.txt"
 for _f in "$ROOT/scripts/acquisition/install-step.sh" \
-  "$ROOT/scripts/acquisition/install-client.sh" \
   "$ROOT/scripts/acquisition/assert-disposable.sh" \
   "$ADAPTERS"/*.sh; do
   [ -f "$_f" ] || continue

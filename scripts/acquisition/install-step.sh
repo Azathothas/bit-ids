@@ -158,8 +158,14 @@ command -v setsid >/dev/null 2>&1 || {
   printf 'install-step: setsid is not on this host\n' >&2
   exit 2
 }
+# ⭐ `bit-check install-client` SINCE 2026-10-15, `CI-11`, found through
+# BIT_CHECK as the workflow exports it, and never built here.
+if [ -z "${BIT_CHECK:-}" ] || [ ! -x "$BIT_CHECK" ]; then
+  printf 'install-step: BIT_CHECK names no bit-check binary; it is built with the observer, never here\n' >&2
+  exit 2
+fi
 setsid timeout -k "$STEP_KILL_AFTER" "$STEP_SECONDS" \
-  sh "$ROOT/scripts/acquisition/install-client.sh" \
+  "$BIT_CHECK" install-client \
   --adapter "$ADAPTER" \
   --route "$ROUTE" \
   --workdir "$WORKDIR" \

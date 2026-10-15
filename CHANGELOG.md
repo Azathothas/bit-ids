@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T13:05:51Z
+
+- ⭐ **The install itself is Go**: `bit-check install-client` replaces its shell
+  half. It matched that half row for row in the harnesses that drive it, and
+  five mutants of it were each caught.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T12:25:24Z
 
 - ⭐ **`check-bitcheck` is Go**: `bit-check check-bitcheck` runs the same 238
@@ -2853,7 +2860,7 @@ Nothing is released yet. Entries accumulate here until the first
 
 - The client capture path, every layer of it except a measurement:
   [`capture-client.sh`](scripts/capture/capture-client.sh),
-  [`install-client.sh`](scripts/acquisition/install-client.sh), an adapter
+  `install-client.sh`, an adapter
   contract with a file per target under
   [`scripts/capture/adapters/`](scripts/capture/adapters/), and
   [`capture-client.yml`](.github/workflows/capture-client.yml). Record:

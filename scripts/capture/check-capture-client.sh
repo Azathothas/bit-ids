@@ -1167,8 +1167,10 @@ done
 # deliberately does not assert egress: a guard there would refuse every host the
 # step is meant to run on. ⚠ Nothing here installs a product; the stub adapter's
 # `install` writes a file, which is enough to drive every refusal the step owns.
-INSTALLER="$ROOT/scripts/acquisition/install-client.sh"
-if [ ! -f "$INSTALLER" ]; then
+# ⭐ `bit-check install-client` SINCE 2026-10-15, `CI-11`; these cases held its
+# shell half to the same rows before that half was deleted.
+INSTALLER="$BIT_CHECK"
+if [ ! -x "$INSTALLER" ]; then
   fail "install-client is present"
 else
   pass "install-client is present"
@@ -1179,7 +1181,7 @@ else
     _name="$3"
     shift 3
     OUTS=$((OUTS + 1))
-    BIT_IDS_STATE_DIR="$STATE" sh "$INSTALLER" "$@" >"$WORK/out" 2>"$WORK/err"
+    BIT_IDS_STATE_DIR="$STATE" "$INSTALLER" install-client "$@" >"$WORK/out" 2>"$WORK/err"
     _got=$?
     if [ "$_got" != "$_want" ]; then
       fail "$_name (wanted exit $_want, got $_got)"
@@ -1366,15 +1368,17 @@ else
   # re-derivation here in the harness would test the harness against itself and
   # would pass with the guard deleted.
   #
-  # ⚠ THE COPY KEEPS ITS DIRECTORY SHAPE, because the script finds the host guard
-  # by walking up two levels from its own path. A copy dropped anywhere else
-  # exits 2 for a missing guard, which is could-not-run and would have been read
-  # as a refusal.
-  mkdir -p "$WORK/planted/scripts/acquisition" "$WORK/planted/scripts/capture"
-  sed 's/^  ACQUIRED=no$/  ACQUIRED=yes/' "$INSTALLER" \
-    >"$WORK/planted/scripts/acquisition/install-client.sh"
-  cp "$GUARD" "$WORK/planted/scripts/acquisition/assert-disposable.sh"
-  if cmp -s "$INSTALLER" "$WORK/planted/scripts/acquisition/install-client.sh"; then
+  # ⭐ THE PLANT GOES INTO THE GO SOURCE NOW, and the broken copy is built. The
+  # deriving line becomes `acquired := "yes"` and the re-derivation from the
+  # record read back is left alone, which is the shell half's
+  # `ACQUIRED=no` -> `ACQUIRED=yes` exactly. ⚠ The copy is of `tools/check`
+  # alone; the tree it runs in is this one, which it finds from where it stands.
+  rm -rf "$WORK/planted-check"
+  cp -R "$ROOT/tools/check" "$WORK/planted-check" || exit 2
+  sed 's/^	acquired := acquiredVerdict(preexisting, version, preDigest, postDigest)$/	acquired := "yes"/' \
+    "$ROOT/tools/check/installclient.go" >"$WORK/planted-check/installclient.go"
+  if cmp -s "$ROOT/tools/check/installclient.go" "$WORK/planted-check/installclient.go" ||
+    ! (cd "$WORK/planted-check" && go build -o "$WORK/planted-bit-check" .) >/dev/null 2>&1; then
     fail "the acquired-verdict plant applied to install-client"
   else
     pass "the acquired-verdict plant applied to install-client"
@@ -1382,7 +1386,7 @@ else
     export BIT_IDS_STUB_VERSION_FILE
     printf '1.2.3\n' >"$BIT_IDS_STUB_VERSION_FILE"
     OUTS=$((OUTS + 1))
-    BIT_IDS_STATE_DIR="$STATE" sh "$WORK/planted/scripts/acquisition/install-client.sh" \
+    BIT_IDS_STATE_DIR="$STATE" "$WORK/planted-bit-check" install-client \
       --adapter "$STUB" --route package --workdir "$WORK/inst-plant" \
       --record "$WORK/inst-plant.txt" >"$WORK/out" 2>"$WORK/err"
     _rc=$?
@@ -1534,7 +1538,7 @@ else
   # ⚠ An EMPTY state directory. A workflow that installed before claiming would
   # put a product on a host nothing had established was disposable.
   OUTS=$((OUTS + 1))
-  BIT_IDS_STATE_DIR="$WORK/unclaimed" sh "$INSTALLER" --adapter "$STUB" \
+  BIT_IDS_STATE_DIR="$WORK/unclaimed" "$INSTALLER" install-client --adapter "$STUB" \
     --route package --workdir "$WORK/inst-unclaimed" >"$WORK/out" 2>"$WORK/err"
   _rc=$?
   if [ "$_rc" = 1 ] && grep -q -F -e "the host was never claimed" "$WORK/err"; then

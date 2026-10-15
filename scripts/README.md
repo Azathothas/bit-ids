@@ -162,7 +162,7 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   over a directory about to be uploaded: a file whose name says it holds a credential,
   and a document carrying a secret-shaped value, both always asked. ⛔ It is the
   one home for both rules, and three callers ask it: `capture-client.sh` over its
-  bundle, `install-client.sh` over its workdir's top level with `--top-level`,
+  bundle, `bit-check install-client` over its workdir's top level with `--top-level`,
   and `capture-client.yml`'s *Scan the evidence of a refused capture*, without
   which a refused capture's bundle would be uploaded unscanned. ⚠ A directory
   that is not there, or one it cannot read whole, is exit 2, never clean. ⭐ It
@@ -195,7 +195,8 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   rather than by reading: the uppercase-hex case had also changed the length, so
   the odd-length branch refused first and a connector planted to accept
   uppercase passed it.
-- [`acquisition/install-client.sh`](acquisition/install-client.sh) is the one
+- `bit-check install-client`, in [`../tools/check/installclient.go`](../tools/check/installclient.go)
+  and `acquisition/install-client.sh` until 2026-10-15 (`CI-11`), is the one
   step that runs with the network still up. ⛔ It asserts the claim and
   deliberately not egress, because being able to reach a package index is the
   precondition of an install rather than a violation, and a guard there would

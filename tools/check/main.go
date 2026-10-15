@@ -51,6 +51,7 @@
 //	bit-check install-rootless --prefix | --fetch ... | --install ...
 //	bit-check resolve-release --adapter <path> --workdir <dir> [...]
 //	bit-check resolve-source --adapter <path> --workdir <dir> [...]
+//	bit-check install-client --adapter <path> --route <name> --workdir <dir> [--record <file>]
 //	bit-check --rows
 //
 // ⛔ Read the exit code from this process, unpiped. ⚠ `go run . <check>` is a
@@ -186,6 +187,9 @@ func main() {
 	}
 	if args[0] == "resolve-source" {
 		os.Exit(resolveSource(args[1:]))
+	}
+	if args[0] == "install-client" {
+		os.Exit(installClient(args[1:]))
 	}
 
 	name := args[0]
