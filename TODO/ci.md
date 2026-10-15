@@ -4300,6 +4300,16 @@ Four mutants were each killed:
 
 The workflow step's own body was driven against the real remote.
 
+⭐ **The bootstrap publication, 2026-10-15.** `assemble-bundle` run 38694956574
+re-assembled `capture-client` run 38's `aria2-next` artifacts onto the
+published tree. Both records landed on their own paths with the same bytes,
+which the merge accepts, and the bundle wrote `indexes/v1/schemes.txt`.
+`publish-data` run 38695288788, a dry run, passed. Run 38696195248 appended it:
+`data` is at `b16ca1e`. ⭐ Read back from a fresh clone: 31 files, `sha256sum -c`
+clean, `validate-corpus` *valid store: 2 record(s), 2 run(s), 31 object(s); 2 of
+2 record(s) may enter a published view*, and `schemes.txt` reads
+`aria2-next:v:3:3`.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05
