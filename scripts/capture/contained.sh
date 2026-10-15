@@ -64,6 +64,8 @@ done
 # ⚠ `sudo -n`, so a host that would prompt says no rather than waiting, and the
 # environment is carried explicitly: `env_reset` would otherwise hand the
 # command root's PATH and HOME and a capture would write its state somewhere
-# the caller does not own.
-exec sudo -n env "PATH=$PATH" "HOME=${HOME:-}" \
+# the caller does not own. ⛔ BIT_CHECK is carried too, when set: the capture
+# path finds bit-check through it alone, and capture run 38763293262 refused
+# for want of it inside the namespace. `CI-11`.
+exec sudo -n env "PATH=$PATH" "HOME=${HOME:-}" ${BIT_CHECK:+"BIT_CHECK=$BIT_CHECK"} \
   unshare --net -- sh "$0" --inner "$(id -u)" "$(id -g)" -- "$@"

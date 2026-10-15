@@ -6008,3 +6008,12 @@ The operator settled the order on 2026-10-15: the four Linux adapters port, and
 qBittorrent's Windows half and the Windows lane are built, in parallel. The
 Windows routes are the `_lt20` installer extracted with 7-Zip, and a package
 manager that installs the same `_lt20` build at the same version.
+
+### ⚠ `contained.sh` carries `BIT_CHECK` into the namespace. 2026-10-15
+
+Capture run 38763293262 on `f0d9cfa` refused in its Capture step:
+`capture-run.sh` found no `bit-check`. `contained.sh` enters the namespace
+through `sudo -n env`, whose `env_reset` drops every variable it is not handed,
+and only `PATH` and `HOME` were handed. The egress guard before it passed only
+because its `"$BIT_CHECK"` was expanded outside. `BIT_CHECK` is now carried
+when set, beside `PATH` and `HOME`.

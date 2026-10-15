@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T16:05:00Z
+
+- **A contained capture finds `bit-check` again**: `contained.sh` passes
+  `BIT_CHECK` through `sudo`, which had dropped it and left the Linux capture
+  refusing before it started.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T14:40:54Z
 
 - ⭐ **The capture itself is Go**: `bit-check capture-client` replaces its shell
