@@ -260,6 +260,19 @@ them. So this route needs two changes: a floor, and a token reader that also
 finds a marker after leading digits. The second changes what the project calls
 a prerelease, so it gets its own suite and mutants, not a ride on the first.
 
+⭐ **The token reader was built on 2026-10-15, and it was the only change
+needed.** Every run of letters inside a token is asked now, so `0beta1` and
+`0rc10` carry their marker. A scratch reading over every target's live tags
+first found the 59 tags moving from `unorderable` to a prerelease, every one of
+them qBittorrent's, and nothing else moving anywhere. No floor is needed:
+driven on the live refs, the source route selects `release-5.2.4` with 59
+`prerelease_by_version` and 200 `superseded`. Transmission, aria2-next and
+aria2 answer as before. ⛔ `check-source-route` had planted `v2.0.0beta1` as a
+tag no scheme can order, and the change turned that row red. It is now two rows:
+that spelling is passed over and the stable newest still wins, and a tag with
+no marker, `v2.0.0x1`, still blocks. 26 of 26. A mutant that reads letters from
+a token's start only is killed by the unit test.
+
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository

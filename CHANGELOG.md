@@ -5,6 +5,15 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T04:12:36Z
+
+- ⛔ **A prerelease marker after digits was not read.** `5.3.0beta1`'s last
+  token is `0beta1`, and the reader took letters from a token's start only, so
+  qBittorrent's source route failed closed on 59 such tags. It reads every run
+  of letters now and selects `release-5.2.4`; no other target's tags move.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-01`. No version bump and
+  no deploy.
+
 ### 2026-10-15T03:24:40Z
 
 - ⭐ **A capture runs three sessions, and the peer surface is dialled in every

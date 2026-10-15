@@ -217,21 +217,29 @@ impl VersionScheme {
 
 /// Whether a version's own text marks it as a prerelease.
 ///
-/// Case-insensitive and token-bounded.
+/// Case-insensitive and token-bounded: every run of letters inside a token is
+/// asked, so `rc1`, `beta5` and `0beta1` all carry a marker and `march` does
+/// not.
+///
+/// ⛔ **A run of letters AFTER DIGITS is asked too, and was not until
+/// 2026-10-15.** The reader took letters from a token's start only, so
+/// `5.3.0beta1`, whose last token is `0beta1`, read as no prerelease at all.
+/// Measured that day: qBittorrent's 260 refs carry 59 such tags, from
+/// `release-1.0.0rc10` to `release-5.3.0rc1`, and every one was `unorderable`,
+/// so the source route failed closed on them. The release route never met
+/// them, because the listing flags them. Over every target's live tags the
+/// change moves those 59 and nothing else. `CLIENT-01`.
+/// ⚠ Pessimistic by design, as the module says: `rc1a` is a prerelease here.
+/// Being wrong that way costs a skipped release.
 #[must_use]
 pub fn text_marks_prerelease(text: &str) -> bool {
     let lowered = text.to_ascii_lowercase();
     let tokens = lowered.split(|c: char| !c.is_ascii_alphanumeric());
     tokens.filter(|token| !token.is_empty()).any(|token| {
-        // A token that is a marker, or a marker followed by digits such as
-        // `rc1` or `beta5`, which is how most projects spell them.
-        let letters: String = token
-            .chars()
-            .take_while(char::is_ascii_alphabetic)
-            .collect();
-        let rest = &token[letters.len()..];
-        PRERELEASE_TOKENS.contains(&letters.as_str())
-            && (rest.is_empty() || rest.bytes().all(|b| b.is_ascii_digit()))
+        token
+            .split(|c: char| !c.is_ascii_alphabetic())
+            .filter(|letters| !letters.is_empty())
+            .any(|letters| PRERELEASE_TOKENS.contains(&letters))
     })
 }
 
@@ -1438,10 +1446,28 @@ mod tests {
 
     #[test]
     fn prerelease_tokens_match_whole_tokens_and_their_numbered_forms() {
-        for text in ["4.1.0-beta.5", "1.0.0-rc1", "2.0-ALPHA", "3.1.0.nightly"] {
+        for text in [
+            "4.1.0-beta.5",
+            "1.0.0-rc1",
+            "2.0-ALPHA",
+            "3.1.0.nightly",
+            // ⛔ A marker after digits inside one token, as qBittorrent tags.
+            "5.3.0beta1",
+            "1.0.0rc10",
+            "4.0.0dev",
+        ] {
             assert!(text_marks_prerelease(text), "{text} is a prerelease");
         }
-        for text in ["4.1.3", "5.2.3.10", "1.2.3-final", "2.0.0-march"] {
+        // ⚠ Transmission's old lettered tags carry `b`, which is no marker.
+        for text in [
+            "4.1.3",
+            "5.2.3.10",
+            "1.2.3-final",
+            "2.0.0-march",
+            "2.20b1",
+            "1.80b5",
+            "x86",
+        ] {
             assert!(
                 !text_marks_prerelease(text),
                 "{text} carries no prerelease token"

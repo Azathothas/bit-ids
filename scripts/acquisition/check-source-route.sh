@@ -227,15 +227,30 @@ case_is 1 "offered no tags at all" "an empty refs listing is refused" \
   empty "$WORK/refs-empty.txt"
 
 # ⛔ THE ONE PRERELEASE SIGNAL A REFS SOURCE STILL HAS IS THE TAG TEXT, and a
-# refs listing carries no `prerelease` flag at all. This is the case that says
-# what survives: a tag whose version text no scheme can read blocks the
-# resolution rather than being selected.
+# refs listing carries no `prerelease` flag at all. ⭐ So a marker after digits,
+# `v2.0.0beta1`, is read as one since 2026-10-15 and passed over: until then
+# this case planted it as a tag no scheme could order, which is how
+# qBittorrent's source route failed closed on 59 of them. `CLIENT-01`.
 {
   cat "$WORK/refs-good.txt"
   ref_line v2.0.0beta1
 } >"$WORK/refs-pre.txt"
-case_is 1 "" "a tag no scheme can order blocks rather than being selected" \
+case_is 0 "" "a prerelease spelled after digits is passed over, not selected" \
   pre "$WORK/refs-pre.txt"
+if [ "$(cat "$WORK/pre.out" 2>/dev/null)" = "v1.10.0" ]; then
+  pass "and the stable newest still wins over it"
+else
+  fail "and the stable newest still wins over it (got [$(cat "$WORK/pre.out" 2>/dev/null)])"
+fi
+# ⛔ AND WHAT SURVIVES IS STILL A BLOCK: a tag whose version text no scheme can
+# read and that carries no marker blocks the resolution rather than being
+# selected.
+{
+  cat "$WORK/refs-good.txt"
+  ref_line v2.0.0x1
+} >"$WORK/refs-unord.txt"
+case_is 1 "" "a tag no scheme can order blocks rather than being selected" \
+  unord "$WORK/refs-unord.txt"
 
 # ⛔ AND A MISSING DECLARATION IS COULD-NOT-RUN, never a resolution over
 # defaults this file invented.
