@@ -386,7 +386,17 @@ if ([string]::IsNullOrEmpty($print)) {
 # guard for a proven one. Same shape and same treatment as `entries.sort()` in
 # PUB-01.
 $stamp = [System.DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
-$body = "bit-ids/host-claim/1`nrun=$RunId`nclaimed_at=$stamp`nfingerprint=$print`n"
+# ⭐ THE HOST FACTS A RUN MANIFEST NEEDS, TAKEN AT THE CLAIM, as the Linux
+# half takes them: each as read and empty where the host does not say. The
+# uptime is seconds since boot in /proc/uptime's spelling. Without them
+# assemble-capture wrote no manifest for capture-client run 38788416994's
+# Windows lanes. `CI-11`.
+$image = "$env:ImageOS"
+if ($env:ImageVersion) { $image = "$image/$env:ImageVersion" }
+$os = ''
+try { $os = (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -ErrorAction Stop).ProductName } catch { $os = '' }
+$uptime = ([System.Environment]::TickCount64 / 1000.0).ToString('F2', [System.Globalization.CultureInfo]::InvariantCulture)
+$body = "bit-ids/host-claim/1`nrun=$RunId`nclaimed_at=$stamp`nfingerprint=$print`nimage=$image`nos=$os`nrunner_environment=$env:RUNNER_ENVIRONMENT`nuptime_at_claim=$uptime`n"
 try {
     $stream = [System.IO.File]::Open(
         $markerPath, [System.IO.FileMode]::CreateNew,

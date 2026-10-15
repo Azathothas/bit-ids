@@ -314,6 +314,7 @@ func assembleDispatch(args []string) int {
 		}
 		sort.Strings(routes)
 		var laneArgs []string
+		resolved := 0
 		for _, route := range routes {
 			capDir := filepath.Join(artifacts, fmt.Sprintf("capture-client-%s-%s-%s", adapter, route, run))
 			insDir := filepath.Join(artifacts, fmt.Sprintf("install-%s-%s-%s", adapter, route, run))
@@ -323,9 +324,22 @@ func assembleDispatch(args []string) int {
 				res = filepath.Join(insDir, "release", "resolution.json")
 			}
 			if !isRegular(res) {
+				// ⚠ A PACKAGE ROUTE HAS NO RESOLVER: the manager's own index
+				// chose the version, as apt's and winget's do. Its scheme is the
+				// target's, which a sibling lane's resolver states; every other
+				// route without one is a lane whose resolver did not run.
+				// Measured on capture-client run 38788416994, the first package
+				// route a dispatch carried. `CI-11`.
+				if route == "package" {
+					continue
+				}
 				return refuse(fmt.Sprintf("the %s %s lane has no resolution.json", adapter, route))
 			}
 			resolutions = append(resolutions, res)
+			resolved++
+		}
+		if resolved == 0 {
+			return refuse(fmt.Sprintf("no %s lane has a resolution.json, so its version scheme is stated nowhere", adapter))
 		}
 		log := filepath.Join(work, "assemble.out")
 		rc := runLogged(log, assemble, append(laneArgs, store)...)

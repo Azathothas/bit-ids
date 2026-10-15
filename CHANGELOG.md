@@ -5,6 +5,18 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T20:30:00Z
+
+- ⭐ **qBittorrent 5.2.4 and Transmission 4.1.3 were captured on Windows**, on
+  both routes and on the first run: qBittorrent in capture-client run
+  38788416994 and Transmission in run 38794881216.
+- **A Windows dispatch can now assemble**:
+  - a package route takes its version scheme from its sibling route and its
+    source identity from its index;
+  - the platform is the kernel's own rather than MSYS's;
+  - the Windows host claim carries every host fact a run manifest needs.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T18:15:49Z
 
 - ⭐ **Transmission has a Windows half**: `bit-check adapter transmission` on

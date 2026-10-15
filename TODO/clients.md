@@ -418,6 +418,22 @@ the file logger too.
    `client/stop.txt` says `webui-shutdown` or `killed`.
 5. The capture itself: announces from `-qB5240-` under the firewall rules.
 
+### ⭐ The Windows half captured on both routes, first time. 2026-10-15
+
+Capture-client run 38788416994 on `7735dff`:
+
+- **Release route:** the `_lt20` installer, extracted with 7-Zip.
+- **Package route:** winget `qBittorrent.qBittorrent.lt2`. Its index pins
+  SourceForge's copy of the same installer.
+
+Each lane installed 5.2.4, was blocked at the firewall (proved by
+`probe-egress`), and made 6 announces as `-qB5240-`. Evidence verified by
+sha256sum. The Linux pair in the same run captured through the Go adapter.
+
+⚠ **Not yet a record.** The first assembly refused the Windows lanes, and
+`CI-11` names the four gaps it found. A re-capture on the fixed tree and its
+assembly is what moves this Prove.
+
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository
@@ -1527,6 +1543,17 @@ version reading requires the daemon's own name and a version-shaped field.
    `client/config/settings.json` must carry no `rpc-password`.
 6. The capture itself: announces from `-TR4130-` with the daemon and
    `transmission-remote.exe` both under the firewall rules.
+
+### ⭐ Transmission's Windows half captured on both routes, first time. 2026-10-15
+
+Capture-client run 38794881216 on `469c7e8` is green on all four lanes:
+
+- **Linux:** release and source.
+- **Windows:** release, the MSI laid out with `msiexec /a`, and package, winget
+  with the daemon and the command-line tools added.
+
+⚠ Like qBittorrent's, the Windows pair becomes a record only after a
+re-capture on the tree that closes `CI-11`'s four assembly gaps.
 
 ## CLIENT-07: Deluge capture adapter
 

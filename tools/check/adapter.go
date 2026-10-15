@@ -42,6 +42,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -127,4 +128,40 @@ func adapterDigest(ref string) string {
 	}
 	d, _ := fileSHA256(path)
 	return d
+}
+
+// writePackageIndex is how a package route says what its index named, for
+// `install-client` to record and `assemble-capture` to take as the route's
+// source identity: the index, the package's name in it, and the version the
+// index gave. ⚠ The version is the index's statement; the build's own answer is
+// `version`'s.
+//
+// ⭐ The origin is the URL the index pins the installer at, which is where the
+// route's bytes came from.
+func writePackageIndex(workdir, index, pkg, version, origin string) error {
+	body := fmt.Sprintf("index=%s\npackage=%s\nversion=%s\norigin=%s\n", index, pkg, version, origin)
+	return os.WriteFile(filepath.Join(workdir, "package-index.txt"), []byte(body), 0o644)
+}
+
+// wingetInstallerURL is the one `Installer Url:` `winget show` prints under
+// `Installer:`. ⛔ Two different ones is a refusal: the route would not know
+// which the install fetched.
+func wingetInstallerURL(show string) (string, error) {
+	found := ""
+	for _, l := range strings.Split(show, "\n") {
+		l = strings.TrimSpace(strings.TrimRight(l, "\r"))
+		v, ok := strings.CutPrefix(l, "Installer Url:")
+		if !ok {
+			continue
+		}
+		v = strings.TrimSpace(v)
+		if found != "" && found != v {
+			return "", fmt.Errorf("winget's index named two installer URLs, %s and %s", found, v)
+		}
+		found = v
+	}
+	if !strings.HasPrefix(found, "https://") {
+		return "", fmt.Errorf("winget's index named no https installer URL: [%s]", found)
+	}
+	return found, nil
 }

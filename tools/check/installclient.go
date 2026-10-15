@@ -205,10 +205,31 @@ func hostMarker(root string) (string, error) {
 }
 
 func hostPlatform() string {
+	// ⛔ On Windows the kernel is asked, never `uname`: see platform_windows.go.
+	if runtime.GOOS == "windows" {
+		if p := windowsPlatform(); p != "" {
+			return p
+		}
+		return "Windows unknown " + unameMachine(runtime.GOARCH)
+	}
 	if out, err := exec.Command("uname", "-srm").Output(); err == nil {
 		return strings.TrimRight(string(out), "\n")
 	}
 	return runtime.GOOS + " " + runtime.GOARCH
+}
+
+// unameMachine is GOARCH in `uname -m`'s spelling, which `assemble-capture`
+// maps to this project's vocabulary.
+func unameMachine(goarch string) string {
+	switch goarch {
+	case "amd64":
+		return "x86_64"
+	case "arm64":
+		return "aarch64"
+	case "386":
+		return "i686"
+	}
+	return goarch
 }
 
 func runInstallClient(args []string) error {
@@ -407,6 +428,19 @@ func runInstallClient(args []string) error {
 	case !packageSlug.MatchString(pkg) || strings.HasPrefix(pkg, "-") || strings.HasSuffix(pkg, "-"):
 		return refuse("the %s route recorded package [%s], which is not a slug", route, pkg)
 	}
+	// ⭐ WHAT A PACKAGE ROUTE'S INDEX NAMED: which index, which package, and the
+	// version the index gave it, which `assemble-capture` records as the route's
+	// source identity. Optional here, so a route that writes none records as it
+	// did; a record with none is refused when it is assembled, which is where
+	// the identity is needed. `CI-11`.
+	var pkgIndex, pkgName, pkgVersion, pkgOrigin string
+	if route == "package" && isRegular(wd("package-index.txt")) {
+		ib, _ := os.ReadFile(wd("package-index.txt"))
+		pkgIndex, pkgName, pkgVersion, pkgOrigin = keyField(ib, "index"), keyField(ib, "package"), keyField(ib, "version"), keyField(ib, "origin")
+		if pkgIndex == "" || pkgName == "" || pkgVersion == "" || pkgOrigin == "" {
+			return refuse("the package route's package-index.txt names no index, package, version or origin")
+		}
+	}
 	if route == "source" {
 		// ⛔ Forty lowercase hex digits, checked as a shape: `E-ACQ-06` exists
 		// because an abbreviated commit is not an immutable reference.
@@ -449,6 +483,9 @@ func runInstallClient(args []string) error {
 			{"finished_at", finished}, {"platform", hostPlatform()},
 		} {
 			fmt.Fprintf(&b, "%s=%s\n", kv[0], kv[1])
+		}
+		if pkgIndex != "" {
+			fmt.Fprintf(&b, "package_index=%s\npackage_name=%s\npackage_version=%s\npackage_origin=%s\n", pkgIndex, pkgName, pkgVersion, pkgOrigin)
 		}
 		if err := os.WriteFile(record, []byte(b.String()), 0o644); err != nil {
 			return cannot("the install record could not be written to %s", record)

@@ -6226,3 +6226,43 @@ bound holds.
 
 ⛔ **Not established off a runner.** No step of the Windows half has run on
 Windows. `CLIENT-06` lists what a dispatch proves, in reading order.
+
+### ⭐ A Windows dispatch assembles: four fixes the first one found. 2026-10-15
+
+Capture-client run 38788416994 on `7735dff` captured qBittorrent 5.2.4 on all
+four lanes at once, on its first run: Linux release and source through the Go
+adapter, and Windows release (7-Zip over the `_lt20` installer) and package
+(winget `qBittorrent.qBittorrent.lt2`). The Windows lanes made 6 announces as
+`-qB5240-` under the firewall containment. Run 38794881216 on `469c7e8` did
+the same for Transmission 4.1.3 on all four lanes, also on its first run.
+
+Assemble-bundle run 38794853213 refused the qBittorrent dispatch. The run's
+eight artifacts were downloaded, their digests matched, and the refusal was
+reproduced locally. Four gaps stood between a Windows lane and a record:
+
+1. **`assemble-dispatch` required a resolution of every lane.** A package
+   route has no resolver: its index chose the version. A `package` lane now
+   takes the target's scheme from a sibling lane, and an adapter with no
+   resolution at all is still refused. A new `check-assemble` case covers it,
+   and the mutant that drops the exemption fails that case.
+2. **The platform was MSYS's.** `uname -srm` on a Windows runner is Git for
+   Windows' MSYS (`MSYS_NT-10.0-26100 …`). Windows now answers `Windows
+   <major>.<minor>.<build> <machine>` from `RtlGetVersion`, and the uptime
+   comes from `GetTickCount64` where there is no `/proc/uptime`.
+3. **A package route had no source identity.** The Windows adapters now write
+   `package-index.txt`: the index, the package, the index's own version and
+   the installer URL it pins. `install-client` carries these into the record
+   as `package_index`, `package_name`, `package_version` and `package_origin`.
+   `assemble-capture` derives `IndexedPackage` and the origin from them. The
+   route kind follows the record's platform, so winget on Windows is
+   `WindowsPackageManager`. A package route resolves inside its install, so
+   both of its resolution instants are the install's start.
+4. **The Windows claim carried four host facts of eight.** `assert-disposable.ps1`
+   now writes `image`, `os`, `runner_environment` and `uptime_at_claim`, as the
+   Linux claim does.
+
+⭐ A copy of the run's real artifacts, patched to what these fixes now write,
+assembled into a valid bundle: 4 records, Linux and Windows, all 4 admitted
+to a published view. The real proof is a re-capture on the fixed tree and its
+assembly.
+

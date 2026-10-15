@@ -1256,6 +1256,24 @@ func checkAssemble(r *repo) (verdict, error) {
 	dispatchIs(1, "source lane has no resolution.json",
 		"dispatch  a lane whose resolver wrote no scheme is refused")
 
+	// ⭐ A PACKAGE ROUTE HAS NO RESOLVER, so its lane passes the scheme check on
+	// its sibling's resolution and goes on to be assembled. ⚠ The fixture's
+	// source lane renamed is not a package capture, so the assembly refuses it
+	// afterwards; what the case asserts is that the refusal is no longer the
+	// scheme's. Measured on capture-client run 38788416994. `CI-11`.
+	if err := setUp("release", "source"); err != nil {
+		return verdict{}, err
+	}
+	for _, kind := range []string{"capture-client", "install"} {
+		from := filepath.Join(arts, kind+"-fixture-client-source-7-1")
+		if os.Rename(from, filepath.Join(arts, kind+"-fixture-client-package-7-1")) != nil {
+			return verdict{}, errCannotRun("cannot lay out a package lane")
+		}
+	}
+	_ = os.RemoveAll(filepath.Join(arts, "install-fixture-client-package-7-1", "source"))
+	dispatchIs(1, "fixture-client did not assemble",
+		"dispatch  a package lane takes its scheme from a sibling's resolution")
+
 	if laneErr != nil {
 		return verdict{}, laneErr
 	}

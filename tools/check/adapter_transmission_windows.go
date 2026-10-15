@@ -431,6 +431,13 @@ func trWinInstallPackage(workdir, log string) error {
 	if err := os.WriteFile(filepath.Join(workdir, "winget-version.txt"), []byte(note), 0o644); err != nil {
 		return qbtRefuse("the route could not record what the index named")
 	}
+	origin, err := wingetInstallerURL(string(shown))
+	if err != nil {
+		return qbtRefuse("%v", err)
+	}
+	if err := writePackageIndex(workdir, "winget", trWinWingetID, indexVersion, origin); err != nil {
+		return qbtRefuse("the route could not record what the index named")
+	}
 	if built != indexVersion {
 		return qbtRefuse("winget's index named %s and the build it installed reports %s", indexVersion, built)
 	}

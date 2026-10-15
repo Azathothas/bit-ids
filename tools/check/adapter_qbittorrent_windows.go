@@ -359,6 +359,19 @@ func qbtWinInstallPackage(workdir, log string) error {
 		"--accept-source-agreements", "--disable-interactivity"); rc != 0 {
 		return qbtRefuse("winget's index could not describe %s (exit %d)", qbtWinWingetID, rc)
 	}
+	// ⭐ WHAT THE INDEX NAMED IS RECORDED AS THE ROUTE'S SOURCE IDENTITY.
+	shown, _ := os.ReadFile(show)
+	indexVersion, err := trWinWingetVersion(string(shown))
+	if err != nil {
+		return qbtRefuse("%v", err)
+	}
+	origin, err := wingetInstallerURL(string(shown))
+	if err != nil {
+		return qbtRefuse("%v", err)
+	}
+	if err := writePackageIndex(workdir, "winget", qbtWinWingetID, indexVersion, origin); err != nil {
+		return qbtRefuse("the route could not record what the index named")
+	}
 	// ⛔ NO `--version`. The index is this route's resolver, as apt's is on
 	// Linux: pinning the version the release route chose would make the two
 	// routes share a resolver, which `E-ACQ-07` refuses. Absolute 4 is checked

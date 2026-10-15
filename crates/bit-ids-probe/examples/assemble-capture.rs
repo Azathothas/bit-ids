@@ -255,6 +255,16 @@ impl Lane {
         match self.route.as_str() {
             "release" => RouteKind::GithubRelease,
             "source" => RouteKind::SourceBuild,
+            // ⚠ WHICH HOST'S INDEX IS THE INSTALL RECORD'S PLATFORM, the same
+            // line the identity tuple is derived from. ⭐ winget on Windows,
+            // measured on capture-client run 38788416994. `CI-11`.
+            _ if self
+                .install
+                .get("platform")
+                .is_some_and(|p| p.split_whitespace().next() == Some("Windows")) =>
+            {
+                RouteKind::WindowsPackageManager
+            }
             _ => RouteKind::LinuxPackageManager,
         }
     }
@@ -461,6 +471,30 @@ fn source_identity(lane: &Lane) -> Result<SourceIdentity, String> {
                     .map_err(|error| format!("source_commit: {error}"))?,
             })
         }
+        // ⭐ A PACKAGE ROUTE IS IDENTIFIED BY WHAT ITS INDEX NAMED: the index,
+        // the package and the index's own version, which `install-client`
+        // records from the adapter's `package-index.txt`. `CI-11`.
+        RouteKind::WindowsPackageManager | RouteKind::LinuxPackageManager => {
+            let field = |key: &str| {
+                lane.install
+                    .get(key)
+                    .map(String::as_str)
+                    .filter(|value| !value.is_empty())
+                    .ok_or_else(|| {
+                        format!(
+                            "the package route records no `{key}`; its adapter writes \
+                             package-index.txt and `install-client` carries it into the record"
+                        )
+                    })
+            };
+            let version = field("package_version")?;
+            Ok(SourceIdentity::IndexedPackage {
+                index: label(field("package_index")?)?,
+                package: label(field("package_name")?)?,
+                version: Version::parse(version)
+                    .map_err(|error| format!("package_version {version:?}: {error}"))?,
+            })
+        }
         _ => Err(format!(
             "route {} has no source identity this example derives",
             lane.route
@@ -503,6 +537,17 @@ fn route_of(lane: &Lane, version: &Version) -> Result<AcquisitionRoute, String> 
         // fix. ⚠ Measured on 2026-09-15: run 16's release lane was told it was a
         // package route, and the sentence sent a reader to the resolver rather
         // than to the artifact.
+        // ⭐ A package route's origin is the installer URL its index pinned.
+        None if lane.route == "package" => lane
+            .install
+            .get("package_origin")
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| {
+                "the package route records no `package_origin`, the installer URL its index \
+                 pinned"
+                    .to_owned()
+            })?
+            .to_owned(),
         None => {
             return Err(format!(
                 "route {} has no resolution document at {}, so nothing names the origin. A \
@@ -1720,6 +1765,16 @@ fn phases_of(
     use bit_ids::manifest::{Phase, PhaseName};
     let lane = &lanes[watched];
     let resolution_of = |other: &Lane, key: &str| -> Result<Instant, String> {
+        // ⚠ A PACKAGE ROUTE RESOLVES INSIDE ITS INSTALL: the index is asked as
+        // the install's first act (`winget show`), so both of its resolution
+        // instants are the install's start. `CI-11`.
+        if other.resolution.is_none() && other.route == "package" {
+            return instant_in(
+                &other.install,
+                "started_at",
+                &format!("install-{}.txt", other.route),
+            );
+        }
         let record = other
             .resolution
             .as_ref()

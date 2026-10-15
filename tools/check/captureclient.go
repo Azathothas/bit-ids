@@ -888,10 +888,7 @@ func runCaptureClient(args []string) error {
 			fmt.Fprintf(os.Stderr, "capture-client: the peer surface was dialled in %s of %d session(s)\n", orZero(peerSessions), started_)
 		}
 	}
-	uptime := ""
-	if b, err := os.ReadFile("/proc/uptime"); err == nil {
-		uptime, _, _ = strings.Cut(strings.TrimSpace(string(b)), " ")
-	}
+	uptime := hostUptime()
 	stock := "false"
 	if kind == "stock" {
 		stock = "true"
