@@ -228,6 +228,25 @@ That decision belongs to the operator. The Prove's Windows half, the vendor's
 `x64_setup.exe` against a package manager's, is the other way to a pair. It
 needs a Windows lane in `capture-client.yml`, which has only a Linux job today.
 
+⭐ **Settled by the operator on 2026-10-15: 5.2.4, through a source build
+against Qt's own prebuilt archives.** An explorer found the same day that
+`release-5.2.4` was published on 2026-09-28, so the release route now selects
+it, and the recorded listing predates it. Qt 6.11.2's prebuilt `linux_gcc_64`
+archives are on `download.qt.io`, each with a `.sha1` beside it, built on a
+glibc older than noble's. That is downloading a built Qt rather than building
+one. noble's `libtorrent-rasterbar-dev` 2.0.10 and Boost 1.83 meet 5.2.x's
+minimums. The `release-5.2.4` tag is signed by the vendor. Other candidates
+were weighed and set aside:
+
+- Ubuntu 26.10's `qbittorrent-nox` `.deb` is 5.2.3 only.
+- Debian sid carries 5.2.4.
+- The userdocs static build is a release asset, which `E-ACQ-08` calls the
+  AppImage's delivery.
+- The vendor's container image builds libtorrent from a moving branch.
+
+⚠ Not measured yet: which libtorrent the AppImage carries, which decides
+whether the source build should link 1.2 or 2.0.
+
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository
@@ -1114,6 +1133,15 @@ ordering, so they are the operator's to choose:**
    release listing's publication time, set by the server.
 2. Let a scheme declare a floor below which tags are not this scheme's, for
    example `4`, with the record saying so.
+
+⭐ **Settled by the operator on 2026-10-15: the floor.** Measured by an
+explorer the same day: `git ls-remote` returns 132 refs in 0.7 seconds, and 131
+of the tags are lightweight, so git holds no date of the tagging for them at
+all. Only the commit's committer date, which the committer sets, is there. 71
+of the 112 unorderable tags are ancestors of 4.1.3's commit, and 41 sit on
+maintenance branches. The floor releases all 112 from the refs bytes already
+recorded, with nothing fetched and nothing author-supplied. A two-component
+`5.0` still blocks, and so does a tag with no leading integer.
 
 ⛔ **And the barrier waited for a lane that could not arrive.** *Arrive at the
 install barrier* ran only when the install had run, so a lane that failed
