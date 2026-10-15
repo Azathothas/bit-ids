@@ -1521,6 +1521,15 @@ broken stub route, a skipped restore, and an index left staged. The Linux gate
 runs it from the `bit-check` loop, and CI's *Checking harnesses* step runs
 `--harnesses`.
 
+⛔ **`check-workflow` refused the first wiring of that step, correctly.** The
+step built into `$RUNNER_TEMP` under `set -u`, and `check-workflow` runs a step
+body with no runner around it. So both the clean-tree control and the
+weakened-rule case died on `RUNNER_TEMP: unbound variable` before anything ran.
+That was reproduced in a scratch repository built the way `check-workflow`
+builds one. The step now builds into a `mktemp -d` of its own. In the same
+scratch tree, the clean tree passes 310 of 310 and the weakened `check-cache`
+rule fails 2, with the closing line the case reads.
+
 ⚠ **Its `--compare` was not ported.** Every half it compared had already been
 deleted, so every row it printed said it compared nothing. A mode that cannot
 fail for the reason it is named is ceremony. ⚠ **And its Windows row stays

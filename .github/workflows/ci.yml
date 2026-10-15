@@ -121,10 +121,15 @@ jobs:
       # `check-cache` rule passed every row CI ran. Measured on 2026-10-11 by
       # planting exactly that. This step is where they run, once.
       - name: Checking harnesses
+        # ⚠ Built into a directory of its own rather than `$RUNNER_TEMP`, so the
+        # step is the same command wherever it runs: `check-workflow` runs this
+        # body with no runner around it, and an unset `RUNNER_TEMP` put the build
+        # at `/bit-check`. Measured on 2026-10-15.
         run: |
           set -eu
-          (cd tools/check && go build -o "$RUNNER_TEMP/bit-check" .)
-          "$RUNNER_TEMP/bit-check" check-bitcheck --harnesses
+          bin=$(mktemp -d)
+          (cd tools/check && go build -o "$bin/bit-check" .)
+          "$bin/bit-check" check-bitcheck --harnesses
 
   # ⭐ A JOB OF ITS OWN, BECAUSE IT WAS THE LANE. It plants a defect of each class
   # the gate exists to catch and runs the offending step against it, and several
