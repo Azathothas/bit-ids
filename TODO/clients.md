@@ -268,6 +268,40 @@ without a display server.
 - both routes run the GUI build under Xvfb started inside the capture namespace;
 - Qt stays 6.11.2 from the prebuilt archives, though the AppImage bundles 6.10.3.
 
+⭐ **Both routes built, installed and captured on this host on 2026-10-15.**
+
+- **Release route.** `resolve-release` selects
+  `qbittorrent-5.2.4_lt20_x86_64.AppImage`, 101542392 bytes, and
+  `install-step.sh` installs it in 12 seconds. It answers `5.2.4`.
+- **Source route.** `resolve-source` selects `release-5.2.4`, and
+  `install-step.sh` builds it from nothing in 11 minutes 55 seconds, under the
+  1500-second bound, at commit `a1e4649c`. That covers Qt's five archives,
+  noble's packages, libtorrent `v2.0.15` and qBittorrent. It answers `5.2.4`.
+- **Captures.** Each route captured three sessions, 60 seconds, in the
+  namespace, under the adapter's own Xvfb: 6 announces, 6 peer streams, 3
+  sessions dialled, and every peer ID `-qB5240-` with a new tail per session.
+- **Assembly.** Assembled by hand from the two drives, both records are
+  `publishable` and `classify_across` answers `build_equivalent`, with 4
+  overlapping fields agreeing. The run manifests are absent only because the
+  hand-made layout carries no barrier or host claim, which a dispatch writes.
+
+⛔ **The drive found three defects before anything shipped.**
+
+1. The build's run path names Qt alone, so `libQt6Gui`'s `libEGL.so.1` was
+   found nowhere at link time. The build now passes `-rpath-link` to the
+   unpacked runtime set.
+2. `start` set `HOME` before the runtime directory was resolved, and the prefix
+   follows `HOME`, so every session loaded no libraries. The directory is now
+   resolved first and handed in.
+3. `lrelease` from qttools loads qtdeclarative's `libQt6Qml`, so that archive
+   is fetched too.
+
+⚠ The release route's runtime set is the same packages as the source route's.
+Both load noble's GL and xcb libraries from the prefix, and Qt's xcb plugin
+named eight a runner need not carry. `check-rootless` stubs `apt-get` and
+`dpkg-deb` for this adapter's case, because fetching for real cost the gate 15
+seconds of network.
+
 ⛔ **And the source route's resolver fails closed today, measured on
 2026-10-15** while building `CLIENT-06`'s floor. The live refs carry 260
 candidates, and 59 are `unorderable` under `release-` with three or four

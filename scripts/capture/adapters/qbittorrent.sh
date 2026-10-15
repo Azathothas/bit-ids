@@ -8,11 +8,17 @@
 # disposable host exists to remove, so this adapter writes the whole profile
 # itself instead of inheriting whatever is in HOME.
 #
-# -- ⛔ WHAT THIS ASSUMES ABOUT THE PRODUCT, AND HAS NOT MEASURED --------------
+# -- ⭐ DRIVEN ON 2026-10-15, BOTH ROUTES, 5.2.4 ----------------------------------
 #
-# Nothing below has been run against an installed qBittorrent. Each line is a
-# claim a dispatch settles, and this adapter carries more of them than the
-# others because this product has the most configuration:
+# The release route installs the `_lt20` AppImage and the source route builds
+# `release-5.2.4` against Qt 6.11.2's archives and libtorrent 2.0.15. Each
+# answered `qBittorrent v5.2.4` and captured three sessions in the namespace,
+# under Xvfb: six announces and six peer streams, every peer ID `-qB5240-`. The
+# two records assembled `publishable` and `build_equivalent`. `CLIENT-01`.
+#
+# -- ⛔ WHAT THIS ASSUMED ABOUT THE PRODUCT BEFORE THAT ------------------------
+#
+# Kept for the record. Each line was a claim a dispatch settled:
 #
 #   * `qbittorrent-nox --version` ends its first line with the version, with a
 #     leading `v` this strips;
@@ -69,20 +75,271 @@ prefix() {
   sh "$ROOTLESS" --prefix
 }
 
+# ⛔ THE GUI BUILD, `qbittorrent`, AND NOT `qbittorrent-nox`. Measured on
+# 2026-10-15 by reading both 5.2.4 AppImages' squashfs: neither carries
+# `qbittorrent-nox`. The operator settled that both routes run the GUI build
+# under Xvfb, so the two routes are one program. `CLIENT-01`.
+EXE=qbittorrent
+
 binary() {
   if [ -n "${BIT_IDS_QBITTORRENT:-}" ]; then
     printf '%s' "$BIT_IDS_QBITTORRENT"
     return 0
   fi
-  # ⭐ THE RELEASE ROUTE'S OWN PREFIX, BEFORE THE PATH. Without it the two routes
-  # would race on PATH order, which is a property of the host rather than of the
+  # ⭐ THE ROUTE'S OWN PREFIX, BEFORE THE PATH. Without it the two routes would
+  # race on PATH order, which is a property of the host rather than of the
   # acquisition.
   _prefix=$(prefix) || return 1
-  if [ -x "$_prefix/bin/qbittorrent-nox" ]; then
-    printf '%s' "$_prefix/bin/qbittorrent-nox"
+  if [ -x "$_prefix/bin/$EXE" ]; then
+    printf '%s' "$_prefix/bin/$EXE"
     return 0
   fi
-  command -v qbittorrent-nox 2>/dev/null
+  command -v "$EXE" 2>/dev/null
+}
+
+# -- ⭐ WHAT BOTH ROUTES RUN AGAINST, FROM THE DISTRIBUTION'S SIGNED INDEX -----
+#
+# ⛔ AN AppImage LEAVES THE HOST'S GRAPHICS STACK OUT ON PURPOSE, and the Qt
+# archives the source route builds against assume it. Measured on 2026-10-15:
+# the `_lt20` AppImage stops on a missing `libEGL.so.1` before printing
+# anything, and Qt's xcb plugin names `libxcb-cursor0` and seven more that a
+# runner need not carry. So one set of noble's runtime packages is unpacked into
+# the prefix for BOTH routes, which then load the same host libraries rather
+# than whatever each runner happens to have.
+# ⚠ Rootless: `apt-get` keeps its index and cache in the workdir and
+# `dpkg-deb -x` unpacks, which is `transmission`'s technique for libcurl's
+# headers. `ACQ-06` is why nothing here may escalate.
+RUNTIME_PACKAGES="libegl1 libgl1 libglx0 libopengl0 libglvnd0 libgles2 \
+libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 \
+libxcb-util1 libxcb-xkb1 libxkbcommon0 libxkbcommon-x11-0"
+
+runtime_dir() {
+  _prefix=$(prefix) || return 1
+  printf '%s/lib/qbittorrent-runtime' "$_prefix"
+}
+
+# Fetches packages through a private index and unpacks them into <root>,
+# recording each package, version and digest in <record>.
+apt_unpack() { # workdir root record package...
+  _wd=$1
+  _root=$2
+  _record=$3
+  shift 3
+  for _need in apt-get dpkg-deb; do
+    command -v "$_need" >/dev/null 2>&1 || cannot "the install needs $_need and it is not on this host"
+  done
+  _apt="$_wd/apt"
+  mkdir -p "$_apt/lists/partial" "$_apt/cache/archives/partial" "$_apt/deb" "$_root" ||
+    cannot "cannot create $_apt"
+  if [ ! -f "$_apt/updated" ]; then
+    timeout 300 apt-get -o "Dir::State::Lists=$_apt/lists" -o "Dir::Cache=$_apt/cache" \
+      -o Debug::NoLocking=1 update </dev/null >>"$_wd/deps.log" 2>&1 ||
+      refuse "a private package index could not be fetched"
+    : >"$_apt/updated"
+  fi
+  (cd "$_apt/deb" && timeout 300 apt-get -o "Dir::State::Lists=$_apt/lists" \
+    -o "Dir::Cache=$_apt/cache" -o Debug::NoLocking=1 download "$@") \
+    </dev/null >>"$_wd/deps.log" 2>&1 || refuse "the packages could not be downloaded: $*"
+  for _pkg in "$@"; do
+    set -- "$_apt/deb/${_pkg}_"*.deb
+    if [ $# != 1 ] || [ ! -f "$1" ]; then
+      refuse "the download left no single $_pkg package"
+    fi
+    dpkg-deb -x "$1" "$_root" || refuse "$_pkg could not be unpacked"
+    printf '%s=%s sha256:%s\n' "$(dpkg-deb -f "$1" Package)" "$(dpkg-deb -f "$1" Version)" \
+      "$(sha256sum "$1" | cut -d' ' -f1)" >>"$_record" ||
+      refuse "the install could not record $_pkg"
+  done
+}
+
+# The runtime set, into the prefix. Both routes call this.
+install_runtime() { # workdir
+  _rt=$(runtime_dir) || cannot "the rootless prefix could not be derived"
+  # shellcheck disable=SC2086 # the package list is split on purpose
+  apt_unpack "$1" "$1/runtime-root" "$1/runtime-packages.txt" $RUNTIME_PACKAGES
+  rm -rf "$_rt.new" || refuse "cannot clear $_rt.new"
+  mkdir -p "$_rt.new" || refuse "cannot stage $_rt"
+  cp -P "$1/runtime-root/usr/lib/x86_64-linux-gnu/"*.so* "$_rt.new/" ||
+    refuse "the runtime set carried no libraries"
+  rm -rf "$_rt" || refuse "cannot clear $_rt"
+  mv "$_rt.new" "$_rt" || refuse "cannot install $_rt"
+}
+
+# ⭐ THE DISPLAY THE GUI BUILD NEEDS, and only that. Both AppImages carry the
+# xcb and wayland platform plugins and nothing headless, so the build cannot
+# start without a server. ⚠ Xvfb listens on a filesystem socket only, which a
+# network namespace leaves working, and on no TCP port.
+# Starts one, writes its pid to <pidfile>, and prints the display.
+start_display() { # pidfile
+  command -v Xvfb >/dev/null 2>&1 || cannot "the GUI build needs Xvfb and it is not on this host"
+  _n=91
+  while [ "$_n" -lt 120 ]; do
+    if [ ! -e "/tmp/.X11-unix/X$_n" ] && [ ! -e "/tmp/.X$_n-lock" ]; then
+      Xvfb ":$_n" -nolisten tcp -screen 0 1280x800x24 </dev/null >/dev/null 2>&1 &
+      printf '%s\n' "$!" >"$1"
+      _waited=0
+      while [ "$_waited" -lt 50 ]; do
+        [ -S "/tmp/.X11-unix/X$_n" ] && {
+          printf ':%s' "$_n"
+          return 0
+        }
+        sleep 0.1
+        _waited=$((_waited + 1))
+      done
+      kill "$(cat "$1")" 2>/dev/null
+      cannot "Xvfb :$_n did not open its socket within five seconds"
+    fi
+    _n=$((_n + 1))
+  done
+  cannot "no free X display between :91 and :119"
+}
+
+stop_display() { # pidfile
+  [ -f "$1" ] || return 0
+  _xpid=$(cat "$1")
+  case "$_xpid" in
+    '' | *[!0-9]*) return 0 ;;
+  esac
+  kill "$_xpid" 2>/dev/null
+  rm -f "$1"
+}
+
+# ⛔ ONE ENVIRONMENT FOR EVERY CALL INTO THE BUILD, so `version` and `start`
+# run the same program the same way on both routes.
+# ⛔ THE RUNTIME DIRECTORY IS AN ARGUMENT, resolved by the caller before it
+# changes anything. The prefix follows `HOME`, and `start` runs the build with
+# `HOME` set to its workdir; resolved in here, the directory was the workdir's,
+# which holds no libraries, and every session stopped on a missing
+# `libEGL.so.1`. Driven on 2026-10-15.
+run_build() { # display runtime-dir command...
+  _display=$1
+  _rt=$2
+  shift 2
+  DISPLAY=$_display QT_QPA_PLATFORM=xcb LD_LIBRARY_PATH="$_rt" "$@"
+}
+
+# -- ⭐ THE SOURCE ROUTE: THE TAG, BUILT AGAINST QT'S OWN PREBUILT ARCHIVES ------
+#
+# Settled by the operator on 2026-10-15: Qt 6.11.2's `linux_gcc_64` archives
+# from `download.qt.io`, libtorrent 2.0.15 built from its own tag so both routes
+# run the libtorrent the `_lt20` AppImage carries, and noble's Boost headers.
+# ⛔ QT'S ARCHIVES ARE NAMED BY QT'S OWN LISTING, never composed. `Updates.xml`
+# names the package's version and its archives, and each archive's `.sha1`
+# sidecar is checked before it is unpacked. ⚠ That sidecar is the host's
+# statement about bytes the same host serves, as a release listing's digest is.
+QT_REPO=https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt6_6112/qt6_6112
+QT_PACKAGE=qt.qt6.6112.linux_gcc_64
+# ⚠ Only what the build reads: qtbase, qtsvg, qttools for `lrelease`, which
+# itself loads qtdeclarative's `libQt6Qml`, and Qt's own ICU.
+QT_MODULES="qtbase qtsvg qttools qtdeclarative icu"
+LIBTORRENT_TAG=v2.0.15
+BUILD_PACKAGES="7zip libboost1.83-dev libgl-dev libglx-dev libopengl-dev libegl-dev \
+libgles-dev libglvnd-dev libglvnd-core-dev mesa-common-dev libxkbcommon-dev"
+
+fetch_qt() { # workdir qt-dir
+  _wd=$1
+  _qt=$2
+  command -v python3 >/dev/null 2>&1 || cannot "reading Qt's listing needs python3"
+  timeout 120 curl -fsSL --retry 2 -o "$_wd/qt-Updates.xml" "$QT_REPO/Updates.xml" \
+    </dev/null 2>>"$_wd/install.log" || refuse "Qt's listing could not be fetched"
+  python3 -I -c '
+import sys, xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+for p in root.findall("PackageUpdate"):
+    if p.findtext("Name") == sys.argv[2]:
+        print("version", p.findtext("Version"))
+        for a in (p.findtext("DownloadableArchives") or "").split(","):
+            print("archive", a.strip())
+' "$_wd/qt-Updates.xml" "$QT_PACKAGE" >"$_wd/qt-listing.txt" || refuse "Qt's listing could not be read"
+  _ver=$(awk '$1 == "version" { print $2; exit }' "$_wd/qt-listing.txt")
+  [ -n "$_ver" ] || refuse "Qt's listing names no $QT_PACKAGE"
+  rm -rf "$_qt" || refuse "cannot clear $_qt"
+  mkdir -p "$_qt" "$_wd/qt-archives" || refuse "cannot create $_qt"
+  for _module in $QT_MODULES; do
+    _archive=$(awk -v m="$_module" '$1 == "archive" && index($2, m "-") == 1 { print $2; exit }' "$_wd/qt-listing.txt")
+    [ -n "$_archive" ] || refuse "Qt's listing names no $_module archive for $QT_PACKAGE"
+    _file="$_wd/qt-archives/$_ver$_archive"
+    for _suffix in "" .sha1; do
+      timeout 300 curl -fsSL --retry 2 -o "$_file$_suffix" "$QT_REPO/$QT_PACKAGE/$_ver$_archive$_suffix" \
+        </dev/null 2>>"$_wd/install.log" || refuse "Qt's $_module archive could not be fetched"
+    done
+    _want=$(cut -c1-40 "$_file.sha1")
+    _got=$(sha1sum "$_file" | cut -c1-40)
+    [ "$_want" = "$_got" ] || refuse "Qt's $_module archive digests to $_got and its sidecar says $_want"
+    "$_wd/build-root/usr/lib/7zip/7z" x -y -bd "-o$_qt" "$_file" </dev/null >>"$_wd/install.log" 2>&1 ||
+      refuse "Qt's $_module archive could not be unpacked"
+    printf 'qt %s %s sha1:%s\n' "$_ver" "$_archive" "$_got" >>"$_wd/build-deps.txt"
+  done
+  # ⚠ Qt's ICU archive unpacks at the root, and Qt's libraries find it beside
+  # themselves through their own `$ORIGIN` run path.
+  for _icu in "$_qt"/libicu*.so*; do
+    [ -e "$_icu" ] || continue
+    mv "$_icu" "$_qt/lib/" || refuse "Qt's ICU could not be placed beside Qt's libraries"
+  done
+}
+
+build_source() { # workdir qbittorrent-src
+  _wd=$1
+  _src=$2
+  for _need in cmake ninja c++ git curl sha1sum; do
+    command -v "$_need" >/dev/null 2>&1 || cannot "the source route compiles and $_need is not on this host"
+  done
+  PREFIX=$(prefix) || cannot "the rootless prefix could not be derived"
+  mkdir -p "$PREFIX/bin" "$PREFIX/opt" ||
+    refuse "this user cannot create $PREFIX/bin; a rootless install writes nowhere else"
+  : >"$_wd/build-deps.txt"
+  # shellcheck disable=SC2086 # the package list is split on purpose
+  apt_unpack "$_wd" "$_wd/build-root" "$_wd/build-deps.txt" $BUILD_PACKAGES
+  # ⚠ The runtime set is unpacked into the build root too, so the build links
+  # against the libraries it will load.
+  # shellcheck disable=SC2086
+  apt_unpack "$_wd" "$_wd/build-root" "$_wd/build-deps.txt" $RUNTIME_PACKAGES
+  # ⛔ QT LIVES IN THE PREFIX, because the build's run path names it and the
+  # capture runs the build after this workdir's purpose is over.
+  _qt="$PREFIX/opt/qt-6.11.2"
+  fetch_qt "$_wd" "$_qt"
+  timeout 600 git clone --depth 1 --branch "$LIBTORRENT_TAG" --recurse-submodules \
+    --shallow-submodules https://github.com/arvidn/libtorrent.git "$_wd/libtorrent" \
+    </dev/null >>"$_wd/install.log" 2>&1 || refuse "libtorrent $LIBTORRENT_TAG could not be cloned"
+  printf 'libtorrent %s %s\n' "$LIBTORRENT_TAG" "$(git -C "$_wd/libtorrent" rev-parse HEAD)" \
+    >>"$_wd/build-deps.txt" || refuse "the build could not record libtorrent's commit"
+  _usr="$_wd/build-root/usr"
+  set -- -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_CXX_STANDARD=17 "-DBoost_INCLUDE_DIR=$_usr/include" \
+    "-DCMAKE_INSTALL_PREFIX=$_wd/libtorrent-prefix"
+  cmake -S "$_wd/libtorrent" -B "$_wd/libtorrent-build" "$@" </dev/null >>"$_wd/install.log" 2>&1 ||
+    refuse "libtorrent could not be configured"
+  cmake --build "$_wd/libtorrent-build" </dev/null >>"$_wd/install.log" 2>&1 ||
+    refuse "libtorrent could not be built"
+  cmake --install "$_wd/libtorrent-build" </dev/null >>"$_wd/install.log" 2>&1 ||
+    refuse "libtorrent could not be staged"
+  # ⛔ `-rpath-link`, BECAUSE THE RUN PATH NAMES QT ALONE. Qt's `libQt6Gui`
+  # needs `libEGL.so.1`, which is in the unpacked runtime set, and with the
+  # install run path in force the linker found it nowhere: the first driven
+  # build on 2026-10-15 stopped on `undefined reference to eglBindAPI`. At run
+  # time the same set is on `LD_LIBRARY_PATH` for both routes.
+  set -- -G Ninja -DCMAKE_BUILD_TYPE=Release -DGUI=ON -DSTACKTRACE=OFF \
+    "-DCMAKE_PREFIX_PATH=$_qt;$_wd/libtorrent-prefix;$_usr" \
+    "-DCMAKE_LIBRARY_PATH=$_usr/lib/x86_64-linux-gnu" "-DCMAKE_INCLUDE_PATH=$_usr/include" \
+    "-DBoost_INCLUDE_DIR=$_usr/include" \
+    "-DCMAKE_INSTALL_RPATH=$_qt/lib" -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+    "-DCMAKE_EXE_LINKER_FLAGS=-Wl,-rpath-link,$_usr/lib/x86_64-linux-gnu"
+  {
+    printf 'cmake -S <source> -B <build>'
+    for _a in "$@"; do printf " '%s'" "$_a"; done
+    printf '\nhost CFLAGS=%s\n' "${CFLAGS-<unset>}"
+    printf 'host CXXFLAGS=%s\n' "${CXXFLAGS-<unset>}"
+    printf 'host LDFLAGS=%s\n' "${LDFLAGS-<unset>}"
+  } >"$_wd/build-configure.txt" || refuse "the source route could not record how it configured the build"
+  cmake -S "$_src" -B "$_wd/build" "$@" </dev/null >>"$_wd/install.log" 2>&1 ||
+    refuse "the source route could not configure a build"
+  cmake --build "$_wd/build" </dev/null >>"$_wd/install.log" 2>&1 ||
+    refuse "the source route could not build qbittorrent"
+  [ -x "$_wd/build/qbittorrent" ] || refuse "the source route built nothing at build/qbittorrent"
+  cp "$_wd/build/qbittorrent" "$PREFIX/bin/.$EXE.new" ||
+    refuse "the source route could not stage $EXE in $PREFIX/bin"
+  mv "$PREFIX/bin/.$EXE.new" "$PREFIX/bin/$EXE" ||
+    refuse "the source route could not install $EXE into $PREFIX/bin"
 }
 
 [ $# -ge 1 ] || cannot "a subcommand is required"
@@ -98,6 +355,7 @@ package_format() { # route
   case "$1" in
     package) printf 'deb\n' ;;
     release) printf 'appimage\n' ;;
+    source) printf 'elf-binary\n' ;;
     *) return 1 ;;
   esac
 }
@@ -146,7 +404,10 @@ case "$COMMAND" in
     printf 'release_min_components=3\n'
     printf 'release_max_components=4\n'
     printf 'release_floor_major=-\n'
-    printf 'release_asset=qbittorrent-{version}_x86_64.AppImage\n'
+    # ⛔ THE `_lt20` ASSET, settled by the operator on 2026-10-15 once both were
+    # measured: the unsuffixed AppImage carries libtorrent 1.2.20 and this one
+    # 2.0.15, and the reserved bytes a pair compares are libtorrent's.
+    printf 'release_asset=qbittorrent-{version}_lt20_x86_64.AppImage\n'
     # ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE, AND IT IS
     # ABOUT THE VENDOR'S OWN CHECKSUMS DOCUMENT. ⚠ That is a narrower sentence
     # than "no digest", and the difference is measured: the release LISTING
@@ -160,6 +421,9 @@ case "$COMMAND" in
     # file - and `digest` is stated on all fourteen. So this route verifies, and
     # it verifies against the host rather than against the vendor.
     printf 'release_digest_unpublished=this release signs each asset with a detached .asc and publishes no checksums document\n'
+    # ⚠ The source route compiles libtorrent and qBittorrent, measured at about
+    # nine minutes on a four-processor session host on 2026-10-15.
+    printf 'compiles=source\n'
     ;;
 
   install)
@@ -189,8 +453,8 @@ case "$COMMAND" in
         # end-of-file rather than a wait.
         DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get update \
           </dev/null >"$WORKDIR/update.log" 2>&1 || refuse "the package index could not be refreshed"
-        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get install -y --no-install-recommends qbittorrent-nox \
-          </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the package route did not install qbittorrent-nox"
+        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get install -y --no-install-recommends qbittorrent \
+          </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the package route did not install qbittorrent"
         ;;
       release)
         # ⛔ THE VENDOR'S OWN ARTIFACT. CLIENT-01 measured on 2026-09-05 that the
@@ -248,8 +512,8 @@ case "$COMMAND" in
         fi
         sh "$ROOTLESS" --install \
           --url "$BIT_IDS_RELEASE_URL" \
-          --into "$WORKDIR/qbittorrent-nox.AppImage" \
-          --as qbittorrent-nox \
+          --into "$WORKDIR/qbittorrent.AppImage" \
+          --as "$EXE" \
           "$@" \
           --report "$WORKDIR/rootless-install.txt" \
           </dev/null >>"$WORKDIR/install.log" 2>&1
@@ -260,6 +524,26 @@ case "$COMMAND" in
             cannot "the rootless installer could not run for the release route (exit $_rc)"
           refuse "the release route could not install the vendor's AppImage"
         }
+        install_runtime "$WORKDIR"
+        ;;
+      source)
+        # ⭐ THE SECOND ROUTE: THE REPOSITORY'S OWN TAG, CLONED AND BUILT, as
+        # `transmission` and `aria2-next` do. It resolves through the
+        # repository's refs, which since 2026-10-15 read `release-5.3.0beta1`'s
+        # marker after its digits and select `release-5.2.4`. `CLIENT-01`.
+        _tag=${BIT_IDS_SOURCE_TAG:-}
+        [ -n "$_tag" ] ||
+          cannot "the source route needs BIT_IDS_SOURCE_TAG, resolved from this repository's own refs before the route was cut"
+        command -v git >/dev/null 2>&1 || cannot "the source route clones and git is not on this host"
+        _repo=$(sh "$0" describe | awk -F= '$1 == "release_repo" { sub(/^[^=]*=/, ""); print; exit }')
+        [ -n "$_repo" ] || cannot "this adapter declares no release_repo to clone from"
+        timeout 600 git clone --depth 1 --branch "$_tag" "https://github.com/$_repo.git" "$WORKDIR/src" \
+          </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the source route could not clone $_tag"
+        # ⛔ THE COMMIT `E-ACQ-06` ASKS FOR, NOT THE TAG, which is a name.
+        git -C "$WORKDIR/src" rev-parse HEAD >"$WORKDIR/source-commit" 2>>"$WORKDIR/install.log" ||
+          refuse "the source route cloned $_tag and could not name its commit"
+        build_source "$WORKDIR" "$WORKDIR/src"
+        install_runtime "$WORKDIR"
         ;;
       *) cannot "unknown route: $ROUTE" ;;
     esac
@@ -277,8 +561,8 @@ case "$COMMAND" in
     ;;
 
   version)
-    BINARY=$(binary) || cannot "qbittorrent-nox is not installed"
-    [ -n "$BINARY" ] || cannot "qbittorrent-nox is not installed"
+    BINARY=$(binary) || cannot "$EXE is not installed"
+    [ -n "$BINARY" ] || cannot "$EXE is not installed"
     # ⛔ THE BUILD SPEAKING. `qBittorrent v5.0.2` on its first line; the leading
     # `v` is stripped because a version is compared by VersionScheme::components
     # and a label carrying a sigil is a second spelling of one value.
@@ -302,14 +586,22 @@ case "$COMMAND" in
     #
     # ⚠ stderr is KEPT here rather than discarded. A product that refuses to
     # answer says why on it, and the caller prints what this prints.
-    OUTPUT=$("$BINARY" --version </dev/null 2>&1)
+    # ⚠ THE GUI BUILD ANSWERS ONLY ON A DISPLAY: it constructs its application
+    # before it reads `--version`. Measured on 2026-10-15 with both routes'
+    # builds; each prints `qBittorrent v5.2.4` under Xvfb.
+    _xpid=$(mktemp) || cannot "cannot make a temporary file"
+    _display=$(start_display "$_xpid") || exit $?
+    _rt=$(runtime_dir) || cannot "the rootless prefix could not be derived"
+    OUTPUT=$(run_build "$_display" "$_rt" "$BINARY" --version </dev/null 2>&1)
     VERSION_RC=$?
+    stop_display "$_xpid"
+    rm -f "$_xpid"
     [ "$VERSION_RC" = 0 ] ||
-      cannot "qbittorrent-nox --version exited $VERSION_RC: $(printf '%s' "$OUTPUT" | head -3 | tr '\n' ' ')"
+      cannot "$EXE --version exited $VERSION_RC: $(printf '%s' "$OUTPUT" | head -3 | tr '\n' ' ')"
     LINE=$(printf '%s\n' "$OUTPUT" | grep -i qbittorrent | head -1)
     [ -n "$LINE" ] || LINE=$(printf '%s\n' "$OUTPUT" | head -1)
     VERSION=$(printf '%s' "$LINE" | awk '{ print $NF }' | sed 's/^v//')
-    [ -n "$VERSION" ] || cannot "qbittorrent-nox reported no parseable version: [$LINE]"
+    [ -n "$VERSION" ] || cannot "$EXE reported no parseable version: [$LINE]"
     # ⛔ WHAT THE BUILD SAID ABOUT ITSELF IS KEPT, NOT ONLY THE FIELD PARSED OUT
     # OF IT. Two routes can install builds that report ONE version and are not
     # one build: measured on 2026-09-08, Ubuntu's aria2 1.37.0 and a 1.37.0 built
@@ -333,8 +625,8 @@ case "$COMMAND" in
     TORRENT="$1"
     WORKDIR="$2"
     PORT="$3"
-    BINARY=$(binary) || cannot "qbittorrent-nox is not installed"
-    [ -n "$BINARY" ] || cannot "qbittorrent-nox is not installed"
+    BINARY=$(binary) || cannot "$EXE is not installed"
+    [ -n "$BINARY" ] || cannot "$EXE is not installed"
     [ -s "$TORRENT" ] || cannot "there is no torrent at $TORRENT"
 
     PROFILE="$WORKDIR/profile"
@@ -368,6 +660,11 @@ case "$COMMAND" in
       printf '\n'
       printf '[LegalNotice]\n'
       printf 'Accepted=true\n'
+      # ⚠ THE GUI ASKS ABOUT A TORRENT IT IS HANDED, and nothing would answer.
+      # `AddNewTorrentDialog/Enabled` is the 5.2.4 key, read from its source.
+      printf '\n'
+      printf '[AddNewTorrentDialog]\n'
+      printf 'Enabled=false\n'
     } >"$CONFIG/qBittorrent.conf" || cannot "the profile could not be written"
 
     # ⛔ THE LEGAL NOTICE IS ACCEPTED IN THE PROFILE, NOT ON THE COMMAND LINE.
@@ -381,17 +678,24 @@ case "$COMMAND" in
     # product already has that needs no web interface, no credential and no
     # second process. An adapter driving the WebUI would be measuring a build
     # through an authenticated API it had to configure first.
-    HOME="$WORKDIR" "$BINARY" \
+    # ⭐ A DISPLAY PER SESSION, stopped with the build, so a session's server is
+    # never the previous session's.
+    _rt=$(runtime_dir) || cannot "the rootless prefix could not be derived"
+    _display=$(start_display "$WORKDIR/xvfb.pid") || exit $?
+    HOME="$WORKDIR" run_build "$_display" "$_rt" "$BINARY" \
       --profile="$PROFILE" \
       --relative-fastresume \
-      "$TORRENT" >"$WORKDIR/client.out" 2>&1 &
+      --skip-dialog=true \
+      "$TORRENT" </dev/null >>"$WORKDIR/client.out" 2>&1 &
     printf '%s\n' "$!" >"$WORKDIR/pid"
-    printf 'started qbittorrent-nox pid %s on port %s\n' "$(cat "$WORKDIR/pid")" "$PORT"
+    printf 'started %s pid %s on port %s, display %s\n' "$EXE" "$(cat "$WORKDIR/pid")" "$PORT" "$_display"
     ;;
 
   stop)
     [ $# -ge 1 ] || cannot "stop takes <workdir>"
     WORKDIR="$1"
+    # ⛔ THE DISPLAY GOES WITH THE BUILD, on every path out of here.
+    trap 'stop_display "$WORKDIR/xvfb.pid"' EXIT
     [ -f "$WORKDIR/pid" ] || exit 0
     PID=$(cat "$WORKDIR/pid")
     case "$PID" in

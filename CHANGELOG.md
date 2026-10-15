@@ -5,6 +5,16 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T06:55:02Z
+
+- ⭐ **qBittorrent 5.2.4 has two routes, both driven.** The release route
+  installs the `_lt20` AppImage, and the source route builds `release-5.2.4`
+  against Qt 6.11.2's prebuilt archives and libtorrent 2.0.15 in about twelve
+  minutes. Both run the GUI build under the adapter's own Xvfb. Captured on
+  this host, the pair's records are publishable and build-equivalent.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-01`. No version bump and
+  no deploy.
+
 ### 2026-10-15T06:02:19Z
 
 - ⛔ **The second publication would have deleted the first.** Transmission

@@ -292,16 +292,26 @@ write_resolution() { # file source [document] [asset] [sha256] [reason]
   } >"$1"
 }
 
-route_case() { # label adapter url binary [resolution-file]
+route_case() { # label adapter url binary [resolution-file] [stub-dir]
   _label=$1
   _env="$CASE_ENV CR_ROOTLESS=$ROOTLESS CR_INSTALLER=$INSTALLER CR_GUARD=$GUARD"
   _env="$_env CR_ADAPTER=$ADAPTERS/$2.sh CR_URL=file://$3 CR_BINARY=$4"
   [ -z "${5:-}" ] || _env="$_env CR_RESOLUTION=$5"
+  # ⚠ A SIXTH ARGUMENT PUTS STUBS IN FRONT OF BOTH RUNS' PATHS, for a route
+  # that reaches the distribution's index. Without it the qBittorrent case
+  # fetched its runtime set from noble for real: 15 seconds of network per gate
+  # run, measured on 2026-10-15, for a case about `sudo`.
+  _path_a=$PATH
+  _path_b=$NOSUDO
+  if [ -n "${6:-}" ]; then
+    _path_a="$6:$_path_a"
+    _path_b="$6:$_path_b"
+  fi
 
   rm -rf "$SCRATCH/prefix" "$STATE"
-  run_as "$DRIVER" "$WORK/$_label.a.out" "$WORK/$_label.a.err" "$_env"
+  run_as "$DRIVER" "$WORK/$_label.a.out" "$WORK/$_label.a.err" "$_env PATH=$_path_a"
   rm -rf "$SCRATCH/prefix" "$STATE"
-  run_as "$DRIVER" "$WORK/$_label.b.out" "$WORK/$_label.b.err" "$_env PATH=$NOSUDO"
+  run_as "$DRIVER" "$WORK/$_label.b.out" "$WORK/$_label.b.err" "$_env PATH=$_path_b"
 
   # ⭐ THE TWO RUNS ARE COMPARED BYTE FOR BYTE, which is the entry's own wording.
   if cmp -s "$WORK/$_label.a.out" "$WORK/$_label.b.out"; then
@@ -454,8 +464,35 @@ route_case aria2-next aria2-next "$VENDOR/aria2-next-9.9.9-linux-x86_64" aria2-n
   "$WORK/res-both.txt"
 route_case aria2-next-doc aria2-next "$VENDOR/aria2-next-9.9.9-linux-x86_64" aria2-next \
   "$WORK/res-document.txt"
-route_case qbittorrent qbittorrent "$VENDOR/qbittorrent-9.9.9_x86_64.AppImage" qbittorrent-nox \
-  "$WORK/res-listing.txt"
+# ⭐ `apt-get` and `dpkg-deb`, stubbed: a download writes a named package and an
+# unpack writes one library, which is all the runtime set's install reads.
+APTSTUB="$WORK/aptstub"
+mkdir -p "$APTSTUB" || exit 2
+cat >"$APTSTUB/apt-get" <<'APT_STUB'
+#!/bin/sh
+for a in "$@"; do
+  case "$a" in update) exit 0 ;; esac
+done
+_dl=no
+for a in "$@"; do
+  if [ "$_dl" = yes ]; then printf 'stub %s\n' "$a" >"${a}_1.0_amd64.deb"; fi
+  [ "$a" != download ] || _dl=yes
+done
+exit 0
+APT_STUB
+cat >"$APTSTUB/dpkg-deb" <<'DPKG_STUB'
+#!/bin/sh
+case "$1" in
+  -x)
+    mkdir -p "$3/usr/lib/x86_64-linux-gnu" &&
+      : >"$3/usr/lib/x86_64-linux-gnu/lib$(basename "$2" | cut -d_ -f1).so.1"
+    ;;
+  -f) basename "$2" | cut -d_ -f1 ;;
+esac
+DPKG_STUB
+chmod +x "$APTSTUB/apt-get" "$APTSTUB/dpkg-deb"
+route_case qbittorrent qbittorrent "$VENDOR/qbittorrent-9.9.9_x86_64.AppImage" qbittorrent \
+  "$WORK/res-listing.txt" "$APTSTUB"
 route_case aria2 aria2 "$VENDOR/aria2-9.9.9.tar.bz2" aria2c "$WORK/res-none.txt"
 route_case transmission transmission "$VENDOR/transmission-9.9.9.tar.xz" transmission-daemon
 

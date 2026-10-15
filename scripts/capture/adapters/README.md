@@ -116,7 +116,9 @@ own case because a stub blocking on `read` would demonstrate only the redirect.
 `needrestart` opens a dialog that `DEBIAN_FRONTEND` does not suppress, and
 `qbittorrent-nox` asks for its legal notice to be confirmed - on `--version` as
 well as on a run, which is a control on one of two paths into the same product.
-
+⭐ And since 2026-10-15 `qbittorrent` runs the GUI build, the only one either
+5.2.4 AppImage carries, so the adapter starts its own Xvfb for `version` and for
+each session, and asks the build not to open its add-torrent dialog.
 ## ⛔ The workdir IS the evidence bundle
 
 **Anything an adapter writes into the workdir is uploaded as an artifact.**

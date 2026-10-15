@@ -109,11 +109,12 @@ still open is a host that never reached it.
    as an unprivileged user on 2026-10-14. ⭐ The source route's resolution
    failed closed over 112 historical tags git refs cannot date; the scheme
    floor the operator chose is built, and the source route selects 4.1.3 from
-   the live refs. ⭐ The pair captured on run 38667886527, and assembling it
-   found a peer-reader defect, fixed, and two classification questions for the
-   operator, recorded under the entry. ⭐ `CLIENT-01` targets 5.2.4 by
-   a source build against Qt's prebuilt archives, settled on 2026-10-15; its
-   entry in [`clients.md`](clients.md) carries the plan.
+   the live refs. ⭐ Run 38680098567, three sessions, assembled both records
+   `publishable` and `build_equivalent`; publishing it waits on the bootstrap
+   publication `CI-09` records. ⭐ `CLIENT-01`'s two 5.2.4 routes are built,
+   installed and captured on the session host, and the pair assembled
+   publishable by hand; next is a dispatch. Its entry in
+   [`clients.md`](clients.md) carries the drive.
 2. **`CI-08`**: `capture.yml`'s Linux job runs in `contained.sh`, proved on
    `capture` run 38612214714. Its Windows job still cuts the host's route and
    needs a different containment, such as a firewall rule scoped to the

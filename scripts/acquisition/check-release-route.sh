@@ -143,7 +143,7 @@ while read -r target expected; do
 done <<ADAPTER_TABLE
 aria2 aria2-1.37.0.tar.bz2
 aria2-next aria2-next-2.7.4-linux-x86_64
-qbittorrent qbittorrent-5.2.3_x86_64.AppImage
+qbittorrent qbittorrent-5.2.3_lt20_x86_64.AppImage
 transmission transmission-4.1.3.tar.xz
 ADAPTER_TABLE
 
