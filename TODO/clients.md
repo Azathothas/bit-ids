@@ -302,6 +302,23 @@ named eight a runner need not carry. `check-rootless` stubs `apt-get` and
 `dpkg-deb` for this adapter's case, because fetching for real cost the gate 15
 seconds of network.
 
+⛔ **The first dispatch, `capture-client` run 38702739119 on `ab83dc5`.**
+
+- **Release lane: green.** It installed in 11 seconds and captured on the
+  runner, so Xvfb and the runtime set work there.
+- **Source lane: built, then could not run.** It compiled in 7.5 minutes,
+  faster than this host, and stopped at `--version` on Qt's own message about
+  `xcb-cursor0`, which Qt prints whatever dependency is missing.
+
+The runtime set had been the eight libraries this host lacked, and a runner
+lacks more. It is now the whole closure `ldd` resolves for Qt's xcb plugin, Qt's
+libraries and the build, outside Qt and outside what every runner carries:
+glibc, libstdc++, zlib, OpenSSL and the compression and crypto libraries. That
+adds the X11 and xcb core libraries, fontconfig, freetype, libpng, D-Bus and
+their own dependencies. Checked before the second dispatch: every one of the 47
+libraries the closure resolves is either in the new set or in that carried list,
+with none uncovered.
+
 ⛔ **And the source route's resolver fails closed today, measured on
 2026-10-15** while building `CLIENT-06`'s floor. The live refs carry 260
 candidates, and 59 are `unorderable` under `release-` with three or four

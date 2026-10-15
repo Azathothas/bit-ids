@@ -109,9 +109,20 @@ binary() {
 # ⚠ Rootless: `apt-get` keeps its index and cache in the workdir and
 # `dpkg-deb -x` unpacks, which is `transmission`'s technique for libcurl's
 # headers. `ACQ-06` is why nothing here may escalate.
+# ⛔ THE WHOLE CLOSURE THE GUI LOADS, NOT WHAT ONE HOST LACKED. The first list
+# was the eight libraries Qt's xcb plugin named on the session host, and
+# `capture-client` run 38702739119's source lane stopped on the runner with Qt's
+# own message about `xcb-cursor0`, which it prints whatever dependency is
+# missing. So this is every library `ldd` resolves for Qt's xcb plugin, Qt's
+# libraries and the build, outside Qt and outside the libraries every runner
+# carries (glibc, libstdc++, zlib, OpenSSL and the compression and crypto
+# libraries). Measured on 2026-10-15.
 RUNTIME_PACKAGES="libegl1 libgl1 libglx0 libopengl0 libglvnd0 libgles2 \
 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 \
-libxcb-util1 libxcb-xkb1 libxkbcommon0 libxkbcommon-x11-0"
+libxcb-util1 libxcb-xkb1 libxkbcommon0 libxkbcommon-x11-0 \
+libxcb1 libxcb-randr0 libxcb-render0 libxcb-shape0 libxcb-shm0 libxcb-sync1 \
+libxcb-xfixes0 libx11-6 libx11-xcb1 libxau6 libxdmcp6 libbsd0 libmd0 \
+libfontconfig1 libfreetype6 libpng16-16t64 libbrotli1 libexpat1 libdbus-1-3"
 
 runtime_dir() {
   _prefix=$(prefix) || return 1
