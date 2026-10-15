@@ -111,8 +111,9 @@ still open is a host that never reached it.
    floor the operator chose is built, and the source route selects 4.1.3 from
    the live refs. ⭐ **Published on 2026-10-15**: run 38680098567's pair is on
    `data` at `4c6ccb1`, beside aria2-next, 4 of 4 records in the published view. ⭐ `CLIENT-01`'s two 5.2.4 routes are built,
-   installed and captured on the session host, and the pair assembled
-   publishable by hand; next is a dispatch. Its entry in
+   installed and captured, and **published on 2026-10-15**: run
+   38705799000's pair is on `data` at `bfeab59`, 6 of 6 records across three
+   targets in the published view. Its entry in
    [`clients.md`](clients.md) carries the drive.
 2. **`CI-08`**: `capture.yml`'s Linux job runs in `contained.sh`, proved on
    `capture` run 38612214714. Its Windows job still cuts the host's route and

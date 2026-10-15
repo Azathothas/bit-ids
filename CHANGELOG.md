@@ -5,6 +5,16 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T08:50:30Z
+
+- ⭐ **qBittorrent 5.2.4 is published**, beside aria2-next 3.0.3 and
+  Transmission 4.1.3: `data` holds 6 records across three targets, all in the
+  published view, verified from a fresh clone. The first dispatch's source lane
+  built and could not start the GUI on a runner, because the runtime set had
+  been what one host lacked. It is now the GUI's whole library closure.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-01`. No version bump; the
+  data branch is the deployment.
+
 ### 2026-10-15T08:30:05Z
 
 - ⭐ **`check-assemble` runs on the Windows lane**, ported whole into

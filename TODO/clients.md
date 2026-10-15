@@ -319,6 +319,16 @@ their own dependencies. Checked before the second dispatch: every one of the 47
 libraries the closure resolves is either in the new set or in that carried list,
 with none uncovered.
 
+⭐ **PUBLISHED, 2026-10-15.** `capture-client` run 38705799000 on `63e6fcd`
+captured both routes on runners. `assemble-bundle` run 38707559892 assembled
+them onto the published tree: both records `publishable`, `build_equivalent`,
+and 4 fields agreeing. The release record is filed under `appimage` and the
+source record under `elf-binary`. `publish-data` run 38708274728 appended it
+after the dry run 38707944536 passed. `data` is at `bfeab59`. ⭐ Read back from a
+fresh clone: 71 files, `sha256sum -c` clean, *valid store: 6 record(s), 6
+run(s), 71 object(s); 6 of 6 record(s) may enter a published view*.
+`schemes.txt` names `qbittorrent:release-:3:4` beside the other two targets.
+
 ⛔ **And the source route's resolver fails closed today, measured on
 2026-10-15** while building `CLIENT-06`'s floor. The live refs carry 260
 candidates, and 59 are `unorderable` under `release-` with three or four
