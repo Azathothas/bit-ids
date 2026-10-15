@@ -956,6 +956,50 @@ else
   fail "a single lane is refused before anything is read (exit $_rc)"
 fi
 
+# -- ⭐ THE CONVERSATION AFTER A HANDSHAKE ----------------------------------------
+#
+# ⛔ Transmission 4.1.3 sent an unchoke, `0000000101`, 9.5 seconds after its
+# handshake on each connection of `capture-client` run 38667886527, and the pair
+# was refused because every segment was read as a handshake. The first segment
+# of a connection opens it; what follows on that connection is not a handshake.
+# ⚠ Written here segment by segment, because `transcript` gives every payload a
+# connection of its own.
+peer_segments() { # path connection:hex...
+  _path=$1
+  shift
+  _total=$#
+  {
+    printf '{\n  "schema": "bit-ids/transcript/1",\n'
+    printf '  "endpoint": "peer-wire-dialled",\n  "segments": [\n'
+    _n=0
+    for _seg in "$@"; do
+      _n=$((_n + 1))
+      printf '    {\n      "connection": %s,\n' "${_seg%%:*}"
+      printf '      "offset_ms": %s,\n' "$((2000 + _n * 75))"
+      printf '      "direction": "from_target",\n'
+      printf '      "bytes": "%s"\n' "${_seg#*:}"
+      if [ "$_n" = "$_total" ]; then printf '    }\n'; else printf '    },\n'; fi
+    done
+    printf '  ]\n}\n'
+  } >"$_path"
+}
+for _lane in good-release good-source; do
+  peer_segments "$WORK/$_lane-capture/capture/bundle/peer-wire-dialled.transcript.json" \
+    "1:$(handshake_hex "$PEER_A")" 1:0000000101
+done
+case_is 0 "" "a message after the handshake on the same connection is the conversation, not a refusal" \
+  afterhs good-release good-source
+peer_segments "$WORK/good-source-capture/capture/bundle/peer-wire-dialled.transcript.json" \
+  1:0000000101 "1:$(handshake_hex "$PEER_A")"
+case_is 1 "the peer handshake" "a connection whose first segment is not a handshake is refused" \
+  nothsfirst good-release good-source
+peer_segments "$WORK/good-source-capture/capture/bundle/peer-wire-dialled.transcript.json" \
+  "1:$(handshake_hex "$PEER_A")" 2:0000000101
+case_is 1 "the peer handshake" "a second connection opening with something else is refused" \
+  nothssecond good-release good-source
+write_lane good-release release "$GH" "" "$DIGEST_A" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+write_lane good-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+
 # ⛔ A TRANSCRIPT THIS PROJECT DID NOT WRITE IS NOT EVIDENCE. The reader is the
 # writer's inverse, so a document with uppercase hex - which digests differently
 # and would have been written as a different artifact - is refused rather than

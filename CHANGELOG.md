@@ -5,6 +5,18 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T03:02:36Z
+
+- ⛔ **The assembler read every segment on a peer connection as a handshake.**
+  Transmission 4.1.3 sends an unchoke after its handshake on the same
+  connection, so its first two-route capture was refused over five bytes. The
+  first segment of a connection is its handshake now.
+- ⚠ With that fixed, the pair's two records are provisional: the routes look
+  divergent on two peer-ID fields, and neither is a difference between the
+  builds. Recorded for the operator.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-06`. No version bump and
+  no deploy.
+
 ### 2026-10-15T01:59:20Z
 
 - ⭐ **No shell is left on the path from a dispatch to a bundle.**

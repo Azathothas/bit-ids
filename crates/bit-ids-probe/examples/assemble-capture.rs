@@ -750,17 +750,32 @@ fn peer_observations(
         .map_err(|error| format!("the peer transcript: {error}"))?;
     let mut handshake_ids = Vec::new();
     let mut reserved = Vec::new();
-    for (index, segment) in peer
+    let mut opened = Vec::new();
+    let mut index = 0_usize;
+    for segment in peer
         .segments()
         .iter()
         .filter(|segment| segment.direction() == Direction::FromTarget)
-        .enumerate()
     {
-        // ⛔ Every segment the build sent on this surface must be a handshake,
-        // which is the strictness this had over the first one, applied to all of
-        // them. The lab records one connection per dial and a handshake is what
-        // opens one, so a segment that is not one is a transcript this record
-        // cannot describe rather than a segment to pass over.
+        // ⛔ The FIRST segment the build sent on each connection must open with
+        // a handshake. The lab records one connection per dial and a handshake
+        // is what opens one, so a first segment that is not one is a transcript
+        // this record cannot describe rather than a segment to pass over.
+        // ⚠ A LATER SEGMENT ON THAT CONNECTION IS THE CONVERSATION AFTER IT. This
+        // demanded a handshake of every segment until 2026-10-15, when
+        // Transmission 4.1.3 sent an unchoke, `0000000101`, 9.5 seconds after its
+        // handshake on each connection of `capture-client` run 38667886527, and
+        // the pair was refused over five bytes that were never a handshake. The
+        // second connector, which finds a handshake by its protocol string,
+        // found the same two.
+        // ⛔ A segment carrying no connection still has to be a handshake: with
+        // nothing to tie it to one, it is not known to follow one.
+        if let Some(connection) = segment.connection() {
+            if opened.contains(&connection) {
+                continue;
+            }
+            opened.push(connection);
+        }
         let handshake = Handshake::parse_prefix(segment.bytes())
             .map_err(|error| format!("the peer handshake: {error}"))?
             .0;
@@ -771,6 +786,7 @@ fn peer_observations(
         // handshake delimits a restart the way an announce event does, so
         // attributing them across sessions would be a guess.
         let connection = u32::try_from(index).map_err(|error| format!("the peer: {error}"))?;
+        index += 1;
         handshake_ids.push(Observation {
             session: 0,
             connection,

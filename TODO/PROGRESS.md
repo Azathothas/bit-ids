@@ -109,7 +109,9 @@ still open is a host that never reached it.
    as an unprivileged user on 2026-10-14. ⭐ The source route's resolution
    failed closed over 112 historical tags git refs cannot date; the scheme
    floor the operator chose is built, and the source route selects 4.1.3 from
-   the live refs. Next is dispatching the pair. ⭐ `CLIENT-01` targets 5.2.4 by
+   the live refs. ⭐ The pair captured on run 38667886527, and assembling it
+   found a peer-reader defect, fixed, and two classification questions for the
+   operator, recorded under the entry. ⭐ `CLIENT-01` targets 5.2.4 by
    a source build against Qt's prebuilt archives, settled on 2026-10-15; its
    entry in [`clients.md`](clients.md) carries the plan.
 2. **`CI-08`**: `capture.yml`'s Linux job runs in `contained.sh`, proved on

@@ -1221,6 +1221,46 @@ the verifier gone from `settings.json`. ⚠ One route is not a record:
 `E-ACQ-01` needs two, and the source route waits on the resolution decision
 above.
 
+⭐ **Both routes captured: `capture-client` run 38667886527 on `8044d72`,
+`["release","source"]`, `success` in 18 minutes.** The source lane resolved
+4.1.3 from the refs through the floor and built it, and both lanes uploaded
+their evidence. The four artifacts' digests match what GitHub lists.
+
+⛔ **Assembling the pair was refused, and the first reason was the assembler's.**
+`assemble-capture` read every segment the build sent on the peer surface as a
+handshake. Transmission sends its handshake, then 9.5 seconds later an unchoke,
+`0000000101`, on the same connection, so five bytes were refused as a truncated
+handshake. The first segment of each connection is now its handshake, and a
+later one on that connection is the conversation after it. A first segment that
+is not a handshake, and a segment with no connection, are still refused. The
+second connector finds a handshake by its protocol string and read the same two.
+`check-assemble` adds three cases, 67 of 67, and two mutants were each killed:
+every segment read as a handshake again, and a first segment that is not one
+skipped.
+
+⛔ **With that fixed, both records are written and both are provisional.**
+`classify_across` answers `divergent` on two fields of four, and neither is a
+difference between the builds:
+
+1. **`peer_wire/peer_id` is `constant` in each record, with a different value.**
+   4.1.3 keeps one peer ID per session, `-TR4130-` and twelve random
+   characters, and `client-capture` dials every peer connection in the first
+   session. So each record saw one value twice and calls it constant.
+   ⚠ **The divergence is what kept a false claim out of the published view**:
+   that value is random per session, which `tracker_http/peer_id` shows across
+   the restart in the same records.
+2. **`tracker_http/peer_id` is patterned in both, and the prefixes differ by one
+   byte.** The source capture's two session tails are `i13fphydqmcu` and
+   `iigl5aa9agex`, which share their first byte, so its fixed run reads
+   `-TR4130-i` against the release capture's `-TR4130-`. This is the residual
+   `SCHEMA-04` recorded on 2026-10-14: a coincidence at the edge of a varying
+   span lengthens a fixed run and is not caught. Its odds are about one in
+   sixty-four per edge with two distinct values.
+
+⚠ Both change what a capture may claim, so they are the operator's to settle,
+asked on 2026-10-15, and the answer lands in `TODO/PROGRESS.md`'s settled
+decisions.
+
 ## CLIENT-07: Deluge capture adapter
 
 Source: operator scope and upstream project
