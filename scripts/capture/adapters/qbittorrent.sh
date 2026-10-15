@@ -65,14 +65,20 @@ cannot() {
   exit 2
 }
 
-# ⛔ THE PREFIX IS ASKED FOR, NEVER COMPOSED. `install-rootless.sh --prefix` is
+# ⛔ THE PREFIX IS ASKED FOR, NEVER COMPOSED. `bit-check install-rootless --prefix` is
 # the one derivation in this tree, so this file cannot disagree with the
 # installer about where a build went. ⚠ It defaulted to `/usr/local` until
 # `ACQ-06`, which is a directory a runner needs a privilege to write.
-ROOTLESS=$(CDPATH='' cd -- "$(dirname -- "$0")/../../acquisition" && pwd)/install-rootless.sh
+# ⭐ `bit-check install-rootless` SINCE 2026-10-15, `CI-11`, found through
+# BIT_CHECK, which the workflow exports with the observer, and never built here.
+rootless() {
+  if [ -z "${BIT_CHECK:-}" ] || [ ! -x "$BIT_CHECK" ]; then
+    cannot "BIT_CHECK names no bit-check binary; it is built with the observer, never here"
+  fi
+  "$BIT_CHECK" install-rootless "$@"
+}
 prefix() {
-  [ -f "$ROOTLESS" ] || cannot "$ROOTLESS is not present"
-  sh "$ROOTLESS" --prefix
+  rootless --prefix
 }
 
 # ⛔ THE GUI BUILD, `qbittorrent`, AND NOT `qbittorrent-nox`. Measured on
@@ -495,7 +501,7 @@ case "$COMMAND" in
         # per call and works either way. ⛔ Neither branch has been driven: this
         # adapter has never installed through this route.
         # ⛔ THE FETCH, THE DIGEST AND THE PLACING ARE ONE CALL, AND IT IS NOT
-        # THIS FILE'S. `install-rootless.sh` bounds the transfer, settles the
+        # THIS FILE'S. `bit-check install-rootless` bounds the transfer, settles the
         # digest before anything is made executable, writes into a prefix this
         # user already owns, and prints the path it placed. ⚠ This route used to
         # `curl` and `install -m755` into `/usr/local/bin` itself, which needs a
@@ -521,7 +527,7 @@ case "$COMMAND" in
             cannot "this adapter declares no digest disposition for its release route"
           set -- --digest-unpublished "$_why"
         fi
-        sh "$ROOTLESS" --install \
+        rootless --install \
           --url "$BIT_IDS_RELEASE_URL" \
           --into "$WORKDIR/qbittorrent.AppImage" \
           --as "$EXE" \

@@ -21,7 +21,7 @@
 # says so through `describe`, which is a pure read the callers already parse for
 # `binary=`; a sixth subcommand would be a second door into the same answer.
 #
-# `fetch-releases.sh` retrieves and keeps the exact bytes. `resolve-stable`
+# `bit-check fetch-releases` retrieves and keeps the exact bytes. `resolve-stable`
 # orders the versions. `select-asset` picks the artifact. Shell orchestrates and
 # Rust parses, which is the line docs/architecture.md section 3 draws.
 #
@@ -225,7 +225,13 @@ if [ -n "$LISTING_IN" ]; then
   printf 'resolve-release: read the release listing from %s, not from %s\n' \
     "$LISTING_IN" "$REPO" >&2
 else
-  URL=$(sh "$ROOT/scripts/acquisition/fetch-releases.sh" "$REPO" "$LISTING")
+  # ⛔ `bit-check fetch-releases` SINCE 2026-10-15, `CI-11`, found through
+  # BIT_CHECK and never built here, for the reason the install gives: this step
+  # runs before containment, and it still builds nothing.
+  if [ -z "${BIT_CHECK:-}" ] || [ ! -x "$BIT_CHECK" ]; then
+    cannot "BIT_CHECK names no bit-check binary; it is built with the observer, never here"
+  fi
+  URL=$("$BIT_CHECK" fetch-releases "$REPO" "$LISTING")
   FETCH_RC=$?
   case "$FETCH_RC" in
     0) : ;;
@@ -344,9 +350,10 @@ if [ -n "$DIGEST_PATTERN" ]; then
     # adapters already broke once. ⚠ A checksums document is a document rather
     # than a build: it publishes no digest of itself, which is what
     # `--digest-unpublished` says, and nothing executes it.
-    ROOTLESS="$ROOT/scripts/acquisition/install-rootless.sh"
-    [ -f "$ROOTLESS" ] || cannot "$ROOTLESS is not present"
-    sh "$ROOTLESS" --fetch --url "$DIGEST_URL" --into "$DIGEST_DOC" \
+    if [ -z "${BIT_CHECK:-}" ] || [ ! -x "$BIT_CHECK" ]; then
+      cannot "BIT_CHECK names no bit-check binary; it is built with the observer, never here"
+    fi
+    "$BIT_CHECK" install-rootless --fetch --url "$DIGEST_URL" --into "$DIGEST_DOC" \
       --digest-unpublished "a checksums document publishes no digest of itself" \
       </dev/null >"$WORKDIR/digest-fetch.log" 2>&1
     DIGEST_FETCH_RC=$?

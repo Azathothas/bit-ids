@@ -64,11 +64,10 @@ trap 'rm -rf "$WORK"' EXIT INT TERM
 mkdir -p "$WORK/bin" || exit 2
 BIT_CHECK=$(store_bitcheck "$ROOT" "$WORK/bin") || exit 2
 
-ROOTLESS="$ROOT/scripts/acquisition/install-rootless.sh"
 INSTALLER="$ROOT/scripts/acquisition/install-client.sh"
 GUARD="$ROOT/scripts/acquisition/assert-disposable.sh"
 ADAPTERS="$ROOT/scripts/capture/adapters"
-for _f in "$ROOTLESS" "$INSTALLER" "$GUARD"; do
+for _f in "$INSTALLER" "$GUARD"; do
   [ -f "$_f" ] || {
     printf 'check-rootless: %s is missing\n' "$_f" >&2
     exit 2
@@ -246,9 +245,9 @@ DRIVER="$WORK/route-driver.sh"
 cat >"$DRIVER" <<'ROUTE_DRIVER'
 #!/bin/sh
 set -u
-: "${CR_ROOTLESS:?}" "${CR_INSTALLER:?}" "${CR_GUARD:?}" "${CR_ADAPTER:?}"
+: "${BIT_CHECK:?}" "${CR_INSTALLER:?}" "${CR_GUARD:?}" "${CR_ADAPTER:?}"
 : "${CR_BINARY:?}" "${CR_URL:?}"
-PREFIX=$(sh "$CR_ROOTLESS" --prefix) || exit 2
+PREFIX=$("$BIT_CHECK" install-rootless --prefix) || exit 2
 rm -rf "$PREFIX"
 BIT_IDS_RELEASE_URL="$CR_URL"
 export BIT_IDS_RELEASE_URL
@@ -300,7 +299,7 @@ write_resolution() { # file source [document] [asset] [sha256] [reason]
 
 route_case() { # label adapter url binary [resolution-file] [stub-dir]
   _label=$1
-  _env="$CASE_ENV CR_ROOTLESS=$ROOTLESS CR_INSTALLER=$INSTALLER CR_GUARD=$GUARD"
+  _env="$CASE_ENV CR_INSTALLER=$INSTALLER CR_GUARD=$GUARD"
   _env="$_env CR_ADAPTER=$ADAPTERS/$2.sh CR_URL=file://$3 CR_BINARY=$4"
   [ -z "${5:-}" ] || _env="$_env CR_RESOLUTION=$5"
   # ⚠ A SIXTH ARGUMENT PUTS STUBS IN FRONT OF BOTH RUNS' PATHS, for a route
@@ -340,7 +339,7 @@ field() { # label key
 cat >"$WORK/prefix-probe.sh" <<PREFIX_PROBE
 #!/bin/sh
 set -u
-sh $ROOTLESS --prefix
+"$BIT_CHECK" install-rootless --prefix
 PREFIX_PROBE
 run_as "$WORK/prefix-probe.sh" "$WORK/prefix.out" "$WORK/prefix.err"
 DERIVED=$(cat "$WORK/prefix.out")
@@ -366,8 +365,9 @@ esac
 # enforcing it - which is the class `check-placeholders`' harness already
 # records and this session reproduced by hand.
 NEEDLE="BIT_IDS_PREFIX$(printf ':-')"
-grep -rn -e "$NEEDLE" "$ROOT/scripts" 2>/dev/null |
-  grep -v 'install-rootless.sh' >"$WORK/stray.txt" || :
+# ⚠ No file under scripts/ is exempt any more: the default lives in
+# `bit-check install-rootless` since 2026-10-15, `CI-11`.
+grep -rn -e "$NEEDLE" "$ROOT/scripts" >"$WORK/stray.txt" 2>/dev/null || :
 STRAY=$(grep -c . "$WORK/stray.txt") || STRAY=0
 if [ "$STRAY" = 0 ]; then
   pass "prefix    install-rootless is the only file that defaults the prefix"
@@ -388,7 +388,6 @@ SUDO_NEEDLE="^[[:space:]]*(sudo|setsid[[:space:]]+sudo)[[:space:]]"
 : >"$WORK/sudo-hits.txt"
 for _f in "$ROOT/scripts/acquisition/install-step.sh" \
   "$ROOT/scripts/acquisition/install-client.sh" \
-  "$ROOT/scripts/acquisition/install-rootless.sh" \
   "$ROOT/scripts/acquisition/assert-disposable.sh" \
   "$ADAPTERS"/*.sh; do
   [ -f "$_f" ] || continue
@@ -588,7 +587,7 @@ UNKNOWN
 cat >"$WORK/reader-probe.sh" <<READER
 #!/bin/sh
 set -u
-sh $ROOTLESS --fetch --url "file://\$CR_URL" --into "\$CR_INTO" \\
+"$BIT_CHECK" install-rootless --fetch --url "file://\$CR_URL" --into "\$CR_INTO" \\
   --from-resolution "\$CR_RES"
 READER
 run_as "$WORK/reader-probe.sh" "$WORK/unknown.out" "$WORK/unknown.err" \

@@ -56,10 +56,16 @@ cannot() {
 # source routes compile and place both executables at `<prefix>/bin`, so the
 # lookups below ask that prefix first. `daemon()` had no prefix branch until
 # 2026-10-14, when neither route installed into one. `CLIENT-06`.
-ROOTLESS=$(CDPATH='' cd -- "$(dirname -- "$0")/../../acquisition" && pwd)/install-rootless.sh
+# ⭐ `bit-check install-rootless` SINCE 2026-10-15, `CI-11`, found through
+# BIT_CHECK, which the workflow exports with the observer, and never built here.
+rootless() {
+  if [ -z "${BIT_CHECK:-}" ] || [ ! -x "$BIT_CHECK" ]; then
+    cannot "BIT_CHECK names no bit-check binary; it is built with the observer, never here"
+  fi
+  "$BIT_CHECK" install-rootless "$@"
+}
 prefix() {
-  [ -f "$ROOTLESS" ] || cannot "$ROOTLESS is not present"
-  sh "$ROOTLESS" --prefix
+  rootless --prefix
 }
 
 # ⛔ ONE LOOKUP PER EXECUTABLE, so every subcommand finds the same build.
@@ -304,7 +310,7 @@ case "$COMMAND" in
         # installs nothing must not report an install, and that still holds
         # for every refusal below. `CLIENT-06`.
         # ⛔ THE FETCH AND THE DIGEST ARE ONE CALL AND IT IS NOT THIS FILE'S.
-        # `install-rootless.sh` bounds the transfer and settles the digest, and
+        # `bit-check install-rootless` bounds the transfer and settles the digest, and
         # it needs no privilege, so this route reaches its refusal on a host
         # where nothing can be installed to `/usr/local` at all.
         #
@@ -324,7 +330,7 @@ case "$COMMAND" in
             cannot "this adapter declares no digest disposition for its release route"
           set -- --digest-unpublished "$_why"
         fi
-        sh "$ROOTLESS" --fetch \
+        rootless --fetch \
           --url "$BIT_IDS_RELEASE_URL" \
           --into "$WORKDIR/transmission-release" \
           "$@" \

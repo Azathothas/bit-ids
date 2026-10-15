@@ -96,7 +96,7 @@ Fetch, then project. Both commands are in this tree and neither invents a
 value:
 
 ```sh
-sh scripts/acquisition/fetch-releases.sh aria2/aria2 /tmp/aria2-full.json
+"$BIT_CHECK" fetch-releases aria2/aria2 /tmp/aria2-full.json
 cargo run --quiet -p bit-ids --example project-listing -- \
   /tmp/aria2-full.json \
   "https://api.gh.pkgforge.dev/repos/aria2/aria2/releases?per_page=100" \

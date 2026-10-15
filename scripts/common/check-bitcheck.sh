@@ -2179,15 +2179,15 @@ agree "adapters clean tree" check-adapters - 0
 # rootless installer, so this plant found nothing to change there - and the rule
 # answered 2 over a scope that no longer held a single `curl -o`. ⭐ The rule's
 # own floor is what said so; the scope followed the subject and so does this.
-RL="$TREE/scripts/acquisition/install-rootless.sh"
+# ⭐ AND INTO GO WHEN THE INSTALLER WENT THERE, `CI-11`, 2026-10-15: the fetch is
+# an `exec.Command(curl, ...)` in installrootless.go, which the rule reads whole.
+RL="$TREE/tools/check/installrootless.go"
 cp "$RL" "$WORK/rootless.orig" || exit 2
-# ⚠ THE FLAG ALONE IS DROPPED AND ITS VALUE IS LEFT, which keeps this sed free of
-# a `$` the shell would have to be told not to expand. ⛔ And it must drop the
-# flag rather than rename it: the rule asks whether the line CONTAINS
-# `--max-time`, so a `--no-max-time` would still satisfy it and the plant would
-# report a guard that had not been tested.
-sed 's/--connect-timeout 20 --max-time/--connect-timeout 20/' \
-  "$WORK/rootless.orig" >"$RL"
+# ⚠ THE FLAG ALONE IS DROPPED AND ITS VALUE IS LEFT. ⛔ And it must drop the flag
+# rather than rename it: the rule asks whether the call CONTAINS `"--max-time"`,
+# so a renamed flag that still carried the words would satisfy it and the plant
+# would report a guard that had not been tested.
+sed 's/"--max-time", //' "$WORK/rootless.orig" >"$RL"
 agree "adapters a curl that writes a file with no --max-time is refused" check-adapters - 1
 cp "$WORK/rootless.orig" "$RL"
 

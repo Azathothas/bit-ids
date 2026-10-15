@@ -185,7 +185,7 @@ behaviour rather than a gap: it fails closed and says so. The catalogue does not
 yet carry a scheme per target; `ACQ-03` needs one to compare two routes and is
 where it lands.
 
-Residual: `fetch-releases.sh` has no PowerShell twin. `../scripts/README.md`
+Residual, closed 2026-10-15 by `CI-11`, which ported it to `bit-check fetch-releases`: `fetch-releases.sh` has no PowerShell twin. `../scripts/README.md`
 carries why, and `ACQ-04` owns the Windows runner contract where one is needed.
 
 ### ⭐ A SECOND SOURCE FORMAT, added 2026-09-09: a repository's own refs
@@ -833,8 +833,8 @@ the variable rather than instrumenting it.
 
 ### ⭐ What was built, 2026-09-17
 
-[`../scripts/acquisition/install-rootless.sh`](../scripts/acquisition/install-rootless.sh)
-is the one installer, and every release route goes through it. It fetches with a
+`scripts/acquisition/install-rootless.sh`, `bit-check install-rootless` since
+2026-10-15 (`CI-11`), is the one installer, and every release route goes through it. It fetches with a
 bound, settles the digest before anything is made executable, writes into a
 prefix the current user already owns, and prints the path it placed.
 

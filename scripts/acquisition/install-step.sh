@@ -131,7 +131,7 @@ fi
 #
 # ⭐ THE PRIVILEGE IS GONE INSTEAD, WHICH REMOVES THE ASYMMETRY RATHER THAN
 # WORKING AROUND IT. The install writes into a prefix this user already owns -
-# `install-rootless.sh --prefix` is the one derivation - so every process in this
+# `bit-check install-rootless --prefix` is the one derivation - so every process in this
 # subtree runs as the same uid as this shell, and a bound issued here can reach
 # every one of them. ⚠ That is not another bound: it is the condition under which
 # the bounds that are already here can work at all.

@@ -5763,3 +5763,57 @@ the reasons:
 - The paths are named in lexical order.
 - A file is binary when it holds a NUL byte. That is the C locale's reading of
   `grep -I`, and it scans more files than a UTF-8 locale would.
+
+### ⭐ `fetch-releases` is the second leaf. 2026-10-15
+
+`bit-check fetch-releases`, in [`../tools/check/fetchreleases.go`](../tools/check/fetchreleases.go),
+replaces `scripts/acquisition/fetch-releases.sh`. Its one caller,
+`resolve-release.sh`, finds it through `BIT_CHECK`, and `check-release-route`
+has a new case: a live resolution with no `BIT_CHECK` is exit 2, before any
+request. 36 of 36.
+
+⛔ **The first port used Go's HTTP client, and the live route refused it.**
+On 2026-10-15 `api.gh.pkgforge.dev` answered 420 to Go's default user agent and
+200 to curl's for the same URL. Measured across eleven user agents, it answers
+the ones that name curl or wget and refuses the rest, Go's and a browser's among
+them. Claiming to be curl would misdescribe this binary to a service, so the
+port runs `curl` exactly as the shell half did. `curl.exe` ships with Windows.
+
+| held against the shell half before it was deleted | result |
+| --- | --- |
+| a local HTTPS server: 200, a redirect, 404, an empty 200, a refused port, an untrusted certificate, a plain `http` URL | the same exit code, stdout, stderr, files and bytes on every one |
+| the four argument errors and a missing output directory | the same exit codes and files; only the usage text is worded differently |
+| the live route, `transmission/transmission` | both 0, byte-identical listings |
+
+### ⭐ `install-rootless` is the third leaf. 2026-10-15
+
+`bit-check install-rootless`, in [`../tools/check/installrootless.go`](../tools/check/installrootless.go),
+replaces `scripts/acquisition/install-rootless.sh`. All four adapters now reach
+it through one `rootless()` helper that requires `BIT_CHECK`, and their
+`prefix()` is defined over that helper. The resolver's checksums fetch reaches
+it the same way. `check-rootless` and `check-transmission` now build
+`bit-check`, and `check-rootless` drives its prefix probe, its route driver and
+its resolution reader through it.
+
+⛔ **`check-adapters` followed the fetch into Go.** The rule held every
+capture-path `curl` that writes a file to `--max-time`, and its scope had been
+the adapters plus `install-rootless.sh`. With the shell half deleted, the floor
+would have answered that the scope held too few fetches, which is what it is
+for. So the scope is now the adapters plus `installrootless.go` and
+`fetchreleases.go`. An `exec.Command(curl, ...)` call is read whole, out to the
+parenthesis that closes it. A plant that drops `"--max-time"` is refused at its
+own line in each file, and `check-bitcheck`'s plant has moved into the Go file.
+
+| held against the shell half before it was deleted | result |
+| --- | --- |
+| 48 cases over a local HTTPS server: every mode, every disposition and every combination, every refusal, the resolution reader's nine record shapes, and both installs | 0 disagreements in exit code, stdout, stderr, the files left behind, or the installed mode |
+| a prefix this user cannot write, as `ubuntu` | both refuse, exit 1, naming the prefix |
+| `sh scripts/acquisition/check-rootless.sh`, as root and as `ubuntu` | 26 of 26 each |
+| `sh scripts/capture/check-transmission.sh` | 14 of 14 |
+| `sh scripts/acquisition/check-release-route.sh` | 36 of 36 |
+
+⚠ **What differs, on purpose.** The home directory comes from
+`os.UserHomeDir`, which is `%USERPROFILE%` on Windows, where there is no `$HOME`
+to require. Placement is a copy at mode 0755 followed by a rename, which needs
+neither `install` nor `mv`. Only the vendor's checksums document is still
+checked by a host tool: `sha256sum -c`, or `certutil` on Windows.

@@ -4,7 +4,7 @@
 # exist to refuse.
 #
 # ⭐ THE ADAPTER IS THE REAL ONE AND SO IS EVERYTHING BUT THE BUILD. The release
-# route fetches a real `.tar.xz` through `install-rootless.sh`, the headers come
+# route fetches a real `.tar.xz` through `bit-check install-rootless`, the headers come
 # out of a real `.deb` that `dpkg-deb` packs here and unpacks there, and the
 # runtime check reads this host's own library directory. ⚠ `apt-get`, `cmake`
 # and `git` are stubs: a real build is 1013 seconds on the release route and
@@ -54,6 +54,12 @@ ADAPTER="$ROOT/scripts/capture/adapters/transmission.sh"
 
 WORK=$(store_workdir checktransmission) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
+
+# ⚠ The adapter derives its prefix through `bit-check install-rootless` since
+# 2026-10-15, `CI-11`, and finds it through BIT_CHECK, as the workflow exports it.
+mkdir -p "$WORK/bin" || exit 2
+BIT_CHECK=$(store_bitcheck "$ROOT" "$WORK/bin") || exit 2
+export BIT_CHECK
 
 # ⛔ The runtime the fixture headers name is whichever libcurl this host has, so
 # the clean case passes on any host that carries one and the plant below names

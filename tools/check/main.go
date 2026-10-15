@@ -45,6 +45,9 @@
 //	bit-check mine-repo OWNER/NAME [--out DIR] [--route auto|gh|proxy] [--no-clone] [--json]
 //	bit-check mine-repo --selftest [--json]
 //	bit-check scan-bundle [--top-level] <dir>
+//	bit-check fetch-releases <owner/repo> <output-file>
+//	bit-check fetch-releases --url <https url> <output-file>
+//	bit-check install-rootless --prefix | --fetch ... | --install ...
 //	bit-check --rows
 //
 // ⛔ Read the exit code from this process, unpiped. ⚠ `go run . <check>` is a
@@ -167,6 +170,12 @@ func main() {
 	// Windows. `CI-11`; scanbundle.go is the first.
 	if args[0] == "scan-bundle" {
 		os.Exit(scanBundle(args[1:]))
+	}
+	if args[0] == "fetch-releases" {
+		os.Exit(fetchReleases(args[1:]))
+	}
+	if args[0] == "install-rootless" {
+		os.Exit(installRootless(args[1:]))
 	}
 
 	name := args[0]

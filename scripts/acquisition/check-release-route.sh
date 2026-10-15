@@ -498,6 +498,22 @@ else
   fail "digest    the double disposition exited $rc: $(tail -1 "$WORK/bothdigest.err")"
 fi
 
+# -- 3c. the live route finds its fetcher, and never builds one --------------
+#
+# ⛔ `bit-check fetch-releases` SINCE 2026-10-15, `CI-11`. With no `--listing`
+# the resolver asks the vendor, and it finds the fetcher through BIT_CHECK. A
+# BIT_CHECK naming nothing is could-not-run before any request is sent, which
+# is also why this case reaches no network.
+BIT_CHECK="$WORK/no-bit-check-here" sh "$RESOLVE" \
+  --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/nofetch.work" \
+  >"$WORK/nofetch.out" 2>"$WORK/nofetch.err"
+_rc=$?
+if [ "$_rc" = 2 ] && said nofetch "BIT_CHECK names no bit-check binary"; then
+  pass "fetcher   a live resolution with no BIT_CHECK is could-not-run, before any request"
+else
+  fail "fetcher   a live resolution with no BIT_CHECK answered $_rc"
+fi
+
 # -- 4. the control the refusals need ----------------------------------------
 #
 # ⛔ WITHOUT THIS EVERY CASE ABOVE PASSES OVER A RESOLVER THAT REFUSES

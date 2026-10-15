@@ -32,8 +32,12 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   [`doctor/provision.sh`](doctor/provision.sh) installs the three tools the gate
   needs, verifying each download against a pinned digest first. The doctor does
   not call it.
-- [`acquisition/`](acquisition/fetch-releases.sh) retrieves a release listing
-  and keeps the exact bytes. It does not parse, sort or decide.
+- `bit-check fetch-releases`, in
+  [`../tools/check/fetchreleases.go`](../tools/check/fetchreleases.go),
+  retrieves a release listing and keeps the exact bytes. It does not parse,
+  sort or decide. ⭐ It was `acquisition/fetch-releases.sh` until 2026-10-15
+  (`CI-11`), and it still fetches through `curl`: the gateway refuses a user
+  agent that is not curl's or wget's.
 - `bit-check check-cache` drives the artifact cache through a source that moved
   and asks the register's one reader - the function `check-licences` itself calls
   - what the register allows, so the tie between the two is a call rather than a
@@ -51,8 +55,10 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   release publishes two Linux `AppImage` files differing only by an `_lt20`, so a
   selector that took the first match would install whichever the vendor listed
   first.
-- [`acquisition/install-rootless.sh`](acquisition/install-rootless.sh) is the one
-  installer every `release` route goes through: it fetches with a bound, settles
+- `bit-check install-rootless`, in
+  [`../tools/check/installrootless.go`](../tools/check/installrootless.go), is
+  the one installer every `release` route goes through, and was
+  `acquisition/install-rootless.sh` until 2026-10-15 (`CI-11`): it fetches with a bound, settles
   the artifact's digest before anything is made executable, writes into a prefix
   the current user already owns, and prints the path it placed. ⛔ It never
   escalates - a prefix this user cannot write is a refusal naming it - and
@@ -453,13 +459,13 @@ over the same plants, which is the entry's own bound. This file's list of twinne
 scripts above is therefore a list of what has NOT been ported yet.
 
 ⚠ The twin rule is about `common/`, where every script is a check that emits a
-comparable `--json` verdict. `acquisition/fetch-releases.sh` has no twin and
+comparable `--json` verdict. `fetch-releases`, `bit-check fetch-releases` since
+2026-10-15, had no twin and
 does not belong in the pair list: what it emits depends on the network, so
 running two implementations against one tree would compare the clock rather
 than the answer, which is the exact failure `check-twins.sh` documents. A
-Windows capture host will need a PowerShell fetcher; `ACQ-04` owns the runner
-contract and is where that lands, rather than a second implementation written
-now with nothing exercising it.
+Windows capture host needed a fetcher of its own, and the Go port is it: one
+implementation on both platforms (`CI-11`).
 
 ⭐ **Every `check-*` script outside `common/` is a mutation prover**, and so are
 `common/check-examples.sh` and `common/check-handbook.sh`. That is the rule, and

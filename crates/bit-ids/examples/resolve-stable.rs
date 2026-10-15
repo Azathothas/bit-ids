@@ -1,7 +1,8 @@
 //! Resolves the newest stable release from responses already fetched, and
 //! prints the decision trace.
 //!
-//! It does not fetch. [`../../../scripts/acquisition/fetch-releases.sh`](../../../scripts/acquisition/fetch-releases.sh)
+//! It does not fetch. `bit-check fetch-releases`, in
+//! [`../../../tools/check/fetchreleases.go`](../../../tools/check/fetchreleases.go),
 //! does that, so the bytes a decision was made from exist as a file before
 //! anything reads them. Splitting it that way is what makes the digest in the
 //! resolution mean something: it is of what arrived, not of what a parser

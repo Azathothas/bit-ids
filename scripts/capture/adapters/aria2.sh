@@ -60,14 +60,20 @@ cannot() {
 # ⛔ THE INSTALLED EXECUTABLE, LOOKED UP ONCE. A path composed per subcommand is
 # a second spelling, and the day a route installs somewhere else one subcommand
 # finds the build and another reports it absent.
-# ⛔ THE PREFIX IS ASKED FOR, NEVER COMPOSED. `install-rootless.sh --prefix` is
+# ⛔ THE PREFIX IS ASKED FOR, NEVER COMPOSED. `bit-check install-rootless --prefix` is
 # the one derivation in this tree, so this file cannot disagree with the
 # installer about where a build went. ⚠ It defaulted to `/usr/local` until
 # `ACQ-06`, which is a directory a runner needs a privilege to write.
-ROOTLESS=$(CDPATH='' cd -- "$(dirname -- "$0")/../../acquisition" && pwd)/install-rootless.sh
+# ⭐ `bit-check install-rootless` SINCE 2026-10-15, `CI-11`, found through
+# BIT_CHECK, which the workflow exports with the observer, and never built here.
+rootless() {
+  if [ -z "${BIT_CHECK:-}" ] || [ ! -x "$BIT_CHECK" ]; then
+    cannot "BIT_CHECK names no bit-check binary; it is built with the observer, never here"
+  fi
+  "$BIT_CHECK" install-rootless "$@"
+}
 prefix() {
-  [ -f "$ROOTLESS" ] || cannot "$ROOTLESS is not present"
-  sh "$ROOTLESS" --prefix
+  rootless --prefix
 }
 
 binary() {
@@ -252,7 +258,7 @@ case "$COMMAND" in
             cannot "this adapter declares no digest disposition for its release route"
           set -- --digest-unpublished "$_why"
         fi
-        sh "$ROOTLESS" --fetch \
+        rootless --fetch \
           --url "$BIT_IDS_RELEASE_URL" \
           --into "$WORKDIR/aria2.tar.bz2" \
           "$@" \

@@ -80,6 +80,13 @@
 // a Go helper in minerepo.go since 2026-09-29, bounded the same way - stay out
 // for the reasons above, which are about what a stall COSTS rather than about
 // which directory a file is in.
+//
+// ⛔ AND IT FOLLOWED THEM AGAIN INTO GO, `CI-11`, 2026-10-15. The installer is
+// `bit-check install-rootless` and the listing fetch `bit-check
+// fetch-releases`, so the files that retrieve what a capture installs are
+// installrootless.go and fetchreleases.go. ⚠ Both still run `curl`, and a Go
+// call is not a shell line: an `exec.Command(curl, ...)` is read whole, to its
+// closing parenthesis, and one that writes a file must pass `--max-time`.
 package main
 
 import (
@@ -93,7 +100,38 @@ import (
 // fetch through, which are the scripts that run on a contained host with no
 // operator watching.
 var adapterRe = regexp.MustCompile(
-	`^(scripts/capture/adapters/[^/]+\.sh|scripts/acquisition/install-rootless\.sh)$`)
+	`^(scripts/capture/adapters/[^/]+\.sh|tools/check/(installrootless|fetchreleases)\.go)$`)
+
+// goCurlRe finds a Go call that runs curl, up to the parenthesis that opens its
+// arguments. goCurlCalls reads each to the parenthesis that closes it.
+var goCurlRe = regexp.MustCompile(`exec\.Command\(\s*curl\b`)
+
+// goCurlCalls answers each `exec.Command(curl, ...)` in a Go file as its whole
+// argument list, with the line it starts on.
+//
+// ⚠ BALANCED RATHER THAN TO THE FIRST `)`, because an argument such as
+// `fmt.Sprint(n)` closes a parenthesis of its own, and a call read only to that
+// would lose every flag after it.
+func goCurlCalls(text string) (calls []string, lines []int) {
+	for _, at := range goCurlRe.FindAllStringIndex(text, -1) {
+		depth := 0
+		end := len(text)
+		for i := at[0] + strings.IndexByte(text[at[0]:], '('); i < len(text); i++ {
+			if text[i] == '(' {
+				depth++
+			} else if text[i] == ')' {
+				depth--
+				if depth == 0 {
+					end = i + 1
+					break
+				}
+			}
+		}
+		calls = append(calls, text[at[0]:end])
+		lines = append(lines, strings.Count(text[:at[0]], "\n")+1)
+	}
+	return calls, lines
+}
 
 // retrievingCurlRe matches a curl invocation that writes a file.
 //
@@ -173,6 +211,20 @@ func checkAdapters(r *repo) (verdict, error) {
 		text, err := os.ReadFile(f)
 		if err != nil {
 			return verdict{}, errCannotRun("cannot read " + f)
+		}
+		if strings.HasSuffix(f, ".go") {
+			calls, at := goCurlCalls(string(text))
+			for i, call := range calls {
+				if !strings.Contains(call, `"-o"`) && !strings.Contains(call, `"-O"`) {
+					continue
+				}
+				fetches++
+				if !strings.Contains(call, `"--max-time"`) {
+					problems = append(problems, fmt.Sprintf(
+						"%s:%d a curl that writes a file carries no --max-time", f, at[i]))
+				}
+			}
+			continue
 		}
 		for n, line := range logicalLines(string(text)) {
 			if isComment(line) {

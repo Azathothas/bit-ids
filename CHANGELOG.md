@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T12:02:24Z
+
+- ⭐ **Every release route now fetches and installs through Go.** `bit-check
+  fetch-releases` and `bit-check install-rootless` replace their shell halves,
+  each matching it case for case before the shell half was deleted. Both still
+  fetch with `curl`, because the release-listing gateway refuses other clients.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T11:33:17Z
 
 - ⭐ **The capture path starts leaving `sh`, so a client capture can run on
@@ -881,7 +889,7 @@ Nothing is released yet. Entries accumulate here until the first
 ### 2026-09-17T03:32:23Z
 
 - ⭐ **`ACQ-06` IS CLOSED AND WITH IT EVERY OPEN P0.** One rootless installer,
-  [`scripts/acquisition/install-rootless.sh`](scripts/acquisition/install-rootless.sh),
+  `scripts/acquisition/install-rootless.sh`,
   is what every release route now goes through. `TODO/acquisition.md` carries the
   closure evidence and the residuals.
 - ⛔ **The digest disposition is declared and never defaulted.** An adapter names
