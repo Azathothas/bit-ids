@@ -990,7 +990,7 @@ artifacts() { # dir run-attempt route...
     cp -R "$WORK/good-$_route-capture" "$_dir/capture-client-fixture-client-$_route-$_ra" || return 1
     cp -R "$WORK/good-$_route-install" "$_dir/install-fixture-client-$_route-$_ra" || return 1
     mkdir -p "$_dir/install-fixture-client-$_route-$_ra/$_route" || return 1
-    printf '{"schema": "bit-ids/resolution/1", "target": "fixture-client", "scheme": {"tag_prefix": "v", "min_components": 3, "max_components": 3}}\n' \
+    printf '{"schema": "bit-ids/resolution/2", "target": "fixture-client", "scheme": {"tag_prefix": "v", "min_components": 3, "max_components": 3, "floor_major": null}}\n' \
       >"$_dir/install-fixture-client-$_route-$_ra/$_route/resolution.json" || return 1
   done
 }

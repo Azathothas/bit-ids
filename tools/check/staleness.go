@@ -126,7 +126,10 @@ func checkStaleness(r *repo) (verdict, error) {
 			return false
 		}
 		out := at(name + ".resolution.json")
-		runTo(out, null, resolver, "fixture-client", "-", "3", "3", "github-releases",
+		// ⚠ The fifth argument is the scheme floor, `-` for none. `CLIENT-06`
+		// added it, and this caller was missed until a review found the gate
+		// reporting this harness as a skip.
+		runTo(out, null, resolver, "fixture-client", "-", "3", "3", "-", "github-releases",
 			"https://example.invalid/releases", body)
 		st, err := os.Stat(out)
 		return err == nil && st.Size() > 0

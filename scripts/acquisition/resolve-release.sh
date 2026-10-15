@@ -197,6 +197,16 @@ for _n in "$MINC" "$MAXC"; do
   esac
 done
 
+# ⛔ THE FLOOR IS DECLARED, NEVER DEFAULTED, `-` for none. It releases tags a
+# scheme cannot order, so a floor this file invented would be a selection this
+# file made. `CLIENT-06`.
+FLOOR=$(field release_floor_major)
+case "$FLOOR" in
+  '') cannot "$TARGET declares no release_floor_major; - says it has none" ;;
+  -) : ;;
+  *[!0-9]*) cannot "$TARGET declares a non-numeric release_floor_major [$FLOOR]" ;;
+esac
+
 STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 LISTING="$WORKDIR/releases.json"
@@ -231,7 +241,7 @@ fi
 # tag off the candidate that won, which is what keeps the version this resolves
 # and the release it takes an asset from from being two decisions.
 RESOLUTION="$WORKDIR/resolution.json"
-"$BIN/resolve-stable" "$TARGET" "$PREFIX" "$MINC" "$MAXC" \
+"$BIN/resolve-stable" "$TARGET" "$PREFIX" "$MINC" "$MAXC" "$FLOOR" \
   github-releases "$URL" "$LISTING" \
   >"$RESOLUTION" 2>"$WORKDIR/resolve.err"
 RESOLVE_RC=$?

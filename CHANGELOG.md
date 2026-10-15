@@ -5,6 +5,17 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T01:34:57Z
+
+- ⭐ **A version scheme can declare a floor.** `transmission`'s refs carry 112
+  tags its three-component scheme cannot order, from `0.5` to `3.00`, and no
+  dates, so its source route failed closed on its own history. A floor of 4
+  releases them as `below_scheme_floor`, only beside a selection at 4 or
+  above, and the source route now selects 4.1.3. Resolutions are
+  `bit-ids/resolution/2`; the bundle assembler reads both generations.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-06`. No version bump and
+  no deploy.
+
 ### 2026-10-15T01:00:10Z
 
 - ⭐ **THE FIRST PUBLICATION.** `capture-client` run 38's `aria2-next` 3.0.3

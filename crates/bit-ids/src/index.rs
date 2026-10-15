@@ -926,6 +926,7 @@ pub(crate) mod tests {
                 tag_prefix: None,
                 min_components: 3,
                 max_components: 3,
+                floor_major: None,
             },
         )])
     }
@@ -1457,6 +1458,7 @@ pub(crate) mod tests {
                 tag_prefix: None,
                 min_components: 4,
                 max_components: 4,
+                floor_major: None,
             },
         )]);
         let violations = build(&corpus(), &strict).expect_err("1.2.3 is not four numbers");

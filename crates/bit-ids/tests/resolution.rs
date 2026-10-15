@@ -49,6 +49,7 @@ fn prefixed_scheme() -> VersionScheme {
         tag_prefix: Some(label("release-")),
         min_components: 3,
         max_components: 4,
+        floor_major: None,
     }
 }
 
@@ -58,6 +59,7 @@ fn bare_scheme() -> VersionScheme {
         tag_prefix: None,
         min_components: 3,
         max_components: 3,
+        floor_major: None,
     }
 }
 
@@ -263,6 +265,106 @@ fn resolution_still_fails_closed_when_an_unorderable_tag_has_no_date() {
     assert_eq!(found.with_verdict(Verdict::Unorderable).len(), 1);
 }
 
+/// A refs listing's candidate: no flags and no date, which is what leaves an
+/// unorderable tag with no second signal but the floor.
+fn undated(tag: &str) -> Candidate {
+    Candidate {
+        published_at: None,
+        ..candidate("git-refs", tag, false, false)
+    }
+}
+
+fn floored(floor: u64) -> VersionScheme {
+    VersionScheme {
+        floor_major: Some(floor),
+        ..bare_scheme()
+    }
+}
+
+/// ⭐ `transmission`'s own shape, measured on 2026-10-15: three-component tags
+/// from `4.0.0`, and a decade of two-component and lettered ones before it that
+/// refs carry no date for.
+fn transmission_refs() -> Vec<Candidate> {
+    [
+        "0.5", "1.80b5", "2.20b1", "2.94", "3.00", "4.0.0", "4.1.3", "4.1.2",
+    ]
+    .into_iter()
+    .map(undated)
+    .collect()
+}
+
+#[test]
+fn resolution_lets_a_scheme_floor_release_a_targets_older_spelling() {
+    let blocked = run(bare_scheme(), transmission_refs());
+    assert!(
+        !blocked.resolved(),
+        "with no floor, refs have no second signal"
+    );
+    assert_eq!(blocked.with_verdict(Verdict::Unorderable).len(), 5);
+
+    let found = run(floored(4), transmission_refs());
+    assert_eq!(found.selected.as_ref().map(Version::as_str), Some("4.1.3"));
+    assert_eq!(found.with_verdict(Verdict::BelowSchemeFloor).len(), 5);
+    assert!(found.with_verdict(Verdict::Unorderable).is_empty());
+    let text = found.to_json().expect("a floored decision validates");
+    assert_eq!(
+        Resolution::from_json(&text)
+            .expect("reads")
+            .to_json()
+            .expect("writes"),
+        text,
+        "and round-trips byte for byte"
+    );
+}
+
+#[test]
+fn resolution_refuses_a_floor_release_of_a_tag_the_scheme_can_order() {
+    // ⛔ Every other rule holds here: the tag is below the floor and the
+    // selection stands above it. Only the tag being readable is wrong.
+    let mut document: Value = serde_json::from_str(
+        &run(floored(4), transmission_refs())
+            .to_json()
+            .expect("writes"),
+    )
+    .expect("parses");
+    let entry = &mut document["considered"][7];
+    assert_eq!(entry["candidate"]["tag"], json!("4.1.2"));
+    entry["candidate"]["tag"] = json!("3.0.0");
+    entry["version"] = json!("3.0.0");
+    entry["verdict"] = json!("below_scheme_floor");
+    let error = Resolution::from_json(&serde_json::to_string(&document).expect("writes"))
+        .expect_err("a readable tag released by the floor");
+    assert!(error.to_string().contains("E-RES-09"), "{error}");
+}
+
+#[test]
+fn resolution_still_fails_closed_when_the_floor_is_above_the_winner() {
+    // ⛔ A floor of 5 over a winner of 4.1.3 says nothing about `3.00`.
+    let found = run(floored(5), transmission_refs());
+    assert!(!found.resolved());
+    assert_eq!(found.with_verdict(Verdict::Unorderable).len(), 5);
+    assert!(found.with_verdict(Verdict::BelowSchemeFloor).is_empty());
+}
+
+#[test]
+fn resolution_still_fails_closed_on_an_unreadable_tag_at_or_over_the_floor() {
+    // ⚠ The floor releases what is below it and nothing else, and a blocked
+    // decision that released some history is still a valid record.
+    let found = run(floored(3), transmission_refs());
+    assert!(!found.resolved(), "3.00 is at the floor, not below it");
+    assert_eq!(verdicts(&found)[4], ("3.00", Verdict::Unorderable));
+    assert_eq!(found.with_verdict(Verdict::BelowSchemeFloor).len(), 4);
+    found.to_json().expect("the fail-closed record validates");
+
+    for tag in ["4.1", "03.1", "3x.1", "2026.autumn"] {
+        let mut offered = transmission_refs();
+        offered.push(undated(tag));
+        let found = run(floored(4), offered);
+        assert!(!found.resolved(), "{tag} is not below the floor");
+        assert_eq!(found.with_verdict(Verdict::Unorderable).len(), 1, "{tag}");
+    }
+}
+
 /// A tag that is not this target's release at all does not block. A repository
 /// carrying `nox-5.2.3` beside `release-5.2.3` is ordinary.
 #[test]
@@ -286,6 +388,7 @@ fn resolution_fails_closed_on_two_spellings_of_one_version() {
             tag_prefix: None,
             min_components: 2,
             max_components: 3,
+            floor_major: None,
         },
         vec![
             candidate("github-releases", "4.1.0", false, false),
@@ -333,7 +436,9 @@ fn resolution_reports_an_unknown_schema_version_before_any_field() {
     );
     let mut document: Value =
         serde_json::from_str(&found.to_json().expect("writes")).expect("parses");
-    document["schema"] = json!("bit-ids/resolution/2");
+    // ⚠ The first generation, which this build no longer reads: it carries no
+    // scheme floor and no verdict for one.
+    document["schema"] = json!("bit-ids/resolution/1");
     document["sources"] = json!([]);
     let error = Resolution::from_json(&serde_json::to_string(&document).expect("writes"))
         .expect_err("another generation");
@@ -374,6 +479,16 @@ const PLANTED: &[(&str, Mutation)] = &[
     }),
     ("E-RES-08", |document| {
         document["considered"][1]["verdict"] = json!("unorderable");
+    }),
+    // A release by a floor the recorded scheme does not declare.
+    ("E-RES-09", |document| {
+        document["considered"][1]["verdict"] = json!("below_scheme_floor");
+    }),
+    // ⛔ A floor that released a tag, over a selection beneath that floor.
+    ("E-RES-10", |document| {
+        document["scheme"]["floor_major"] = json!(5);
+        document["considered"][1]["candidate"]["tag"] = json!("3.00");
+        document["considered"][1]["verdict"] = json!("below_scheme_floor");
     }),
 ];
 
@@ -479,7 +594,7 @@ fn resolution_verdict_spellings_agree_with_the_serialized_form() {
     }
     assert_eq!(
         Verdict::ALL.len(),
-        9,
+        10,
         "a variant was added without a spelling"
     );
 }

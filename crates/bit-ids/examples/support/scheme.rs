@@ -38,6 +38,7 @@ pub fn scheme(text: &str) -> Result<(Slug, VersionScheme), String> {
             tag_prefix,
             min_components,
             max_components,
+            floor_major: None,
         },
     ))
 }

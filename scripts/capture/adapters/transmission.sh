@@ -227,6 +227,10 @@ case "$COMMAND" in
     printf 'release_tag_prefix=-\n'
     printf 'release_min_components=3\n'
     printf 'release_max_components=3\n'
+    # ⭐ The three-component spelling began at 4.0.0, and refs carry 112 tags
+    # before it, from 0.5 to 3.00, that it cannot order and no date releases.
+    # Measured on 2026-10-15; `CLIENT-06`.
+    printf 'release_floor_major=4\n'
     printf 'release_asset=transmission-{version}.tar.xz\n'
     # ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE, AND IT IS
     # ABOUT THE VENDOR'S OWN CHECKSUMS DOCUMENT. ⚠ That is a narrower sentence

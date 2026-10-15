@@ -210,6 +210,15 @@ And refs carry no date, so `predates_selection` cannot release a candidate whose
 tag no scheme can order: it blocks, which is the resolver failing closed and is
 correct, because nothing can rule out that the unreadable tag is the newest.
 
+⭐ **A target can now declare a second signal that needs no date: a scheme
+floor.** `release_floor_major=4` says the scheme speaks for 4.x and later, so an
+unorderable tag whose leading component is a plain integer below 4 is recorded
+as `below_scheme_floor` and does not block, and only against a winner at or
+above the floor. `E-RES-09` re-derives each such verdict from the recorded
+scheme and `E-RES-10` refuses a selection below the floor that released
+anything. It is `bit-ids/resolution/2`. Every other adapter declares `-`.
+Record: [`clients.md`](clients.md) `CLIENT-06`.
+
 ⚠ **`git ls-remote` is git-over-HTTPS rather than a REST read**, so `AGENTS.md`
 rule 8's route does not apply. Measured on 2026-09-09: the direct call answered,
 and the record says which route answered.

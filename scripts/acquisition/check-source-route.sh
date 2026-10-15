@@ -104,6 +104,7 @@ case "${1:-}" in
     printf "release_tag_prefix=${BIT_IDS_STUB_PREFIX-v}\n"
     printf "release_min_components=${BIT_IDS_STUB_MINC-3}\n"
     printf "release_max_components=${BIT_IDS_STUB_MAXC-3}\n"
+    printf "release_floor_major=${BIT_IDS_STUB_FLOOR--}\n"
     ;;
   *) exit 2 ;;
 esac
@@ -242,5 +243,63 @@ BIT_IDS_STUB_PREFIX='' case_is 2 "no release_tag_prefix" \
   "an adapter declaring no tag prefix cannot run" noprefix "$WORK/refs-good.txt"
 BIT_IDS_STUB_MINC=x case_is 2 "non-numeric component count" \
   "a non-numeric component count cannot run" nonnum "$WORK/refs-good.txt"
+
+BIT_IDS_STUB_FLOOR='' case_is 2 "no release_floor_major" \
+  "an adapter declaring no scheme floor cannot run" nofloor "$WORK/refs-good.txt"
+BIT_IDS_STUB_FLOOR=4x case_is 2 "non-numeric release_floor_major" \
+  "a non-numeric scheme floor cannot run" badfloor "$WORK/refs-good.txt"
+
+# -- ⭐ TRANSMISSION'S OWN TAGS, AND THE FLOOR THAT LETS THEM RESOLVE ---------
+#
+# The 132 tag names `git ls-remote --tags --refs` answered for
+# `transmission/transmission` on 2026-10-15, with object names computed as
+# everywhere above. 112 are spellings the three-component scheme cannot order,
+# `0.5` to `3.00`, and refs carry no date, so without a floor the source route
+# fails closed on its own history. `CLIENT-06`.
+# ⚠ THE TAG NAMES ARE THE MEASUREMENT; the object names are not, and nothing here
+# reads them past the reader's shape check.
+# ⚠ Split on whitespace on purpose: no tag carries any.
+TRANSMISSION_TAGS='0.5 0.6 0.6.1 0.7 0.71 0.72 0.80 0.82 0.90 0.91 0.92 0.93 0.94 0.95 0.96
+1.00 1.01 1.02 1.03 1.04 1.05 1.06 1.10 1.11 1.20 1.21 1.22 1.31 1.32
+1.33 1.34 1.40 1.41 1.42 1.50 1.51 1.52 1.53 1.54 1.60 1.61 1.70 1.71
+1.72 1.73 1.74 1.75 1.76 1.80 1.80b5 1.81 1.82 1.83 1.90 1.91 1.92 1.93
+2.00 2.01 2.02 2.03 2.04 2.05 2.10 2.11 2.12 2.13 2.20 2.20b1 2.20b2
+2.20b3 2.20b4 2.21 2.22 2.30 2.30b1 2.30b2 2.30b3 2.30b4 2.31 2.32 2.33
+2.40 2.40b1 2.40b2 2.40b3 2.41 2.42 2.50 2.50b1 2.51 2.52 2.60 2.61 2.70
+2.71 2.72 2.73 2.74 2.75 2.76 2.77 2.80 2.81 2.82 2.83 2.84 2.90 2.91
+2.92 2.93 2.94 3.00 4.0.0 4.0.0-beta.1 4.0.0-beta.2 4.0.0-beta.3 4.0.1
+4.0.2 4.0.3 4.0.4 4.0.5 4.0.6 4.1.0 4.1.0-beta.1 4.1.0-beta.2
+4.1.0-beta.3 4.1.0-beta.4 4.1.0-beta.5 4.1.1 4.1.2 4.1.3'
+for _t in $TRANSMISSION_TAGS; do
+  ref_line "$_t"
+done >"$WORK/refs-transmission.txt"
+_count=$(wc -l <"$WORK/refs-transmission.txt" | tr -d ' ')
+if [ "$_count" = 132 ]; then
+  pass "the replayed listing carries the 132 refs measured"
+else
+  fail "the replayed listing carries the 132 refs measured (got $_count)"
+fi
+BIT_IDS_STUB_PREFIX=- case_is 1 "failed closed" \
+  "with no floor, transmission's refs fail closed on their own history" \
+  trnofloor "$WORK/refs-transmission.txt"
+BIT_IDS_STUB_PREFIX=- BIT_IDS_STUB_FLOOR=4 case_is 0 "" \
+  "with a floor of 4, transmission's refs resolve" trfloor "$WORK/refs-transmission.txt"
+if [ "$(cat "$WORK/trfloor.out" 2>/dev/null)" = "4.1.3" ]; then
+  pass "and select 4.1.3, the release route's answer on 2026-10-15"
+else
+  fail "and select 4.1.3 (got [$(cat "$WORK/trfloor.out" 2>/dev/null)])"
+fi
+_released=$(grep -c -F -e '"verdict": "below_scheme_floor"' "$WORK/trfloor.work/resolution.json" 2>/dev/null)
+if [ "$_released" = 112 ]; then
+  pass "the floor released exactly the 112 tags the scheme could not order"
+else
+  fail "the floor released exactly the 112 tags the scheme could not order (got [$_released])"
+fi
+# ⛔ A FLOOR ABOVE THE WINNER RELEASES NOTHING, and `3.00` sitting AT a floor of
+# 3 still blocks: the floor speaks only for what is strictly below it.
+BIT_IDS_STUB_PREFIX=- BIT_IDS_STUB_FLOOR=5 case_is 1 "failed closed" \
+  "a floor above the winner releases nothing" trhigh "$WORK/refs-transmission.txt"
+BIT_IDS_STUB_PREFIX=- BIT_IDS_STUB_FLOOR=3 case_is 1 "failed closed" \
+  "a tag at the floor still blocks" trat "$WORK/refs-transmission.txt"
 
 store_report check-source-route/1 cases "$JSON"

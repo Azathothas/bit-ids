@@ -247,6 +247,19 @@ were weighed and set aside:
 ⚠ Not measured yet: which libtorrent the AppImage carries, which decides
 whether the source build should link 1.2 or 2.0.
 
+⛔ **And the source route's resolver fails closed today, measured on
+2026-10-15** while building `CLIENT-06`'s floor. The live refs carry 260
+candidates, and 59 are `unorderable` under `release-` with three or four
+components. 53 lead with 1, 2 or 4, which a floor of 5 would release. Six do
+not: `release-5.0.0beta1`, `release-5.0.0rc1`, `release-5.1.0beta1`,
+`release-5.1.0rc1`, `release-5.3.0beta1` and `release-5.3.0rc1`. They are
+prereleases that `text_marks_prerelease` misses, because the marker follows a
+digit inside one token, `0beta1`, and the reader takes letters only from a
+token's start. The release route never met them, because the listing flags
+them. So this route needs two changes: a floor, and a token reader that also
+finds a marker after leading digits. The second changes what the project calls
+a prerelease, so it gets its own suite and mutants, not a ride on the first.
+
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository
@@ -1142,6 +1155,34 @@ of the 112 unorderable tags are ancestors of 4.1.3's commit, and 41 sit on
 maintenance branches. The floor releases all 112 from the refs bytes already
 recorded, with nothing fetched and nothing author-supplied. A two-component
 `5.0` still blocks, and so does a tag with no leading integer.
+
+⭐ **Built on 2026-10-15, as `bit-ids/resolution/2`.**
+`VersionScheme::floor_major` is the declaration, `release_floor_major` the
+describe key both resolvers now require (`-` for none), and
+`below_scheme_floor` the verdict. ⛔ It releases only against a winner whose
+major is at or above the floor, and `E-RES-09` and `E-RES-10` re-derive every
+release from the recorded scheme rather than trusting the verdict. Driven
+against the live refs that day, 132 lines: no floor fails closed with 112
+`unorderable`; a floor of 4 selects 4.1.3 with exactly 112
+`below_scheme_floor`; a floor of 5 releases nothing; a floor of 3 releases 111
+and fails closed on `3.00`, which sits at the floor rather than below it.
+⚠ That last one first came out as exit 2, an invalid document, because
+`E-RES-10` refused a release beside no selection. A blocked decision that
+released some history is a valid record with both reasons in it, so the rule
+now asks only about a selection that exists. `check-source-route` replays the
+132 tag names with computed object names, 24 of 24, and seven mutants of the
+resolver were each killed by a test: `<` to `<=`, a release regardless of the
+winner, a padded leading component accepted, each code removed, the verdict
+missing from `ALL`, and the floor never marking.
+
+⚠ **The review found two things, both fixed before the push.** The Go port of
+`check-staleness` still called `resolve-stable` without the floor argument, so
+it reported *cannot run*. The gate printed that as a second `SKIP` and exited
+0, and the failure-only read of its log missed it; `docs/lessons.md` carries
+that. And `E-RES-09` accepted a floor release of a tag the scheme can order,
+such as a readable `3.0.0`. That cannot hide a newer version, but the record
+would not be the resolver's own output. It is refused now, with a test, and
+the mutant that drops the condition is killed.
 
 ⛔ **And the barrier waited for a lane that could not arrive.** *Arrive at the
 install barrier* ran only when the install had run, so a lane that failed

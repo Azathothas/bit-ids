@@ -55,9 +55,11 @@ WORK=$(store_workdir checkbundle) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
 # A resolution as `resolve-release.sh` writes it, carrying only what is read.
-resolution() { # file target prefix-or-null min max
+# ⚠ The generation is the sixth argument, `bit-ids/resolution/2` by default.
+resolution() { # file target prefix-or-null min max [schema]
   jq -n --arg t "$2" --argjson p "$3" --argjson a "$4" --argjson b "$5" \
-    '{schema: "bit-ids/resolution/1", target: $t,
+    --arg s "${6:-bit-ids/resolution/2}" \
+    '{schema: $s, target: $t,
       scheme: {tag_prefix: $p, min_components: $a, max_components: $b}}' >"$1"
 }
 
@@ -78,9 +80,12 @@ left() {
 }
 
 resolution "$WORK/res-a.json" fixture-client null 3 3
-resolution "$WORK/res-b.json" fixture-client null 3 3
+# ⭐ A first-generation resolution beside a second, as a re-assembly of a capture
+# made before the scheme floor meets one made after it.
+resolution "$WORK/res-b.json" fixture-client null 3 3 bit-ids/resolution/1
+resolution "$WORK/res-gen3.json" fixture-client null 3 3 bit-ids/resolution/3
 resolution "$WORK/res-other.json" fixture-client '"v"' 3 3
-printf '{"schema": "bit-ids/resolution/1", "target": "fixture-client"}\n' >"$WORK/res-none.json"
+printf '{"schema": "bit-ids/resolution/2", "target": "fixture-client"}\n' >"$WORK/res-none.json"
 
 fresh_store || {
   printf 'check-bundle: cannot build the fixture store\n' >&2
@@ -146,6 +151,14 @@ fi
 run_bundle --resolution "$WORK/res-none.json"
 if [ "$RC" = "1" ] && grep -q 'states no target and version scheme' "$WORK/out" && [ ! -e "$WORK/bundle" ]; then
   pass "scheme   a resolution with no scheme is refused rather than defaulted"
+else
+  fail "scheme   exit $RC, $(left): $(head -2 "$WORK/out" | tr '\n' ' ')"
+fi
+
+# ⛔ A generation this assembler has never read is refused, not read as a guess.
+run_bundle --resolution "$WORK/res-gen3.json"
+if [ "$RC" = "1" ] && grep -q 'states no target and version scheme' "$WORK/out" && [ ! -e "$WORK/bundle" ]; then
+  pass "scheme   a resolution of an unknown generation is refused"
 else
   fail "scheme   exit $RC, $(left): $(head -2 "$WORK/out" | tr '\n' ' ')"
 fi

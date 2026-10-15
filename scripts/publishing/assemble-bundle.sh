@@ -122,11 +122,14 @@ trap cleanup EXIT
 trap 'exit 2' INT TERM
 
 # -- the schemes, one per target, from what each resolver ordered under --------
+# ⚠ BOTH GENERATIONS, because a capture made before `CLIENT-06`'s scheme floor
+# still assembles: the floor releases candidates and never changes how two
+# versions order, so the index scheme is the same four fields in each.
 : >"$WORK/schemes"
 while IFS= read -r _file; do
   [ -n "$_file" ] || continue
   _scheme=$(jq -er '
-    select(.schema == "bit-ids/resolution/1")
+    select(.schema == "bit-ids/resolution/1" or .schema == "bit-ids/resolution/2")
     | "\(.target):\(.scheme.tag_prefix // "-"):\(.scheme.min_components):\(.scheme.max_components)"
     | select(test("^[^:]+:[^:]+:[0-9]+:[0-9]+$"))' "$_file" 2>/dev/null) ||
     refuse "$_file states no target and version scheme a resolver ordered under"

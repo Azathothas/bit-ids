@@ -224,3 +224,10 @@ cleaned up with `pkill -f`. On 2026-10-14 that killed the session shell running
 the harness, because the shell's own command line quoted the text. Match the
 whole argument vector, as `ps -eo pid=,args=` read by `awk` lets you, and never
 signal a process found by substring.
+
+⛔ **Read the gate's count line, not only its failures.** On 2026-10-15 a change
+to `resolve-stable`'s arguments left one Go caller on the old ones, and that
+harness then reported *cannot run*. The gate prints that as `SKIP` and exits 0.
+A failure-only grep of its log called the run clean. `scripts/README.md` names
+the one skip a session host expects, so any second skip is a finding. CI's
+`--strict` would have refused the push. A review caught it first.

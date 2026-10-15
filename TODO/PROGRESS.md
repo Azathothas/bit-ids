@@ -106,11 +106,12 @@ still open is a host that never reached it.
 
 1. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
    `CLIENT-06`'s two 4.1.3 routes build without root and answer 4.1.3, driven
-   as an unprivileged user on 2026-10-14. ⛔ The source route's resolution fails
-   closed over 112 historical tags git refs cannot date, and the two ways
-   through both change the version ordering; the operator's choice is under its
-   entry in [`clients.md`](clients.md). ⛔ `CLIENT-01` has no second Linux route
-   for 5.2.3 on this runner image.
+   as an unprivileged user on 2026-10-14. ⭐ The source route's resolution
+   failed closed over 112 historical tags git refs cannot date; the scheme
+   floor the operator chose is built, and the source route selects 4.1.3 from
+   the live refs. Next is dispatching the pair. ⭐ `CLIENT-01` targets 5.2.4 by
+   a source build against Qt's prebuilt archives, settled on 2026-10-15; its
+   entry in [`clients.md`](clients.md) carries the plan.
 2. **`CI-08`**: `capture.yml`'s Linux job runs in `contained.sh`, proved on
    `capture` run 38612214714. Its Windows job still cuts the host's route and
    needs a different containment, such as a firewall rule scoped to the

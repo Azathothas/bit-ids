@@ -236,6 +236,7 @@ with something that names nothing.
 | `release_tag_prefix` | the literal stripped before a tag is read as a version, or `-` for none |
 | `release_min_components` | the fewest dot-separated components a version of this target has |
 | `release_max_components` | the most |
+| `release_floor_major` | the first major version the scheme speaks for, or `-` for none: a tag the scheme cannot order whose leading component is a plain integer below it is released as `below_scheme_floor` rather than blocking, and only against a selection at or above it |
 | `release_asset` | which artifact of a release is the installable one |
 | one of `release_digest_asset` / `release_digest_unpublished` | how this vendor publishes a digest, or the measured reason it publishes none |
 

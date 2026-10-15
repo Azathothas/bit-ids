@@ -145,6 +145,7 @@ case "$COMMAND" in
     printf 'release_tag_prefix=release-\n'
     printf 'release_min_components=3\n'
     printf 'release_max_components=4\n'
+    printf 'release_floor_major=-\n'
     printf 'release_asset=qbittorrent-{version}_x86_64.AppImage\n'
     # ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE, AND IT IS
     # ABOUT THE VENDOR'S OWN CHECKSUMS DOCUMENT. ⚠ That is a narrower sentence

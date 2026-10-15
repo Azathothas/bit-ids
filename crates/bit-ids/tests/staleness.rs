@@ -45,6 +45,7 @@ fn scheme() -> VersionScheme {
         tag_prefix: None,
         min_components: 3,
         max_components: 3,
+        floor_major: None,
     }
 }
 
@@ -305,6 +306,7 @@ fn staleness_declines_when_two_spellings_of_one_release_compare_equal() {
         tag_prefix: None,
         min_components: 3,
         max_components: 4,
+        floor_major: None,
     };
     let resolution = resolve(
         slug("fixture-client"),

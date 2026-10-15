@@ -8,8 +8,12 @@
 //! reconstructed.
 //!
 //! ```text
-//! resolve-stable <target> <tag-prefix|-> <min> <max> <source-id> <url> <body-file> [more...]
+//! resolve-stable <target> <tag-prefix|-> <min> <max> <floor-major|-> <source-id> <url> <body-file> [more...]
 //! ```
+//!
+//! ⚠ **The floor is positional and always given**, `-` for none, so a caller
+//! that forgot it is a usage error rather than a source id read as a number.
+//! `CLIENT-06`.
 //!
 //! ⛔ **The source id names the FORMAT the body is read as**, and the set is
 //! closed: `github-releases` for a releases listing, `git-refs` for
@@ -30,9 +34,9 @@ use bit_ids::resolution::{Candidate, SourceResponse, VersionScheme, resolve, sou
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.len() < 7 || !(args.len() - 4).is_multiple_of(3) {
+    if args.len() < 8 || !(args.len() - 5).is_multiple_of(3) {
         eprintln!(
-            "usage: resolve-stable <target> <tag-prefix|-> <min> <max> \
+            "usage: resolve-stable <target> <tag-prefix|-> <min> <max> <floor-major|-> \
              (<source-id> <url> <body-file>)..."
         );
         return ExitCode::from(2);
@@ -48,7 +52,7 @@ fn main() -> ExitCode {
 
     let mut responses = Vec::new();
     let mut candidates = Vec::new();
-    for group in args[4..].chunks(3) {
+    for group in args[5..].chunks(3) {
         match read_source(&group[0], &group[1], &group[2]) {
             Ok((response, found)) => {
                 responses.push(response);
@@ -99,10 +103,16 @@ fn build_scheme(args: &[String]) -> Result<VersionScheme, ()> {
     } else {
         Some(Label::parse(&args[1]).map_err(|_| ())?)
     };
+    let floor_major = if args[4] == "-" {
+        None
+    } else {
+        Some(args[4].parse().map_err(|_| ())?)
+    };
     Ok(VersionScheme {
         tag_prefix,
         min_components: args[2].parse().map_err(|_| ())?,
         max_components: args[3].parse().map_err(|_| ())?,
+        floor_major,
     })
 }
 

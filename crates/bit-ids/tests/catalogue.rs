@@ -113,6 +113,7 @@ fn publication() -> (Bundle, Sha256Digest) {
             tag_prefix: None,
             min_components: 1,
             max_components: 4,
+            floor_major: None,
         },
     )]);
     let indexes: Indexes = build(&corpus, &schemes).expect("the views build");

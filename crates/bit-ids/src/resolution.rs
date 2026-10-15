@@ -32,8 +32,13 @@ use crate::canonical::{Instant, Label, Sha256Digest, Slug, Url, Version};
 use crate::json::DocumentError;
 use crate::validate::{SchemaError, Violations, strictly_ascending};
 
-/// Identifier carried by every first-generation resolution.
-pub const RESOLUTION_SCHEMA: &str = "bit-ids/resolution/1";
+/// Identifier carried by every second-generation resolution.
+///
+/// ⚠ **The second generation adds the scheme floor** and the verdict it gives,
+/// `below_scheme_floor`. A first-generation reader refuses both by
+/// `deny_unknown_fields`, which is why this is a new identifier rather than a
+/// field slipped into the old one. `CLIENT-06`.
+pub const RESOLUTION_SCHEMA: &str = "bit-ids/resolution/2";
 
 /// The schema identifier a resolution declares.
 ///
@@ -114,6 +119,21 @@ pub struct VersionScheme {
     pub min_components: u8,
     /// The most it may have. Enhanced editions publish four; most publish three.
     pub max_components: u8,
+    /// ⭐ The first major version this scheme speaks for, when the target
+    /// declares one.
+    ///
+    /// A tag the scheme cannot order and whose leading component is a plain
+    /// integer below this is the target's own history in another spelling, so
+    /// it is released as [`Verdict::BelowSchemeFloor`] rather than blocking.
+    /// Measured on 2026-10-15: `transmission`'s 132 refs carry 112 tags this
+    /// scheme cannot read, from `0.5` to `3.00`, every one of them before the
+    /// three-component spelling began at `4.0.0`, and refs carry no date for
+    /// [`Verdict::PredatesSelection`] to use.
+    ///
+    /// ⛔ **It releases only against a selection at or above it.** A floor of 4
+    /// over a winner of 3.x says nothing about a `3.99` it cannot read, so those
+    /// stay unorderable and block, which is `E-RES-10` one layer down.
+    pub floor_major: Option<u64>,
 }
 
 impl VersionScheme {
@@ -172,6 +192,27 @@ impl VersionScheme {
         components.resize(usize::from(self.max_components), 0);
         Some(components)
     }
+
+    /// Whether a tag's text sits below this scheme's floor: a declared floor,
+    /// and a leading dot-component that is a plain integer smaller than it.
+    ///
+    /// ⚠ A plain integer as [`Self::components`] reads one, so `03.1` and
+    /// `3x.1` are not below anything and stay unorderable. Reading them
+    /// generously is the guess this module refuses.
+    #[must_use]
+    pub fn below_floor(&self, text: &str) -> bool {
+        let Some(floor) = self.floor_major else {
+            return false;
+        };
+        let lead = text.split('.').next().unwrap_or_default();
+        if lead.is_empty()
+            || !lead.bytes().all(|b| b.is_ascii_digit())
+            || (lead.len() > 1 && lead.starts_with('0'))
+        {
+            return false;
+        }
+        lead.parse::<u64>().is_ok_and(|major| major < floor)
+    }
 }
 
 /// Whether a version's own text marks it as a prerelease.
@@ -223,6 +264,10 @@ pub enum Verdict {
     /// second signal, and publication order is one, so nothing is guessed and
     /// the reason is on the record.
     PredatesSelection,
+    /// ⭐ Could not be ordered by version, and its leading component is below
+    /// the floor the scheme declares, so it cannot be newer than a selection at
+    /// or above that floor. See [`VersionScheme::floor_major`].
+    BelowSchemeFloor,
     /// Compares equal to another candidate and is spelled differently, so
     /// "newest" has no single answer.
     Ambiguous,
@@ -240,6 +285,7 @@ impl Verdict {
         Self::Unorderable,
         Self::Superseded,
         Self::PredatesSelection,
+        Self::BelowSchemeFloor,
         Self::Ambiguous,
         Self::Divergent,
     ];
@@ -261,6 +307,7 @@ impl Verdict {
             Self::Unorderable => "unorderable",
             Self::Superseded => "superseded",
             Self::PredatesSelection => "predates_selection",
+            Self::BelowSchemeFloor => "below_scheme_floor",
             Self::Ambiguous => "ambiguous",
             Self::Divergent => "divergent",
         }
@@ -523,6 +570,27 @@ fn decide(
         return None;
     }
 
+    // ⭐ The floor is the first second signal, and it needs no date. ⛔ Only
+    // against a winner at or above it: below it, the floor says nothing about
+    // what an unreadable tag might be.
+    if scheme
+        .floor_major
+        .is_some_and(|floor| best_components.first().is_some_and(|major| *major >= floor))
+    {
+        let below: Vec<usize> = considered
+            .iter()
+            .enumerate()
+            .filter(|(_, entry)| entry.verdict == Verdict::Unorderable)
+            .filter(|(_, entry)| {
+                scheme
+                    .strip(entry.candidate.tag.as_str())
+                    .is_some_and(|text| scheme.below_floor(text))
+            })
+            .map(|(index, _)| index)
+            .collect();
+        mark(considered, &below, Verdict::BelowSchemeFloor);
+    }
+
     // ⛔ An unorderable candidate blocks unless a second signal rules it out.
     // Publication order is that signal: one published strictly before the
     // winner cannot be newer than it, whatever its tag says. One with no date,
@@ -626,7 +694,63 @@ pub fn validate_resolution(resolution: &Resolution) -> Result<(), Violations> {
     let mut out = Vec::new();
     check_sources(resolution, &mut out);
     check_selection(resolution, &mut out);
+    check_floor(resolution, &mut out);
     Violations::from_errors(out)
+}
+
+/// ⛔ A `below_scheme_floor` verdict is re-derived, never trusted: the scheme
+/// recorded beside it must release that very tag, and the selection must stand
+/// at or above the floor that released it.
+fn check_floor(resolution: &Resolution, out: &mut Vec<SchemaError>) {
+    let scheme = &resolution.scheme;
+    let mut released = false;
+    for (index, entry) in resolution.considered.iter().enumerate() {
+        if entry.verdict != Verdict::BelowSchemeFloor {
+            continue;
+        }
+        released = true;
+        // ⚠ And one the scheme could order is `superseded`, never released:
+        // the floor speaks only for what nothing else can read. Found by a
+        // review handing the validator a readable `3.0.0` marked this way.
+        let below = scheme
+            .strip(entry.candidate.tag.as_str())
+            .is_some_and(|text| scheme.components(text).is_none() && scheme.below_floor(text));
+        if !below {
+            out.push(SchemaError::new(
+                "E-RES-09",
+                format!("considered[{index}].verdict"),
+                format!(
+                    "{} is marked below the scheme floor and the recorded scheme does not put it there",
+                    entry.candidate.tag
+                ),
+            ));
+        }
+    }
+    let Some(floor) = scheme.floor_major else {
+        return;
+    };
+    // ⚠ Nothing selected is no contradiction: a floor can release history and
+    // a tag at or above it still block, which is the fail-closed answer with
+    // both reasons on the record. Found by driving a floor of 3 over
+    // `transmission`'s refs, whose `3.00` stays unorderable.
+    let Some(selected) = &resolution.selected else {
+        return;
+    };
+    if !released {
+        return;
+    }
+    let major = scheme
+        .components(selected.as_str())
+        .and_then(|components| components.first().copied());
+    if major.is_none_or(|major| major < floor) {
+        out.push(SchemaError::new(
+            "E-RES-10",
+            "selected",
+            format!(
+                "candidates were released by a floor of {floor} and the selection does not stand at or above it"
+            ),
+        ));
+    }
 }
 
 fn check_sources(resolution: &Resolution, out: &mut Vec<SchemaError>) {
@@ -1186,6 +1310,7 @@ mod tests {
             tag_prefix: prefix.map(|p| Label::parse(p).expect("label")),
             min_components: min,
             max_components: max,
+            floor_major: None,
         }
     }
 
@@ -1212,6 +1337,24 @@ mod tests {
         let s = scheme(None, 2, 4);
         assert!(s.components("1.01").is_none(), "1.01 and 1.1 compare equal");
         assert!(s.components("1.0").is_some());
+    }
+
+    #[test]
+    fn the_floor_reads_a_plain_leading_integer_and_nothing_else() {
+        let mut s = scheme(None, 3, 3);
+        assert!(
+            !s.below_floor("3.00"),
+            "no floor declared, nothing is below it"
+        );
+        s.floor_major = Some(4);
+        for text in ["3.00", "0.5", "2.20b1", "1.80b5", "3"] {
+            assert!(s.below_floor(text), "{text} is below 4");
+        }
+        // ⛔ At the floor is not below it, and a leading component that is not
+        // a plain integer is not read at all.
+        for text in ["4.0", "4", "10.1", "03.1", "3x.1", "", ".3", "x"] {
+            assert!(!s.below_floor(text), "{text} is not below 4");
+        }
     }
 
     #[test]
