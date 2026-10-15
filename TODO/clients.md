@@ -11,7 +11,7 @@ evidence. Candidate routes remain hypotheses until the entry closes.
 [`../scripts/capture/adapters/README.md`](../scripts/capture/adapters/README.md).
 The parts that are not per-target live once:
 [`install-client`](../tools/check/installclient.go) runs a route while
-the network is up, [`capture-client`](../scripts/capture/capture-client.sh) runs
+the network is up, `capture-client` runs
 the measurement under containment, and
 [`client-capture`](../crates/bit-ids-probe/examples/client-capture.rs) is the
 observer that hands out a torrent naming its own tracker.
@@ -688,7 +688,7 @@ had a time limit.** A hung install and a slow one are indistinguishable until
 something bounds them, and `shell.md` section 9 already said so about any tool a
 script shells out to. Every adapter call is bounded now, in
 [`install-client`](../tools/check/installclient.go) and
-[`capture-client`](../scripts/capture/capture-client.sh) rather than only in the
+`capture-client` rather than only in the
 adapters, because a convention in each adapter is a bound the next adapter
 forgets. ⚠ A refusal now names the timeout and prints the route's own log, since
 the workdir is uploaded only when the capture that follows succeeds.

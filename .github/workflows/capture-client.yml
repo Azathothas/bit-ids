@@ -394,7 +394,7 @@ jobs:
           PEER_PORT: ${{ inputs.peer_port }}
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
         run: |
-          sh scripts/capture/contained.sh -- sh scripts/capture/capture-client.sh \
+          sh scripts/capture/contained.sh -- "$BIT_CHECK" capture-client \
             --run-id "$RUN_ID" \
             --out "$RUNNER_TEMP/capture" \
             --observer "$GITHUB_WORKSPACE/target/debug/examples/client-capture" \
@@ -406,7 +406,7 @@ jobs:
       # ⛔ A CAPTURE THAT REFUSED IS EVIDENCE TOO, AND RULE 12 IS ASKED OF IT
       # FIRST. The two contained runs of 2026-10-11 refused in the connector and
       # the upload below ran on success only, so their transcripts were destroyed
-      # with the hosts and a job log was all that survived. ⚠ `capture-client.sh`
+      # with the hosts and a job log was all that survived. ⚠ `bit-check capture-client`
       # scans its output on its success path alone, and a refusal is exactly the
       # run whose adapter `stop` - which unlinks a product's RPC token - may never
       # have been reached. So the scan runs here, and the upload follows only a

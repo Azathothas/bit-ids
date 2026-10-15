@@ -7,7 +7,7 @@ particular product is installed, asked its version, started and stopped.
 whether a capture may happen at all live in
 `bit-check assert-disposable`, in [`../../../tools/check/assertdisposable.go`](../../../tools/check/assertdisposable.go),
 and are run by
-[`../capture-client.sh`](../capture-client.sh) before an adapter is asked to
+`bit-check capture-client` before an adapter is asked to
 start anything. An adapter that tried to check the host would be a second
 answer to a question one place already answers.
 

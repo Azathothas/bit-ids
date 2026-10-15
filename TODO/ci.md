@@ -5961,3 +5961,24 @@ and five harnesses.
 | `check-runner.sh` over the shell half, then over a shim to the port | identical except the three usage-text cases, which read the shell half's usage spelling and now read the port's |
 | five mutants: the gateway flag ignored, the marker check off, the run-ID slug unchecked, the destination unchecked, an unreadable table read as clean | four refused at once. ⛔ The marker check off passed, because the exclusive create also answers 1 for a second claim. That is the masking the PowerShell half's harness already recorded. The case now requires the marker check's own words, and the mutant is refused |
 | `check-runner` 13, `check-capture` 48, `check-capture-client` 134, `check-rootless` 26, `check-step-bodies` 45 | all passed |
+
+### ⭐ `capture-client` is the ninth leaf, and the Linux capture path is Go. 2026-10-15
+
+`bit-check capture-client`, in [`../tools/check/captureclient.go`](../tools/check/captureclient.go),
+replaces `scripts/capture/capture-client.sh`. `capture-client.yml`'s *Capture*
+step runs it inside `contained.sh`. Every step of that workflow's capture path
+is now a `bit-check` command except the adapters, which are the next leaves,
+and the connector, which stays Python on purpose because its independence from
+this project's Rust is the point. ⚠ The bundle is still verified by a host tool,
+`sha256sum -c` or `certutil` on Windows, and `evidence_verified_by` names which
+one did.
+
+| held against the shell half before it was deleted | result |
+| --- | --- |
+| `check-capture-client` over the shell half and then over a shim to the port | 133 of 134 rows identical. The other row was the case that pointed `BIT_CHECK` at nothing, which a `bit-check` runner has nowhere to look for, so it is retired |
+| four mutants: an announce carrying only the observer's peer ID accepted, a peer ID the transcript does not hold accepted, a connector silent on the identifying field accepted, an interval longer than the run accepted | each refused by its own case |
+
+⚠ **The harness's own probe caught the first shim.** `store_probe_guards`
+needs a literal that appears more than once in its subject file. The first shim
+carried `capture-client` once, so the probe planted into it and every case
+failed with `unknown argument`. The probe now reads `captureclient.go`.

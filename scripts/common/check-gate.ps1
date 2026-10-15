@@ -372,11 +372,11 @@ Add-Unavailable 'check-capture' 'its subject PowerShell half exists and the capt
 
 # ⛔ ITS REASON IS NOT check-capture's, AND COPYING THAT ONE WOULD RECORD A GAP
 # THAT CLOSES ON THE WRONG EVENT. check-capture is declared because its SUBJECT
-# has a PowerShell half that runs somewhere else. capture-client.sh has no
-# PowerShell half at all, and capture-client.yml is a Linux-only workflow, so
-# nothing on any lane exercises a Windows client capture. ⚠ That closes when
-# CI-07 writes the twin, not when a capture is dispatched.
-Add-Unavailable 'check-capture-client' 'an sh harness whose subject has no PowerShell half yet; CI-07'
+# has a PowerShell half that runs somewhere else. The runner is
+# `bit-check capture-client` since 2026-10-15, and what keeps this row here is
+# that the harness and its stub adapters are `sh`, and capture-client.yml is a
+# Linux-only workflow. ⚠ It closes with CI-11's Windows lane.
+Add-Unavailable 'check-capture-client' 'an sh harness over sh stub adapters; the runner is Go; closes with CI-11'
 
 # ⛔ AND ITS REASON IS A THIRD ONE AGAIN. check-release-route drives
 # `bit-check resolve-release` over recorded listings, Go since 2026-10-15; what

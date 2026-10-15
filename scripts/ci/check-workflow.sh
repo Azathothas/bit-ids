@@ -367,7 +367,7 @@ step_block() { # workflow job step
 # Whether an evidence upload that can run on a refused capture is gated on the
 # rule-12 scan. Prints nothing when it is, and the reason when it is not.
 #
-# ⛔ `capture-client.sh` SCANS ITS OUTPUT ON ITS SUCCESS PATH ALONE, so an upload
+# ⛔ `bit-check capture-client` SCANS ITS OUTPUT ON ITS SUCCESS PATH ALONE, so an upload
 # that also runs after a refusal ships a directory nothing has read for a
 # credential - and a refusal is the run whose adapter `stop`, which unlinks a
 # product's RPC token, may never have been reached. ⚠ The upload's own `if:` is
@@ -1143,7 +1143,8 @@ if unit static-readers; then
 
     # ⛔ AND THE NAMESPACE RULE IS REFUTED BY TAKING THE WRAPPER AWAY, which is
     # the one edit that leaves every ordering rule above green.
-    sed 's|sh scripts/capture/contained.sh -- sh scripts/capture/capture-client.sh|sh scripts/capture/capture-client.sh|' \
+    # shellcheck disable=SC2016
+    sed 's|sh scripts/capture/contained.sh -- "$BIT_CHECK" capture-client|"$BIT_CHECK" capture-client|' \
       "$CLIENTWF" >"$MUTWF"
     if cmp -s "$CLIENTWF" "$MUTWF"; then
       fail "probe    the namespace mutation did not change the workflow"

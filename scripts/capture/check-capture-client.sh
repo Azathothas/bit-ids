@@ -72,11 +72,8 @@ ME=check-capture-client
 
 store_require cargo curl sha256sum awk sed od
 
-RUNNER="$ROOT/scripts/capture/capture-client.sh"
-[ -f "$RUNNER" ] || {
-  printf 'check-capture-client: %s is not present\n' "$RUNNER" >&2
-  exit 2
-}
+# ⭐ THE RUNNER IS `bit-check capture-client` SINCE 2026-10-15, `CI-11`. These
+# cases held its shell half to the same rows before that half was deleted.
 
 # ⛔ THE OBSERVER IS BUILT HERE AND NOT BY THE RUNNER, which is the contract the
 # workflow keeps: the build happens while there is still a network.
@@ -438,7 +435,7 @@ run_case() { # want-code  saying  name  [extra-args...]
   shift 3
   OUTS=$((OUTS + 1))
   CASE_OUT="$WORK/out-$OUTS"
-  BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" \
+  BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-client \
     --run-id "$RUN" --out "$CASE_OUT" --observer "$OBSERVER" --adapter "$STUB" \
     --connector "$CONNECTOR" \
     --seconds "$SECS" --route-table "$WORK/route-loopback" "$@" \
@@ -456,7 +453,7 @@ run_case() { # want-code  saying  name  [extra-args...]
 }
 
 # -- the probe's own guards ---------------------------------------------------
-store_probe_guards "$RUNNER" \
+store_probe_guards "$ROOT/tools/check/captureclient.go" \
   "the host was never claimed" "capture-client"
 
 # -- 1. the control, before anything is broken --------------------------------
@@ -733,16 +730,6 @@ else
   fail "scan      a file below the top level is read whole ($_whole) and not with --top-level ($_top)"
 fi
 
-# ⛔ AND A RUNNER THAT CANNOT FIND THE SCAN IS COULD-NOT-RUN, never a capture
-# that shipped unscanned. BIT_CHECK names the binary the workflow built; a
-# capture that went looking for one, or built one, would be doing it under
-# containment.
-_bc=$BIT_CHECK
-BIT_CHECK=$WORK/no-bit-check-here
-run_case 2 "BIT_CHECK names no bit-check binary" \
-  "a runner whose BIT_CHECK names nothing is could-not-run"
-BIT_CHECK=$_bc
-
 # -- ⛔ THE CONNECTOR REFUSALS, DRIVEN THROUGH A STUB -------------------------
 #
 # ⛔ EVERY ONE OF THESE HAD NEVER FIRED. The real connector answers correctly, so
@@ -806,7 +793,7 @@ BIT_IDS_STUBC_WRITE=full
 # `--connector`, so the two refusals below are invoked directly. ⚠ They are
 # `could not run` rather than refusals: nothing about the host or the build is
 # wrong, the caller asked for a capture that cannot become a record.
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-client \
   --run-id "$RUN" --out "$WORK/no-connector" --observer "$OBSERVER" \
   --adapter "$STUB" --seconds "$SECS" --route-table "$WORK/route-loopback" \
   >/dev/null 2>"$WORK/noconn.err"
@@ -819,7 +806,7 @@ else
   [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/noconn.err" | head -3
 fi
 
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-client \
   --run-id "$RUN" --out "$WORK/gone-connector" --observer "$OBSERVER" \
   --adapter "$STUB" --connector "$WORK/there-is-no-connector-here.py" \
   --seconds "$SECS" --route-table "$WORK/route-loopback" \
@@ -941,7 +928,7 @@ FAKE_PEER_HEX=$(printf 'never-on-this-wire-x' | od -An -tx1 | tr -d ' \n')
 OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$STATE" BIT_IDS_STUB_REAL="$OBSERVER" \
   BIT_IDS_STUB_FAKE_PEER_HEX="$FAKE_PEER_HEX" \
-  sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
+  "$BIT_CHECK" capture-client --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
   --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" --route-table "$WORK/route-loopback" \
   >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -966,7 +953,7 @@ OUTS=$((OUTS + 1))
 BIT_IDS_STUB_LONGER=$((SECS + 1))
 BIT_IDS_STATE_DIR="$STATE" BIT_IDS_STUB_REAL="$OBSERVER" \
   BIT_IDS_STUB_INTERVAL="$BIT_IDS_STUB_LONGER" \
-  sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
+  "$BIT_CHECK" capture-client --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
   --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" --route-table "$WORK/route-loopback" \
   >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -985,7 +972,7 @@ fi
 OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$STATE" BIT_IDS_STUB_REAL="$OBSERVER" \
   BIT_IDS_STUB_INTERVAL="$SECS" \
-  sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
+  "$BIT_CHECK" capture-client --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
   --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" --route-table "$WORK/route-loopback" \
   >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -998,7 +985,7 @@ fi
 OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$STATE" BIT_IDS_STUB_REAL="$OBSERVER" \
   BIT_IDS_STUB_INTERVAL=drop \
-  sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
+  "$BIT_CHECK" capture-client --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
   --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" --route-table "$WORK/route-loopback" \
   >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -1015,7 +1002,7 @@ fi
 OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$STATE" BIT_IDS_STUB_REAL="$OBSERVER" \
   BIT_IDS_STUB_SERVING=$((SECS * 100)) \
-  sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
+  "$BIT_CHECK" capture-client --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
   --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" --route-table "$WORK/route-loopback" \
   >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -1031,7 +1018,7 @@ fi
 # inherited: this is a separate script, and a step order that dropped a claim or
 # a route deletion would land on this runner just as readily.
 OUTS=$((OUTS + 1))
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-client --run-id "$RUN" --out "$WORK/out-$OUTS" \
   --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-open" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -1042,7 +1029,7 @@ else
 fi
 
 OUTS=$((OUTS + 1))
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-client --run-id "$RUN" --out "$WORK/out-$OUTS" \
   --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/no-such-table" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -1053,7 +1040,7 @@ else
 fi
 
 OUTS=$((OUTS + 1))
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id capture-0002 --out "$WORK/out-$OUTS" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-client --run-id capture-0002 --out "$WORK/out-$OUTS" \
   --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -1067,7 +1054,7 @@ fi
 # defect: a workflow that dropped its claim step leaves the capture running on a
 # host nothing ever claimed.
 OUTS=$((OUTS + 1))
-BIT_IDS_STATE_DIR="$WORK/unclaimed" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
+BIT_IDS_STATE_DIR="$WORK/unclaimed" "$BIT_CHECK" capture-client --run-id "$RUN" --out "$WORK/out-$OUTS" \
   --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -1079,7 +1066,7 @@ fi
 
 # -- 6. the argument guards ---------------------------------------------------
 OUTS=$((OUTS + 1))
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-client --run-id "$RUN" --out "$WORK/out-$OUTS" \
   --observer "$WORK/no-such-binary" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -1090,7 +1077,7 @@ else
 fi
 
 OUTS=$((OUTS + 1))
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-client --run-id "$RUN" --out "$WORK/out-$OUTS" \
   --observer "$OBSERVER" --adapter "$WORK/no-such-adapter" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -1101,7 +1088,7 @@ else
 fi
 
 # ⛔ A SECOND CAPTURE MUST NOT WRITE INTO THE FIRST ONE'S EVIDENCE.
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$CONTROL_OUT" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-client --run-id "$RUN" --out "$CONTROL_OUT" \
   --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -1112,7 +1099,7 @@ else
 fi
 
 OUTS=$((OUTS + 1))
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "Capture-0001" --out "$WORK/out-$OUTS" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-client --run-id "Capture-0001" --out "$WORK/out-$OUTS" \
   --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
@@ -1123,7 +1110,7 @@ else
 fi
 
 OUTS=$((OUTS + 1))
-BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
+BIT_IDS_STATE_DIR="$STATE" "$BIT_CHECK" capture-client --run-id "$RUN" --out "$WORK/out-$OUTS" \
   --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" --peer-port "six" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?

@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T14:40:54Z
+
+- ⭐ **The capture itself is Go**: `bit-check capture-client` replaces its shell
+  half, matching it row for row in its harness, with four mutants each caught.
+  On the Linux client capture path, only the adapters and the Python connector
+  are left outside Go.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T14:03:09Z
 
 - ⭐ **The host guard is Go**: `bit-check assert-disposable` claims the host,
@@ -2874,7 +2882,7 @@ Nothing is released yet. Entries accumulate here until the first
 ### 2026-09-08T17:02:04Z
 
 - The client capture path, every layer of it except a measurement:
-  [`capture-client.sh`](scripts/capture/capture-client.sh),
+  `capture-client.sh`,
   `install-client.sh`, an adapter
   contract with a file per target under
   [`scripts/capture/adapters/`](scripts/capture/adapters/), and

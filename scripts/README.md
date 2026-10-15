@@ -149,7 +149,8 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   refusals no host state can provoke. ⭐ It is also where the two capture
   runners are compared, because `check-twins.sh` pairs the `common/` checks and
   these take a host and a running process rather than a tree.
-- [`capture/capture-client.sh`](capture/capture-client.sh) is the same shape for
+- `bit-check capture-client`, in [`../tools/check/captureclient.go`](../tools/check/captureclient.go)
+  and `capture/capture-client.sh` until 2026-10-15 (`CI-11`), is the same shape for
   a capture of an **installed build**. ⛔ The difference is the driver: an
   adapter answers what the installed executable's version is and starts that
   build on the torrent the observer generated, which is what turns an
@@ -161,7 +162,7 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   [`../tools/check/scanbundle.go`](../tools/check/scanbundle.go), is rule 12
   over a directory about to be uploaded: a file whose name says it holds a credential,
   and a document carrying a secret-shaped value, both always asked. ⛔ It is the
-  one home for both rules, and three callers ask it: `capture-client.sh` over its
+  one home for both rules, and three callers ask it: `capture-client` over its
   bundle, `bit-check install-client` over its workdir's top level with `--top-level`,
   and `capture-client.yml`'s *Scan the evidence of a refused capture*, without
   which a refused capture's bundle would be uploaded unscanned. ⚠ A directory
