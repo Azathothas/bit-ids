@@ -64,7 +64,9 @@ trap 'rm -rf "$WORK"' EXIT INT TERM
 mkdir -p "$WORK/bin" || exit 2
 BIT_CHECK=$(store_bitcheck "$ROOT" "$WORK/bin") || exit 2
 
-ADAPTERS="$ROOT/scripts/capture/adapters"
+# ⭐ The adapters are `bit-check adapter <name>` since 2026-10-15, `CI-11`, so a
+# route case names its adapter and the privilege scan reads their Go files.
+ADAPTER_SOURCES="$ROOT/tools/check"
 
 # -- how a case is run ---------------------------------------------------------
 #
@@ -292,7 +294,7 @@ write_resolution() { # file source [document] [asset] [sha256] [reason]
 route_case() { # label adapter url binary [resolution-file] [stub-dir]
   _label=$1
   _env="$CASE_ENV"
-  _env="$_env CR_ADAPTER=$ADAPTERS/$2.sh CR_URL=file://$3 CR_BINARY=$4"
+  _env="$_env CR_ADAPTER=$2 CR_URL=file://$3 CR_BINARY=$4"
   [ -z "${5:-}" ] || _env="$_env CR_RESOLUTION=$5"
   # ⚠ A SIXTH ARGUMENT PUTS STUBS IN FRONT OF BOTH RUNS' PATHS, for a route
   # that reaches the distribution's index. Without it the qBittorrent case
@@ -372,15 +374,16 @@ fi
 # the path and would catch a privilege that is NEEDED; this catches one that is
 # merely asked for and happens to be available, which on a runner with
 # passwordless sudo is every case passing over a path that is not rootless.
-# ⚠ The needle is a command-position match, so a comment naming the tool - and
-# this file is full of them - is not a finding. That is the same construction
-# `check-project`'s `Write-Error` rule uses, and it was written after that rule
-# fired on its own enforcing file.
-SUDO_NEEDLE="^[[:space:]]*(sudo|setsid[[:space:]]+sudo)[[:space:]]"
+# ⚠ The needle is the program as Go spells it, a `"sudo"` string literal on a
+# line that is not a comment, so a comment naming the tool - and these files are
+# full of them - is not a finding. ⚠ It was a command-position match over the
+# `sh` adapters until 2026-10-15, `CI-11`; an argument vector has no command
+# position, and the literal is what every `exec.Command` of the tool carries.
+SUDO_NEEDLE='"sudo"'
 : >"$WORK/sudo-hits.txt"
-for _f in "$ADAPTERS"/*.sh; do
+for _f in "$ADAPTER_SOURCES"/adapterkit.go "$ADAPTER_SOURCES"/adapter_*.go; do
   [ -f "$_f" ] || continue
-  grep -nE -e "$SUDO_NEEDLE" "$_f" |
+  grep -nE -e "$SUDO_NEEDLE" "$_f" | grep -vE '^[0-9]+:[[:space:]]*//' |
     sed "s|^|$(basename "$_f"):|" >>"$WORK/sudo-hits.txt" || :
 done
 SUDO_HITS=$(grep -c . "$WORK/sudo-hits.txt") || SUDO_HITS=0
@@ -394,8 +397,8 @@ fi
 # ⭐ AND THE NEEDLE IS SHOWN TO FIRE, because a rule that has never been seen to
 # refuse is a rule nobody knows works - and one whose expression stopped matching
 # reports a clean tree exactly as a clean tree does.
-printf '#!/bin/sh\n  sudo -E sh -c true\n' >"$WORK/needle-probe.sh"
-if grep -qE -e "$SUDO_NEEDLE" "$WORK/needle-probe.sh"; then
+printf 'package main\n\n\tc := exec.Command("sudo", "-E", "sh", "-c", "true")\n' >"$WORK/needle-probe.go"
+if grep -nE -e "$SUDO_NEEDLE" "$WORK/needle-probe.go" | grep -qvE '^[0-9]+:[[:space:]]*//'; then
   pass "privilege the needle refuses a planted sudo invocation"
 else
   fail "privilege the needle does not match a sudo invocation at all"
@@ -647,7 +650,7 @@ route_case aria2-next-again aria2-next "$VENDOR/aria2-next-9.9.9-linux-x86_64" a
 cat >"$WORK/where.sh" <<WHERE
 #!/bin/sh
 set -u
-sh $ADAPTERS/aria2-next.sh describe | sed -n 's/^binary=/found=/p'
+"$BIT_CHECK" adapter aria2-next describe | sed -n 's/^binary=/found=/p'
 WHERE
 run_as "$WORK/where.sh" "$WORK/where.out" "$WORK/where.err" "$CASE_ENV"
 FOUND=$(sed -n 's/^found=//p' "$WORK/where.out")

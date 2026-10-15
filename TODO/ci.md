@@ -6093,3 +6093,74 @@ winget, nor the GUI build in a runner's session, nor the 7-Zip extraction's
 layout, nor the Web UI's shutdown, nor the rules over `bit-check.exe` and
 `qbittorrent.exe`. A dispatch with `windows_adapters: ["qbittorrent"]` is what
 proves them. `CLIENT-01` lists them in reading order.
+
+### ⭐ The four Linux adapters are Go: the eleventh leaf. 2026-10-15
+
+`bit-check adapter aria2`, `aria2-next`, `transmission` and `qbittorrent` are in
+[`../tools/check/adapter_aria2.go`](../tools/check/adapter_aria2.go),
+[`../tools/check/adapter_aria2-next.go`](../tools/check/adapter_aria2-next.go),
+[`../tools/check/adapter_transmission.go`](../tools/check/adapter_transmission.go)
+and [`../tools/check/adapter_qbittorrent.go`](../tools/check/adapter_qbittorrent.go),
+each built only off Windows. They share their mechanics in
+[`../tools/check/adapterkit.go`](../tools/check/adapterkit.go) and none of their
+decisions. They replace the four `sh` adapters. `capture-client.yml` passes
+each lane's adapter by name, and *Read whether this route compiles* asks
+`"$BIT_CHECK" adapter "$ADAPTER" describe`. The contract is unchanged and stays
+in [`../scripts/capture/adapters/README.md`](../scripts/capture/adapters/README.md),
+which now names the files.
+
+Each adapter runs the tools the shell half ran, with the same arguments and
+redirections, and writes the same files into the workdir. It keeps a shell's
+semantics where they decide behaviour. A command with no redirection inherits
+the adapter's own stream. A background start ignores SIGINT and SIGQUIT and
+reads the null device. A background child is reaped when it exits, so a dead
+daemon is not a zombie that `kill -0` keeps answering for. The prefix is
+`rootlessPrefix()` in process, and the installer is this executable in a child
+process.
+
+| held against the shell half before it was deleted | result |
+| --- | --- |
+| `describe` of all four, with `BIT_CHECK` set and with a relative `HOME` | byte-identical stdout, stderr and exit code |
+| `version` of the builds installed on the session host (aria2-next 3.0.3, qBittorrent 5.2.4 under Xvfb), and of the absent ones; five argument errors per adapter | byte-identical stdout, stderr and exit code |
+| `check-rootless` as root and as `ubuntu`, `check-transmission`, `check-release-route`, `check-source-route`, `check-capture-client`, each run over the shell adapters and then over the Go ones | every row identical: 26, 26, 14, 35, 26 and 133 |
+| live, as `ubuntu`: the release route of aria2-next 3.0.4 and qBittorrent 5.2.4 through `bit-check install-client` | the same records apart from the instants and the adapter's name and digest; the same workdir files, the same `version.err`, the same runtime set |
+| six mutants: aria2-next taking the word `version` as its version, Transmission installing before checking both executables, its `stop` deleting the settings file with `jq` present, its headers accepted for a runtime the host lacks, aria2's release route passing no disposition, qBittorrent keeping its `v` | each refused by an existing case |
+| `check-adapters`, extended to the Go adapters | 9 fetches across 7 files; five plants in `check-bitcheck`, each refused at its own line |
+
+⛔ **`check-adapters` reads a Go adapter's argument vector.** A call runs its
+first argument, or its third behind `"timeout"`. A curl that writes a file
+needs `"--max-time"` or the `timeout` in front. A git clone or fetch needs the
+`timeout` in front, and a context deadline does not count, because a reader of
+the call cannot see it. The floor now also requires at least one git clone or
+fetch. The plants that were in `aria2-next.sh` are now in the Go file, with two
+more for a Go curl. ⚠ The shell reader never counted
+`timeout 120 curl ... -o`, because that curl is not in command position. So
+qBittorrent's two Qt fetches were bounded and never read. The Go reader counts
+them.
+
+⚠ **What differs, on purpose or because it cannot be the same:**
+
+- A Go adapter does not need `BIT_CHECK`. Without it, the shell halves printed
+  *BIT_CHECK names no bit-check binary* and `describe` dropped `binary=`. That
+  is why the adapters no longer depend on `contained.sh` carrying it.
+- A `start` whose program cannot be executed is exit 2. The shell half
+  recorded the pid of a child that had already failed and exited 0.
+- ⛔ qBittorrent's `pid` is now the build's own pid. Measured with `dash` on
+  2026-10-15: `HOME=... run_build ... &` backgrounds a subshell, so `$!` was
+  the subshell's pid. The shell half's `stop` sent TERM to that subshell and
+  could leave the build running. Nothing else ends the build that way.
+- The `mkdir -p`, `cp`, `mv`, `find`, `tar` and `tail` calls are still those
+  tools. `rm -rf`, the base64 encoding and the digests are Go. A diagnosis
+  that `rm` would have printed on a broken host is not printed.
+
+⚠ **Latent defects found in the shell halves, reported and not fixed:**
+
+- `aria2-next` declares `release_digest_asset` and no
+  `release_digest_unpublished`. So its standalone drive, a release URL with no
+  resolution, is always could-not-run. The Go half keeps that.
+- A pid file holding `0` passes every `stop`'s digits check, and `kill 0`
+  signals the caller's whole process group. Only `start` writes the file, so
+  nothing reaches this today. The Go half keeps it.
+- qBittorrent's `version` leaves its `mktemp` file behind when Xvfb cannot
+  start, and its source route's clone does not tell a hit bound (`124`) from a
+  failure, as the other two source routes do.

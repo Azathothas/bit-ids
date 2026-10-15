@@ -50,7 +50,8 @@ ME=check-transmission
 . "$ROOT/scripts/corpus/store-lib.sh"
 
 store_require dpkg-deb tar xz sha256sum ninja c++ jq
-ADAPTER="$ROOT/scripts/capture/adapters/transmission.sh"
+# ⭐ `bit-check adapter transmission` since 2026-10-15, `CI-11`.
+ADAPTER=transmission
 
 WORK=$(store_workdir checktransmission) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
@@ -152,7 +153,7 @@ run_route() { # name route deb [env...]
   : >"$WORK/$_name.log"
   env PATH="$STUBS:$PATH" BIT_IDS_PREFIX="$WORK/prefix" STUB_DEB="$_deb" \
     STUB_LOG="$WORK/$_name.log" STUB_COMMIT="$COMMIT" "$@" \
-    sh "$ADAPTER" install "$_route" "$WORK/wd-$_name" \
+    "$BIT_CHECK" adapter "$ADAPTER" install "$_route" "$WORK/wd-$_name" \
     >"$WORK/$_name.out" 2>"$WORK/$_name.err" </dev/null
   RC=$?
 }
@@ -177,7 +178,7 @@ if [ "$RC" = 0 ] && [ -x "$WORK/prefix/bin/transmission-daemon" ] &&
 else
   fail "release  exit $RC: $(tail -2 "$WORK/release.err" | tr '\n' ' ')"
 fi
-if [ "$RC" = 0 ] && [ "$(env BIT_IDS_PREFIX="$WORK/prefix" sh "$ADAPTER" version 2>/dev/null)" = 9.9.9 ]; then
+if [ "$RC" = 0 ] && [ "$(env BIT_IDS_PREFIX="$WORK/prefix" "$BIT_CHECK" adapter "$ADAPTER" version 2>/dev/null)" = 9.9.9 ]; then
   pass "release  the build in the prefix is the one the adapter asks its version"
 else
   fail "release  the adapter did not find the prefix's build"
@@ -206,7 +207,7 @@ else
   fail "source   the clone was: $(grep '^git clone' "$WORK/source.log")"
 fi
 
-if env BIT_IDS_PREFIX="$WORK/none" sh "$ADAPTER" describe | grep -q '^compiles=release,source$'; then
+if env BIT_IDS_PREFIX="$WORK/none" "$BIT_CHECK" adapter "$ADAPTER" describe | grep -q '^compiles=release,source$'; then
   pass "describe both compiling routes are declared, so the workflow bounds them as builds"
 else
   fail "describe the adapter does not declare compiles=release,source"
@@ -259,7 +260,7 @@ stop_case() { # name path-for-stop
   sh "$WORK/fake-daemon.sh" "$_wd/config" &
   printf '%s\n' "$!" >"$_wd/pid"
   sleep 1
-  env PATH="$2" sh "$ADAPTER" stop "$_wd" >"$WORK/stop-$1.out" 2>&1
+  env PATH="$2" "$BIT_CHECK" adapter "$ADAPTER" stop "$_wd" >"$WORK/stop-$1.out" 2>&1
   RC=$?
 }
 stop_case jq "$PATH"

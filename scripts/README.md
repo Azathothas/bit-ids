@@ -170,10 +170,13 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   was `capture/scan-bundle.sh` until 2026-10-15, the first leaf of the capture
   path to leave `sh` (`CI-11`); its callers find it through `BIT_CHECK`, which
   the workflow's *Build the observer* step exports, and never build it.
-- [`capture/adapters/`](capture/adapters/) holds one file per target and is the
-  only place that knows how a particular product is installed, asked its
-  version, started and stopped. Its [README](capture/adapters/README.md) carries
-  the five-subcommand contract. ⛔ `kind` is a declaration the attestation
+- [`capture/adapters/`](capture/adapters/) holds the adapter contract. ⭐ The
+  adapters themselves are Go since 2026-10-15 (`CI-11`): one file per target,
+  `tools/check/adapter_<name>.go`, run as `bit-check adapter <name>
+  <subcommand>`, and the only place that knows how a particular product is
+  installed, asked its version, started and stopped. Its
+  [README](capture/adapters/README.md) carries the five-subcommand contract and
+  names each file. ⛔ `kind` is a declaration the attestation
   copies rather than assumes, so a run driven by a stand-in writes
   `stock_client=false`.
 - [`capture/connectors/`](capture/connectors/) holds the SECOND connector, which

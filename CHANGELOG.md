@@ -5,6 +5,18 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T16:55:03Z
+
+- ⭐ **The capture adapters are Go**: `bit-check adapter aria2`, `aria2-next`,
+  `transmission` and `qbittorrent` replace the four `sh` adapters. Every harness
+  that drives them gave identical rows over both halves. Six mutants were each
+  caught, and a live release-route install of aria2-next and qBittorrent wrote
+  the same records.
+- `check-adapters` now reads the Go adapters' argument vectors. A git clone has
+  to sit behind `timeout`, and a curl that writes a file needs `--max-time` or
+  `timeout`.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T16:55:00Z
 
 - ⭐ **The fixture capture is Go**: `bit-check capture-run` replaces its shell

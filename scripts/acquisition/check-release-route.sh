@@ -72,7 +72,9 @@ trap 'rm -rf "$WORK"' EXIT INT TERM
 mkdir -p "$WORK/bin" || exit 2
 BIT_CHECK=$(store_bitcheck "$ROOT" "$WORK/bin") || exit 2
 RESOLVE="$BIT_CHECK"
-ADAPTERS="$ROOT/scripts/capture/adapters"
+# ⭐ THE ADAPTERS ARE `bit-check adapter <name>` SINCE 2026-10-15, `CI-11`, so a
+# case names one, and the Go file is what a plant edits.
+ADAPTER_SOURCES="$ROOT/tools/check"
 LISTINGS="$HERE/listings"
 
 # ⛔ THE CHECKSUMS DOCUMENT IS BUILT HERE RATHER THAN COMMITTED, AND THAT IS TWO
@@ -98,6 +100,8 @@ sums_for() { # asset-name > document
 # apart: a recorded listing names real vendor URLs, so resolving a digest from
 # one would reach the network out of a harness written not to.
 resolve() { # tag adapter listing [checksums-asset]
+  # ⚠ RESOLVER names a planted build of `bit-check`, whose adapters are the ones
+  # a case edited; unset, it is the clean one.
   _out="$WORK/$1.out"
   _err="$WORK/$1.err"
   _sums="$WORK/$1.sums"
@@ -106,7 +110,7 @@ resolve() { # tag adapter listing [checksums-asset]
   else
     : >"$_sums"
   fi
-  "$RESOLVE" resolve-release --adapter "$2" --workdir "$WORK/$1.work" \
+  "${RESOLVER:-$RESOLVE}" resolve-release --adapter "$2" --workdir "$WORK/$1.work" \
     --record "$WORK/$1.rec" --listing "$3" --checksums "$_sums" >"$_out" 2>"$_err"
   return $?
 }
@@ -127,7 +131,7 @@ said() { # tag literal
 # discarded, so every row would vanish from the report.
 while read -r target expected; do
   [ -n "$target" ] || continue
-  if ! resolve "$target" "$ADAPTERS/$target.sh" "$LISTINGS/$target.json" "$expected"; then
+  if ! resolve "$target" "$target" "$LISTINGS/$target.json" "$expected"; then
     fail "asset     $target: the resolver exited $? - $(tail -1 "$WORK/$target.err")"
     continue
   fi
@@ -164,7 +168,7 @@ ADAPTER_TABLE
 # fixture holding the empty release ALONE cannot ask this: the fallback needs an
 # older release with assets sitting right there to fall back TO, which is why
 # `aria2-next-unpublished.json` keeps both.
-resolve unpublished "$ADAPTERS/aria2-next.sh" "$LISTINGS/aria2-next-unpublished.json"
+resolve unpublished aria2-next "$LISTINGS/aria2-next-unpublished.json"
 rc=$?
 if [ "$rc" = 1 ] && said unpublished "no asset of that release matches"; then
   # ⛔ AND THE VERSION IT REFUSED OVER IS READ BACK, because "it refused" is
@@ -186,9 +190,13 @@ fi
 # resolves through; they are different sentences about one repository, and a
 # vendor that moves leaves them disagreeing with nothing to say so.
 CATALOGUE="$ROOT/catalogue/clients.toml"
-for one in "$ADAPTERS"/*.sh; do
-  name=$(basename "$one" .sh)
-  repo=$(sh "$one" describe 2>/dev/null | sed -n 's/^release_repo=//p')
+# ⚠ Every Linux adapter, named by its file: `adapter_<name>.go`, and not the
+# Windows half of one.
+for one in "$ADAPTER_SOURCES"/adapter_*.go; do
+  name=$(basename "$one" .go)
+  name=${name#adapter_}
+  case "$name" in *_windows) continue ;; esac
+  repo=$("$BIT_CHECK" adapter "$name" describe 2>/dev/null | sed -n 's/^release_repo=//p')
   [ -n "$repo" ] || continue
   upstream=$(awk -v want="\"$name\"" '
     $1 == "id" && $3 == want { found = 1; next }
@@ -254,13 +262,20 @@ fi
 # ⛔ THE CASE THIS HARNESS EXISTS FOR. The aria2 release carries three source
 # archives differing only in compression, so a widened pattern matches three and
 # the run must refuse rather than take one.
+#
+# ⛔ THE ADAPTER IS GO, SO A PLANT IS A BUILD. The source is copied whole into
+# scratch, the one literal is replaced in its `adapter_aria2.go`, and the copy
+# is built: the case then resolves through THAT binary, whose `aria2` is the
+# planted one. `check-capture-client` plants into Go the same way.
 plant() { # tag literal replacement
-  cp "$ADAPTERS/aria2.sh" "$WORK/$1.sh" || return 1
-  replace_once "$WORK/$1.sh" "$2" "$3"
+  rm -rf "$WORK/$1.check"
+  cp -R "$ADAPTER_SOURCES" "$WORK/$1.check" || return 1
+  replace_once "$WORK/$1.check/adapter_aria2.go" "$2" "$3" || return 1
+  (cd "$WORK/$1.check" && go build -o "$WORK/$1.bin" .) >/dev/null 2>&1
 }
 
 if plant ambiguous 'release_asset=aria2-{version}.tar.bz2' 'release_asset=aria2-*.tar.*'; then
-  resolve ambiguous "$WORK/ambiguous.sh" "$LISTINGS/aria2.json"
+  RESOLVER="$WORK/ambiguous.bin" resolve ambiguous aria2 "$LISTINGS/aria2.json"
   rc=$?
   if [ "$rc" = 1 ] && said ambiguous "3 assets match the pattern"; then
     pass "refusal   a pattern matching three assets is refused and names all three"
@@ -272,7 +287,7 @@ else
 fi
 
 if plant nomatch 'release_asset=aria2-{version}.tar.bz2' 'release_asset=aria2-{version}.deb'; then
-  resolve nomatch "$WORK/nomatch.sh" "$LISTINGS/aria2.json"
+  RESOLVER="$WORK/nomatch.bin" resolve nomatch aria2 "$LISTINGS/aria2.json"
   rc=$?
   if [ "$rc" = 1 ] && said nomatch "no asset of that release matches"; then
     pass "refusal   a pattern matching nothing is refused"
@@ -287,7 +302,7 @@ fi
 # this repository's defect and not a vendor's. A pattern reader that matched
 # `{ver}` as literal text would find nothing and report the vendor's asset list.
 if plant typo 'release_asset=aria2-{version}.tar.bz2' 'release_asset=aria2-{ver}.tar.bz2'; then
-  resolve typo "$WORK/typo.sh" "$LISTINGS/aria2.json"
+  RESOLVER="$WORK/typo.bin" resolve typo aria2 "$LISTINGS/aria2.json"
   rc=$?
   if [ "$rc" = 2 ] && said typo "the only one is {version}"; then
     pass "refusal   an unknown placeholder is could-not-run, not a silent no-match"
@@ -302,7 +317,7 @@ fi
 # arrive here as an asset nobody chose. aria2 tags carry `release-`; a prefix of
 # `v` makes every candidate foreign and the resolution selects nothing.
 if plant prefix 'release_tag_prefix=release-' 'release_tag_prefix=v'; then
-  resolve prefix "$WORK/prefix.sh" "$LISTINGS/aria2.json"
+  RESOLVER="$WORK/prefix.bin" resolve prefix aria2 "$LISTINGS/aria2.json"
   rc=$?
   if [ "$rc" = 1 ] && said prefix "the resolver failed closed"; then
     pass "refusal   a tag prefix no candidate carries fails closed before any asset"
@@ -317,7 +332,7 @@ fi
 # vendor, so the case a gate cannot skip is the one where those bytes are not
 # what the reader expects.
 printf 'this is not a release listing\n' >"$WORK/garbage.json"
-resolve garbage "$ADAPTERS/aria2.sh" "$WORK/garbage.json"
+resolve garbage aria2 "$WORK/garbage.json"
 rc=$?
 if [ "$rc" = 2 ] && said garbage "resolve-stable could not run"; then
   pass "refusal   a listing that is not JSON is could-not-run"
@@ -410,7 +425,7 @@ fi
 sums_for "some-other-asset" >"$WORK/wrong-sums.txt"
 _out="$WORK/wrongsums.out"
 _err="$WORK/wrongsums.err"
-"$RESOLVE" resolve-release --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/wrongsums.work" \
+"$RESOLVE" resolve-release --adapter aria2-next --workdir "$WORK/wrongsums.work" \
   --record "$WORK/wrongsums.rec" --listing "$LISTINGS/aria2-next.json" \
   --checksums "$WORK/wrong-sums.txt" >"$_out" 2>"$_err"
 rc=$?
@@ -427,7 +442,7 @@ fi
 # passes equally over a reader that searches for a substring.
 sums_for "aria2-next-2.7.4-linux-x86_64.asc" >"$WORK/prefix-sums.txt"
 _err="$WORK/prefixsums.err"
-"$RESOLVE" resolve-release --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/prefixsums.work" \
+"$RESOLVE" resolve-release --adapter aria2-next --workdir "$WORK/prefixsums.work" \
   --record "$WORK/prefixsums.rec" --listing "$LISTINGS/aria2-next.json" \
   --checksums "$WORK/prefix-sums.txt" >"$WORK/prefixsums.out" 2>"$_err"
 rc=$?
@@ -441,7 +456,7 @@ fi
 # this the resolver would fetch the vendor's checksums over a URL the fixture
 # names, so a harness written to need no network would quietly need one.
 _err="$WORK/nosums.err"
-"$RESOLVE" resolve-release --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/nosums.work" \
+"$RESOLVE" resolve-release --adapter aria2-next --workdir "$WORK/nosums.work" \
   --record "$WORK/nosums.rec" --listing "$LISTINGS/aria2-next.json" \
   >"$WORK/nosums.out" 2>"$_err"
 rc=$?
@@ -455,7 +470,7 @@ fi
 # whole reason the declaration is positive rather than defaulted: a target added
 # without one would otherwise install bytes nothing identified.
 if plant nodigest 'release_digest_unpublished=this release publishes six archives and no checksums asset' 'release_note=none'; then
-  resolve nodigest "$WORK/nodigest.sh" "$LISTINGS/aria2.json"
+  RESOLVER="$WORK/nodigest.bin" resolve nodigest aria2 "$LISTINGS/aria2.json"
   rc=$?
   if [ "$rc" = 2 ] && said nodigest "declares neither release_digest_asset nor release_digest_unpublished"; then
     pass "digest    an adapter declaring no disposition is could-not-run"
@@ -504,7 +519,7 @@ fi
 # EVERYTHING. The clean adapter and the clean listing were already run in
 # section 1; this asserts that the one that refused and the one that did not
 # differ in exactly the planted line.
-if diff "$ADAPTERS/aria2.sh" "$WORK/ambiguous.sh" >"$WORK/plant.diff" 2>&1; then
+if diff "$ADAPTER_SOURCES/adapter_aria2.go" "$WORK/ambiguous.check/adapter_aria2.go" >"$WORK/plant.diff" 2>&1; then
   fail "control   the planted adapter is identical to the shipped one"
 elif [ "$(grep -c '^[<>]' "$WORK/plant.diff")" = "2" ]; then
   pass "control   the refusing adapter differs from the passing one on one line"
@@ -512,6 +527,6 @@ else
   fail "control   the plant changed $(grep -c '^[<>]' "$WORK/plant.diff") line(s), expected 2"
 fi
 
-store_probe_guards "$WORK/ambiguous.sh" 'release_repo=aria2/aria2' 'printf'
+store_probe_guards "$WORK/ambiguous.check/adapter_aria2.go" 'release_repo=aria2/aria2' 'fmt.Print'
 
 store_report check-release-route/1 cases "$JSON"

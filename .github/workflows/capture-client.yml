@@ -231,7 +231,7 @@ jobs:
       - name: Resolve the release artifact
         if: matrix.route == 'release'
         env:
-          ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
+          ADAPTER: ${{ matrix.adapter }}
         run: |
           set -eu
           # ⛔ THE DIRECTORY IS MADE BEFORE THE REDIRECTION, NOT BY THE SCRIPT.
@@ -261,7 +261,7 @@ jobs:
       - name: Resolve the source tag
         if: matrix.route == 'source'
         env:
-          ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
+          ADAPTER: ${{ matrix.adapter }}
         run: |
           set -eu
           # ⛔ THE DIRECTORY IS MADE BEFORE THE REDIRECTION, for the reason the
@@ -283,11 +283,11 @@ jobs:
       - name: Read whether this route compiles
         id: bounds
         env:
-          ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
+          ADAPTER: ${{ matrix.adapter }}
           ROUTE: ${{ matrix.route }}
         run: |
           set -eu
-          compiles=$(sh "$ADAPTER" describe | awk -F= '$1 == "compiles" { print $2 }')
+          compiles=$("$BIT_CHECK" adapter "$ADAPTER" describe | awk -F= '$1 == "compiles" { print $2 }')
           case ",$compiles," in
             *",$ROUTE,"*) answer=true ;;
             *) answer=false ;;
@@ -309,7 +309,7 @@ jobs:
       - name: Install the client
         id: install
         env:
-          ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
+          ADAPTER: ${{ matrix.adapter }}
           ROUTE: ${{ matrix.route }}
           # ⚠ The route's own bound: 1500 seconds for a route that compiles and
           # 420 for everything else. 2.7.5 took 496 on a runner against 366 on the
@@ -415,7 +415,7 @@ jobs:
           RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.adapter }}-${{ matrix.route }}
           SECONDS_TO_SERVE: ${{ inputs.seconds }}
           PEER_PORT: ${{ inputs.peer_port }}
-          ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
+          ADAPTER: ${{ matrix.adapter }}
         run: |
           sh scripts/capture/contained.sh -- "$BIT_CHECK" capture-client \
             --run-id "$RUN_ID" \

@@ -1126,9 +1126,13 @@ fi
 # adapter is only reached by a dispatched capture, so a typo in one would
 # otherwise be found by a runner rather than by a gate. ⚠ Nothing here installs
 # or starts anything: `describe` is the one subcommand that needs no product.
-for adapter in "$ROOT"/scripts/capture/adapters/*.sh; do
-  _name=$(basename "$adapter" .sh)
-  _desc=$(sh "$adapter" describe 2>"$WORK/err")
+# ⭐ `bit-check adapter <name>` since 2026-10-15, `CI-11`: every Linux adapter,
+# named by its file, `tools/check/adapter_<name>.go`, and not a Windows half.
+for adapter in "$ROOT"/tools/check/adapter_*.go; do
+  _name=$(basename "$adapter" .go)
+  _name=${_name#adapter_}
+  case "$_name" in *_windows) continue ;; esac
+  _desc=$("$BIT_CHECK" adapter "$_name" describe 2>"$WORK/err")
   _rc=$?
   _target=$(printf '%s\n' "$_desc" | awk -F= '$1 == "target" { print $2; exit }')
   _kind=$(printf '%s\n' "$_desc" | awk -F= '$1 == "kind" { print $2; exit }')
@@ -1137,7 +1141,7 @@ for adapter in "$ROOT"/scripts/capture/adapters/*.sh; do
   else
     fail "adapter $_name describes itself as stock (exit $_rc, target [$_target], kind [$_kind])"
   fi
-  if sh "$adapter" no-such-subcommand >/dev/null 2>&1; then
+  if "$BIT_CHECK" adapter "$_name" no-such-subcommand >/dev/null 2>&1; then
     fail "adapter $_name refuses an unknown subcommand"
   else
     pass "adapter $_name refuses an unknown subcommand"

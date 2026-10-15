@@ -87,6 +87,38 @@
 // installrootless.go and fetchreleases.go. ⚠ Both still run `curl`, and a Go
 // call is not a shell line: an `exec.Command(curl, ...)` is read whole, to its
 // closing parenthesis, and one that writes a file must pass `--max-time`.
+//
+// -- ⛔ AND THE ADAPTERS FOLLOWED, `CI-11`, 2026-10-15 ------------------------
+//
+// The four capture adapters are `bit-check adapter <name>`, in
+// tools/check/adapter_<name>.go, with their shared mechanics in adapterkit.go.
+// Every `exec.Command(...)` there is read whole and judged by what it RUNS,
+// which is its first argument, or its third when the first is `"timeout"`:
+//
+//	a curl that writes a file   bounded by its own "--max-time", or by a
+//	                            "timeout" in front of it
+//	a git clone or fetch        bounded by a "timeout" in front of it, and
+//	                            nothing else
+//
+// ⛔ A "timeout" IS A BOUND ONLY AS THE PROGRAM. `exec.Command("git", "clone",
+// ..., "timeout", "600")` carries the word and bounds nothing, which is the Go
+// shape of the shell rule's `git clone ... && timeout 5 true`.
+// ⚠ A CONTEXT DEADLINE IS NOT ACCEPTED, and that is a choice rather than a gap:
+// `exec.CommandContext` sends KILL to the one child it started when a context
+// declared somewhere else expires, and a reader of the call cannot see that
+// deadline. A `timeout` argv is read off the line, answers 124 as the shell's
+// did, and is what every adapter route already reports by name.
+// ⚠ An invocation whose argv is built elsewhere and passed as a slice cannot be
+// judged, so every curl and git in an adapter is written as a literal call.
+//
+// ⭐ THE SHELL READER NEVER SAW A WRAPPED CURL. It matched `curl` in command
+// position only, so `timeout 120 curl -fsSL ... -o` in qBittorrent's source
+// route was neither counted nor judged. Bounded, as it happened; the Go reader
+// counts it.
+//
+// ⛔ AND THE FLOOR ASKS FOR BOTH KINDS. A reader that stopped seeing Go git calls
+// would still find enough curls to pass a count of three, so at least one git
+// clone or fetch has to be read too.
 package main
 
 import (
@@ -100,37 +132,100 @@ import (
 // fetch through, which are the scripts that run on a contained host with no
 // operator watching.
 var adapterRe = regexp.MustCompile(
-	`^(scripts/capture/adapters/[^/]+\.sh|tools/check/(installrootless|fetchreleases)\.go)$`)
+	`^(scripts/capture/adapters/[^/]+\.sh|tools/check/(installrootless|fetchreleases|adapterkit|adapter_[A-Za-z0-9_-]+)\.go)$`)
 
-// goCurlRe finds a Go call that runs curl, up to the parenthesis that opens its
-// arguments. goCurlCalls reads each to the parenthesis that closes it.
-var goCurlRe = regexp.MustCompile(`exec\.Command\(\s*curl\b`)
+// goExecRe finds a Go call that runs a program, up to the parenthesis that
+// opens its arguments. goExecCalls reads each to the parenthesis that closes it.
+var goExecRe = regexp.MustCompile(`exec\.Command(Context)?\(`)
 
-// goCurlCalls answers each `exec.Command(curl, ...)` in a Go file as its whole
-// argument list, with the line it starts on.
+// goExecCalls answers each `exec.Command(...)` in a Go file as its top-level
+// arguments, with the line it starts on. Comment lines are not read.
 //
 // ⚠ BALANCED RATHER THAN TO THE FIRST `)`, because an argument such as
 // `fmt.Sprint(n)` closes a parenthesis of its own, and a call read only to that
-// would lose every flag after it.
-func goCurlCalls(text string) (calls []string, lines []int) {
-	for _, at := range goCurlRe.FindAllStringIndex(text, -1) {
-		depth := 0
-		end := len(text)
-		for i := at[0] + strings.IndexByte(text[at[0]:], '('); i < len(text); i++ {
-			if text[i] == '(' {
+// would lose every flag after it. ⚠ AND A STRING IS SKIPPED WHOLE, because
+// `jq`'s `del(."rpc-password")` is a parenthesis inside an argument.
+func goExecCalls(text string) (calls [][]string, lines []int) {
+	var b strings.Builder
+	for _, l := range strings.Split(text, "\n") {
+		if strings.HasPrefix(strings.TrimLeft(l, " \t"), "//") {
+			l = ""
+		}
+		b.WriteString(l)
+		b.WriteByte('\n')
+	}
+	text = b.String()
+	for _, at := range goExecRe.FindAllStringIndex(text, -1) {
+		var args []string
+		depth, start := 0, at[1]
+		for i := at[1] - 1; i < len(text); i++ {
+			switch c := text[i]; c {
+			case '"', '`':
+				j := i + 1
+				for j < len(text) && text[j] != c {
+					if c == '"' && text[j] == '\\' {
+						j++
+					}
+					j++
+				}
+				i = j
+			case '(', '[', '{':
 				depth++
-			} else if text[i] == ')' {
+			case ')', ']', '}':
 				depth--
 				if depth == 0 {
-					end = i + 1
-					break
+					args = append(args, strings.TrimSpace(text[start:i]))
+					i = len(text)
+				}
+			case ',':
+				if depth == 1 {
+					args = append(args, strings.TrimSpace(text[start:i]))
+					start = i + 1
 				}
 			}
 		}
-		calls = append(calls, text[at[0]:end])
+		if at[0]+len("exec.CommandContext(") == at[1] && len(args) > 0 {
+			args = args[1:]
+		}
+		calls = append(calls, args)
 		lines = append(lines, strings.Count(text[:at[0]], "\n")+1)
 	}
 	return calls, lines
+}
+
+// goFetch judges one Go call: whether it fetches, which kind, and whether it is
+// bounded. The program is the first argument, or the third behind a `timeout`.
+func goFetch(args []string) (kind string, bounded bool) {
+	has := func(want ...string) bool {
+		for _, a := range args {
+			for _, w := range want {
+				if a == w {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	if len(args) == 0 {
+		return "", false
+	}
+	prog, wrapped := args[0], false
+	if prog == `"timeout"` && len(args) >= 3 {
+		prog, wrapped = args[2], true
+	}
+	switch prog {
+	case "curl", `"curl"`:
+		if !has(`"-o"`, `"-O"`) {
+			return "", false
+		}
+		return "curl", wrapped || has(`"--max-time"`)
+	case `"git"`:
+		if !has(`"clone"`, `"fetch"`) {
+			return "", false
+		}
+		return "git", wrapped
+	}
+	return "", false
 }
 
 // retrievingCurlRe matches a curl invocation that writes a file.
@@ -206,22 +301,30 @@ func checkAdapters(r *repo) (verdict, error) {
 	}
 
 	var problems []string
-	fetches := 0
+	fetches, clones := 0, 0
 	for _, f := range files {
 		text, err := os.ReadFile(f)
 		if err != nil {
 			return verdict{}, errCannotRun("cannot read " + f)
 		}
 		if strings.HasSuffix(f, ".go") {
-			calls, at := goCurlCalls(string(text))
+			calls, at := goExecCalls(string(text))
 			for i, call := range calls {
-				if !strings.Contains(call, `"-o"`) && !strings.Contains(call, `"-O"`) {
-					continue
-				}
-				fetches++
-				if !strings.Contains(call, `"--max-time"`) {
-					problems = append(problems, fmt.Sprintf(
-						"%s:%d a curl that writes a file carries no --max-time", f, at[i]))
+				kind, bounded := goFetch(call)
+				switch kind {
+				case "curl":
+					fetches++
+					if !bounded {
+						problems = append(problems, fmt.Sprintf(
+							"%s:%d a curl that writes a file carries no --max-time", f, at[i]))
+					}
+				case "git":
+					fetches++
+					clones++
+					if !bounded {
+						problems = append(problems, fmt.Sprintf(
+							"%s:%d a git clone or fetch is not wrapped in timeout", f, at[i]))
+					}
 				}
 			}
 			continue
@@ -244,6 +347,7 @@ func checkAdapters(r *repo) (verdict, error) {
 				}
 			case gitFetchRe.MatchString(line):
 				fetches++
+				clones++
 				// ⛔ THE WRAPPER MUST COME BEFORE THE COMMAND IT BOUNDS. Asking
 				// only whether `timeout` appears somewhere on the line would
 				// accept `git clone ... && timeout 5 true`, which bounds
@@ -267,6 +371,10 @@ func checkAdapters(r *repo) (verdict, error) {
 		return verdict{}, errCannotRun(
 			fmt.Sprintf("%d fetch(es) found across %d file(s), which is too few to be this tree",
 				fetches, len(files)))
+	}
+	if clones == 0 {
+		return verdict{}, errCannotRun(
+			fmt.Sprintf("no git clone or fetch found across %d file(s), which is too few to be this tree", len(files)))
 	}
 
 	v := verdict{

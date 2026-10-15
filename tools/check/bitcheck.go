@@ -2013,7 +2013,8 @@ func (b *bitcheck) ignores() {
 // client* on the RELEASE lane, and an unbounded fetch is the only thing in that
 // route that can wait forever.
 
-var timeoutAfter = regexp.MustCompile(`timeout 600 git clone (.*)$`)
+// The Go adapter's bounded clone, and its argument list to the end of the line.
+var timeoutAfter = regexp.MustCompile(`exec\.Command\("timeout", "600", "git", "clone", (.*),$`)
 
 func (b *bitcheck) adapters() {
 	b.agree("adapters clean tree", "check-adapters", 0)
@@ -2043,24 +2044,45 @@ func (b *bitcheck) adapters() {
 	b.put("rootless.orig", rl)
 
 	// ⛔ AND A CLONE THAT NOTHING BOUNDS: `git` has no flag of its own, so the rule
-	// is a `timeout` wrapper.
-	const ad = "scripts/capture/adapters/aria2-next.sh"
+	// is a `timeout` wrapper. ⚠ Planted in the Go adapter since `CI-11` moved the
+	// adapters into this binary: the clone is an `exec.Command("timeout", "600",
+	// "git", ...)` and the plant takes the wrapper off it.
+	const ad = "tools/check/adapter_aria2-next.go"
 	b.save(ad, "adapter.orig")
 	b.rewrite("adapter.orig", ad, func(l string) (string, bool) {
-		return strings.Replace(l, "timeout 600 git clone", "git clone", 1), true
+		return strings.Replace(l, `exec.Command("timeout", "600", "git", "clone"`, `exec.Command("git", "clone"`, 1), true
 	})
 	b.agree("adapters a git clone with no timeout wrapper is refused", "check-adapters", 1)
 	b.put("adapter.orig", ad)
 
-	// ⚠ AND A BOUND THAT BOUNDS SOMETHING ELSE IS NOT A BOUND.
+	// ⚠ AND A BOUND THAT BOUNDS SOMETHING ELSE IS NOT A BOUND: the words moved
+	// to the end of git's own arguments, where they are something git is handed.
 	b.rewrite("adapter.orig", ad, func(l string) (string, bool) {
 		if m := timeoutAfter.FindStringSubmatchIndex(l); m != nil {
-			return l[:m[0]] + "git clone " + l[m[2]:m[3]] + " && timeout 5 true", true
+			return l[:m[0]] + `exec.Command("git", "clone", ` + l[m[2]:m[3]] + `, "timeout", "600",`, true
 		}
 		return l, true
 	})
 	b.agree("adapters a timeout after the command it should wrap is refused", "check-adapters", 1)
 	b.put("adapter.orig", ad)
+
+	// ⛔ AND THE RPC CALL, WHICH WRITES ITS ANSWER TO A FILE: a curl with `-o`
+	// is a retrieval whatever it retrieves.
+	b.rewrite("adapter.orig", ad, func(l string) (string, bool) {
+		return strings.Replace(l, `"--max-time", "20",`, "", 1), true
+	})
+	b.agree("adapters a Go adapter's curl with no --max-time is refused", "check-adapters", 1)
+	b.put("adapter.orig", ad)
+
+	// ⭐ AND A CURL BOUNDED BY `timeout` ALONE IS ACCEPTED, which is qBittorrent's
+	// Qt fetch; taking the wrapper off is what refuses it.
+	const qb = "tools/check/adapter_qbittorrent.go"
+	b.save(qb, "qbittorrent.orig")
+	b.rewrite("qbittorrent.orig", qb, func(l string) (string, bool) {
+		return strings.Replace(l, `exec.Command("timeout", "120", "curl"`, `exec.Command("curl"`, 1), true
+	})
+	b.agree("adapters a curl that loses its timeout wrapper is refused", "check-adapters", 1)
+	b.put("qbittorrent.orig", qb)
 
 	// ⭐ AND THE ACCEPTING HALF THAT MATTERS MOST: a curl that only ASKS is out of
 	// scope.

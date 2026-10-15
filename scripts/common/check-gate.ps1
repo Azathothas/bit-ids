@@ -380,18 +380,18 @@ Add-Unavailable 'check-capture-client' 'an sh harness over sh stub adapters; the
 
 # ⛔ AND ITS REASON IS A THIRD ONE AGAIN. check-release-route drives
 # `bit-check resolve-release` over recorded listings, Go since 2026-10-15; what
-# keeps it off this lane is that the harness is `sh` and so are the adapters
-# whose `describe` it reads. ⚠ It closes when CI-11 moves the adapters and the
-# harness into Go.
-Add-Unavailable 'check-release-route' 'an sh harness over sh adapters; the resolver is Go; closes with CI-11'
+# keeps it off this lane is that the harness is `sh`, and the four adapters
+# whose `describe` it reads are Go and Linux-only since 2026-10-15. ⚠ It closes
+# when CI-11 moves the harness into Go.
+Add-Unavailable 'check-release-route' 'an sh harness over the Linux Go adapters; the resolver is Go; closes with CI-11'
 
-Add-Unavailable 'check-transmission' 'its subject transmission.sh is an sh adapter with no PowerShell half; CI-07 class C'
+Add-Unavailable 'check-transmission' 'an sh harness over bit-check adapter transmission, which is Linux-only; CI-07 class C'
 
 
 # ⚠ Its reason is `check-release-route`'s exactly: the resolver is
-# `bit-check resolve-source` since 2026-10-15, and the harness and the adapters
-# it reads are still `sh`.
-Add-Unavailable 'check-source-route' 'an sh harness over sh adapters; the resolver is Go; closes with CI-11'
+# `bit-check resolve-source` since 2026-10-15, and the harness and the stub
+# adapter it reads are still `sh`.
+Add-Unavailable 'check-source-route' 'an sh harness over an sh stub adapter; the resolver is Go; closes with CI-11'
 
 # ⛔ AND A SIXTH REASON, WHICH IS A FACT ABOUT THE PLATFORM RATHER THAN A MISSING
 # TWIN. check-rootless drives every release route under a uid that is not root,

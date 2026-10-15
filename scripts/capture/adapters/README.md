@@ -3,6 +3,26 @@
 One file per target, and the only thing in this repository that knows how a
 particular product is installed, asked its version, started and stopped.
 
+⭐ **The adapters are Go since 2026-10-15, `CI-11`, and this page is still
+their contract.** Each is a `bit-check` command, `bit-check adapter <name>
+<subcommand> [args...]`, in its own file:
+
+| target | adapter |
+| --- | --- |
+| `aria2` | [`../../../tools/check/adapter_aria2.go`](../../../tools/check/adapter_aria2.go) |
+| `aria2-next` | [`../../../tools/check/adapter_aria2-next.go`](../../../tools/check/adapter_aria2-next.go) |
+| `qbittorrent` | [`../../../tools/check/adapter_qbittorrent.go`](../../../tools/check/adapter_qbittorrent.go), with a Windows half registered under the same name |
+| `transmission` | [`../../../tools/check/adapter_transmission.go`](../../../tools/check/adapter_transmission.go) |
+
+The four Linux adapters share their mechanics, and none of their decisions, in
+[`../../../tools/check/adapterkit.go`](../../../tools/check/adapterkit.go). The
+door every caller reaches an adapter through is
+[`../../../tools/check/adapter.go`](../../../tools/check/adapter.go): a
+registered name runs this binary as a child process, and anything else is run
+as `sh <path>`, which is what the harnesses' stub adapters still are. ⛔ This
+directory keeps no adapter; it keeps the contract, which did not change when
+the language did.
+
 ⛔ **An adapter is the seam and never the boundary.** The guards that decide
 whether a capture may happen at all live in
 `bit-check assert-disposable`, in [`../../../tools/check/assertdisposable.go`](../../../tools/check/assertdisposable.go),
@@ -161,7 +181,7 @@ short-lived token, for a loopback port, on a host about to be destroyed, is a
 weak secret and rule 12 does not grade them.
 
 ⭐ **So an adapter that must persist a secret deletes it in `stop`, before
-anything packs the directory** - and writes it under `umask 077` in the
+anything packs the directory** - and writes it at mode `0600` in the
 meantime. An adapter that needs no secret should not invent one.
 
 ⛔ **AND `capture-client` REFUSES THE RUN IF ONE IS STILL THERE, since
@@ -210,7 +230,7 @@ once does not see.** `aria2-next` 3.0.0 added `ed2k-port-mapping`, UPnP for its
 ED2K ports, which 3.0.2 has on by default, and 3.0.2 no longer reports
 `enable-dht6`. The
 read-back refused the first 3.0.2 capture over the missing key, and the options
-dump that came back named the new switch. ⭐ So `aria2-next.sh` holds every
+dump that came back named the new switch. ⭐ So `adapter_aria2-next.go` holds every
 switch of the four families its build reports to `false`, named in the file or
 not, beside the list it passes. `CLIENT-14` in
 [`../../../TODO/clients.md`](../../../TODO/clients.md) carries the measurement.

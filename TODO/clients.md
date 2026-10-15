@@ -142,7 +142,7 @@ any host this project may capture on, so every run of it so far was driven by
 
 ### The adapter, written 2026-09-08
 
-[`qbittorrent.sh`](../scripts/capture/adapters/qbittorrent.sh) is the highest
+`qbittorrent.sh` is the highest
 priority target and not the simplest one. `qbittorrent-nox` keeps a profile
 directory, asks once for a legal notice, and reads its switches out of an INI
 file, so the adapter writes the whole profile rather than patching whatever is
@@ -476,7 +476,7 @@ publishes a profile supported by the Rust observer plus packet decoding.
 
 ### The adapter, written 2026-09-08
 
-⭐ [`aria2.sh`](../scripts/capture/adapters/aria2.sh) is the simplest target in
+⭐ `aria2.sh` is the simplest target in
 the matrix. `aria2c` takes every setting on its command line, needs no daemon,
 no profile directory and no interactive acceptance, and prints its version to
 stdout, so nothing about one run of it depends on state a previous run left
@@ -696,7 +696,7 @@ raw observations and labels source expectations only as non-authoritative notes.
 
 ### The adapter, written 2026-09-08
 
-⭐ [`transmission.sh`](../scripts/capture/adapters/transmission.sh) drives the
+⭐ `transmission.sh` drives the
 daemon through `transmission-remote`, which is the supported unattended path
 since `transmission-cli` was removed upstream. Its whole settings file is
 written, and the torrent is added by the tool the product ships for that.
@@ -1210,7 +1210,7 @@ refuted by a plant that leaves one on.
 
 ### ⭐ Both 4.1.3 routes build without root, driven as an unprivileged user. 2026-10-14
 
-[`transmission.sh`](../scripts/capture/adapters/transmission.sh) now builds
+`transmission.sh` now builds
 both halves of the pair the section above found:
 
 - **release** fetches `transmission-4.1.3.tar.xz` through `install-rootless.sh`,
@@ -2052,7 +2052,7 @@ passed that build.
 
 | where | what changed |
 | --- | --- |
-| [`aria2-next.sh`](../scripts/capture/adapters/aria2-next.sh) `start` | passes `--ed2k-port-mapping=false`; the named list is every discovery switch the file passes, so `enable-dht6` left it and `ed2k-port-mapping` joined it |
+| `aria2-next.sh` `start` | passes `--ed2k-port-mapping=false`; the named list is every discovery switch the file passes, so `enable-dht6` left it and `ed2k-port-mapping` joined it |
 | the same | every KEY the build reports in the DHT, port-mapping, local-discovery or peer-exchange families must read exactly `false`, named in the file or not; a value the parse cannot read refuses |
 | the same | every option the build reports as `true` must be one of thirteen read off 3.0.2's dump and judged harmless, so a new default reported as `true` refuses whatever it is called; a surface turned on by another value, a port or `auto`, is not caught |
 | the same | `--bt-require-crypto=false` is gone: 3.0.2 maps it onto `bt-encryption` and only a value other than `false` sets anything, so it set nothing. The stock `bt-encryption` is `preferred`, under which libtorrent prefers an encrypted handshake on the connections it opens; the observer has an MSE surface, and what the next capture sees is the measurement |
