@@ -5,6 +5,19 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-15T01:00:10Z
+
+- ⭐ **THE FIRST PUBLICATION.** `capture-client` run 38's `aria2-next` 3.0.3
+  pair is on the `data` branch: 30 objects, read back by the publisher and
+  verified again from a fresh clone with `sha256sum -c` and `validate-corpus`.
+- ⚠ The operator settled four questions, recorded in `TODO/PROGRESS.md`:
+  - publish now;
+  - rewrite the dispatch assembly in Go;
+  - contain Windows captures with firewall rules;
+  - keep the operator as the commit author.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-09`. No version bump; the data branch
+  is the deployment.
+
 ### 2026-10-14T22:07:27Z
 
 - ⛔ **The second connector wrote carriage returns on Windows.** Its report and

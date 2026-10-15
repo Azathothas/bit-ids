@@ -4204,6 +4204,19 @@ pushed*. The `data` branch still does not exist.
 by dispatching `publish-data.yml` on run 38574255232 with `dry_run` false, is
 the operator's call. Every other step of this entry's path has run.
 
+### ⭐ THE FIRST PUBLICATION. 2026-10-15
+
+The operator settled it on 2026-10-15, and `publish-data` run 38663060205
+appended `assemble-bundle` run 38574255232 to `data` with `dry_run` false:
+*appended to data: 30 object(s), read back and verified*. The branch is at
+`99dcb486`, one commit. ⭐ Read back from outside the publisher: a fresh clone
+of `data` holds 30 files, `sha256sum -c` agrees with every row of its
+`SHA256SUMS`, and `validate-corpus` over the exported tree reads *valid store:
+2 record(s), 2 run(s), 30 object(s); 2 of 2 record(s) may enter a published
+view*. Those are `capture-client` run 38's `aria2-next` 3.0.3 records, one per
+route. ⚠ Every later publication appends to this one, and `check-store` is
+what refuses one that would not.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05

@@ -57,7 +57,7 @@ were written by hand from published BEPs.
 | whose identity does `aria2-next` present? | qBittorrent 5.2.3's: user agent `qBittorrent/5.2.3`, peer ID prefix `-qB5230-`, corroborated by the `cpython-stdlib` connector. `CLIENT-14`. |
 | does a client install finish on a runner? | ⭐ **yes, and it always did.** The "hang" of runs 3 to 34 was *Cut the route* severing the runner agent from GitHub, measured on 2026-10-11 by a flight recorder posting off the host. The capture now runs in a network namespace; both `aria2-next` routes then completed, release in 1.5 minutes and source in 12.5, and 3.0.2's source build installed in 694 seconds on 2026-10-14. `CI-08`, `CI-09`. |
 | how many connectors does the capture path declare? | two: the Rust observer and `scripts/capture/connectors/cpython-stdlib.py`. ⚠ The second is two readings of one capture's bytes, not a second observation of the wire. ⭐ Every sample of a field is corroborated, not the first, since 2026-10-14. `OBS-07`, `CI-09`. |
-| has the publisher run against this repository's remote? | as a dry run only: `publish-data` run 38574390252 verified `assemble-bundle` run 38574255232's 30-object bundle and pushed nothing. ⛔ The first append to `data` is the operator's call: dispatch it on that run with `dry_run` false. `CI-09`. |
+| has the publisher run against this repository's remote? | ⭐ yes: `publish-data` run 38663060205 appended `assemble-bundle` run 38574255232 to `data` on 2026-10-15, 30 objects read back and verified, and a fresh clone passes `sha256sum -c` and `validate-corpus`. `CI-09`. |
 | has a published URL been fetched? | no. `docs/publishing.md` carries the forms and says they are unexercised. |
 | does anything schedule the staleness monitor? | no. `CI-02` built the comparison; no capture request has been opened. |
 
@@ -140,6 +140,10 @@ Do not re-raise one.
 | what happens to a first measured record | it publishes automatically once the capture is green. No manual gate. |
 | how a two-runner dispatch fits `E-MAN-03`'s phase order | a workflow barrier: every lane's capture waits until every route has installed, so a record's phases are true as written. Settled by the operator on 2026-10-14. `CI-09`. |
 | which host a run manifest describes when each route installs on its own runner | the watched host; the other route contributes its acquisition and evidence from its own artifacts, with no schema change. Settled by the operator on 2026-10-14. `CI-09`. |
+| whether to append capture run 38's `aria2-next` 3.0.3 bundle to `data` | yes, now. Settled by the operator on 2026-10-15. `CI-09`. |
+| how `check-assemble`'s dispatch rows reach the Windows lane | `assemble-dispatch.sh` is rewritten in Go, so nothing on that path is shell, and `check-assemble` ports whole. Settled by the operator on 2026-10-15. `CI-07`. |
+| how `capture.yml`'s Windows job is contained | firewall rules blocking outbound traffic for the capture's own executables, with the egress guard reading those rules, in place of cutting the host's route. Settled by the operator on 2026-10-15. `CI-08`. |
+| who authors a commit | the operator, `Azathothas`, per `AGENTS.md` rule 11, whatever a host's hook asks. Settled by the operator on 2026-10-15. |
 | whether to take `rusqlite` 0.40.2 | no, settled by the operator on 2026-09-16. It resolves thirteen further packages for the same API. `.github/dependabot.yml` ignores every `rusqlite` version from 0.38, and dependabot closed pull request 2 itself on 2026-09-29 after reading it. |
 
 ⛔ **A capture host was never a blocker.** A hosted runner is a fresh virtual
