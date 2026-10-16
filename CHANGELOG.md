@@ -5,6 +5,12 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-16T05:05:00Z
+
+- **`CI-09` is closed**: the capture-to-publisher path has run end to end, from
+  a dry run to six verified publications.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-09`. No version bump and no deploy.
+
 ### 2026-10-16T04:45:00Z
 
 - ⭐ **`OBS-10` is closed**: the Linux and Windows gates normalize one published

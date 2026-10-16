@@ -1,17 +1,17 @@
 # Work index
 
 Total: 67
-Open: 21
+Open: 20
 In progress: 0
 Blocked: 0
-Done: 46
+Done: 47
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 25 | 25 |
-| P1 | 21 | 0 | 0 | 20 | 41 |
+| P1 | 20 | 0 | 0 | 21 | 41 |
 | P2 | 0 | 0 | 0 | 1 | 1 |
-| Total | 21 | 0 | 0 | 46 | 67 |
+| Total | 20 | 0 | 0 | 47 | 67 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -77,7 +77,7 @@ Done: 46
 | CI-06 | P1 | L | DONE | The first dispatched capture run |
 | CI-07 | P1 | L | OPEN | PowerShell halves for the declared gate rows |
 | CI-08 | P1 | L | OPEN | Runner-default drift, swept rather than waited for |
-| CI-09 | P1 | L | OPEN | The capture-to-publisher path, end to end |
+| CI-09 | P1 | L | DONE | The capture-to-publisher path, end to end |
 | CI-10 | P1 | XL | DONE | Every checking script in Go, and CI across multiple runners |
 | CI-11 | P1 | XL | OPEN | The capture path in Go, so a client capture runs on Windows |
 | DOC-01 | P1 | M | DONE | Public data and library documentation |

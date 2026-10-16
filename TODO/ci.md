@@ -3418,7 +3418,7 @@ containment half is closed on both platforms.**
 ## CI-09: The capture-to-publisher path, end to end
 
 Source: two workflows that have each never run, joined by an artifact
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: The capture workflow uploads with `actions/upload-artifact` v7 and the
 publisher downloads with `actions/download-artifact` v8. Neither has run, so the
@@ -4435,6 +4435,22 @@ clean, `validate-corpus` *valid store: 2 record(s), 2 run(s), 31 object(s); 2 of
 its edge before this entry's cases joined it. The other three shards finished in
 12 to 18 minutes. The bound stays at 20, and the work is spread over five
 shards. `check-shards` still proves the partition, 14 of 14.
+
+### ⭐ Closed: every clause of the Prove has run. 2026-10-16
+
+- **The dry run against a real capture artifact:** `publish-data` run
+  38574390252, the publisher's first, completed with the bundle `assemble-bundle`
+  run 38574255232 made from `capture-client` run 38.
+- **`sha256sum -c` on the downloaded bundle:** it passed there, and on every
+  publication since. The latest are publish-data runs 38841340795 and
+  38841951112 on 2026-10-16, which appended to `data` and verified by reading
+  back.
+- **The dispatch-only trigger and the `dry_run` default:** check-workflow
+  asserts both, in 153 of 153 on `2564f16` and in CI run 38849622597.
+
+The path the Problem names, the capture artifact through to the publisher,
+has carried every record on `data`: 14 records on Linux and Windows, at
+`4221e28`.
 
 ## CI-05: Acceptance commands that cannot pass over nothing
 

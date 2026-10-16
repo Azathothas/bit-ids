@@ -2,10 +2,10 @@
 
 State instant: 2026-10-14
 Total: 67
-Open: 21
+Open: 20
 In progress: 0
 Blocked: 0
-Done: 46
+Done: 47
 
 ⚠ Those five counts are compared against [`INDEX.md`](INDEX.md) by
 `check-project` on every gate. Nothing else in this header is checked, so no
