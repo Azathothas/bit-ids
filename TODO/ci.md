@@ -6281,3 +6281,16 @@ path, which the store never rewrites. `capture-client.yml`'s Linux job now
 runs only when `adapters` names something, as the Windows job does for
 `windows_adapters`, so a dispatch can carry the Windows lanes alone.
 
+### ⛔ A harness's pinned case count went stale, and CI said so. 2026-10-15
+
+CI run 38820880442 on `0d50262` was red. `check-bitcheck` pins
+`check-assemble` at 69 cases, and the package-lane case made it 70, so the
+Linux gate and every *Checking harnesses* control refused the clean tree. The
+pins are now 70. ⚠ The local gate DID catch it: its first run on that tree
+failed `check-bitcheck` beside `check-markers`. Only the marker was read and
+fixed, and the second failure was taken for the same one. The second run
+passed, so the pin did not refuse locally on that run, and why is still open.
+A red row is now read on its own before any rerun.
+⚠ `6415736` was pushed before its check-workflow result was read, and that
+result was this same failure.
+

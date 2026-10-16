@@ -927,13 +927,13 @@ func (b *bitcheck) connector() {
 // says is destroyed, which only the self-hosted case may notice; one rewords the
 // refusal an `acquired` that is neither value is given.
 func (b *bitcheck) assemble() {
-	b.harnessCases("assemble", "check-assemble", 69, "crates/bit-ids-probe/examples/assemble-capture.rs", "assemble.orig", []harnessPlant{
+	b.harnessCases("assemble", "check-assemble", 70, "crates/bit-ids-probe/examples/assemble-capture.rs", "assemble.orig", []harnessPlant{
 		{"assemble a self-hosted runner taken as disposable",
 			[][2]string{swap(`if environment != "github-hosted" {`, `if false && environment != "github-hosted" {`)},
-			`{"schema":"check-assemble/1","total":69,"passed":68,"failed":1}`},
+			`{"schema":"check-assemble/1","total":70,"passed":69,"failed":1}`},
 		{"assemble an unknown acquired value refused under other words",
 			[][2]string{swap(`which is neither yes nor no",`, `which is neither yes or no",`)},
-			`{"schema":"check-assemble/1","total":69,"passed":68,"failed":1}`},
+			`{"schema":"check-assemble/1","total":70,"passed":69,"failed":1}`},
 	})
 }
 
