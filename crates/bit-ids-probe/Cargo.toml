@@ -13,3 +13,9 @@ workspace = true
 bit-ids = { path = "../bit-ids" }
 bit-ids-lab = { path = "../bit-ids-lab" }
 bit-ids-wire = { path = "../bit-ids-wire" }
+
+# ⚠ Tests only, and no new package: `bit-ids` already depends on `serde_json`.
+# `OBS-10`'s digest covers each field as a record serializes it, which needs the
+# serializer the record is written with rather than a second spelling of it.
+[dev-dependencies]
+serde_json = "1.0.151"

@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-16T03:00:57Z
+
+- **The observer's normalization is checked across platforms.** A new test,
+  `cross_platform_events`, normalizes the transcripts of one published
+  qBittorrent 5.2.4 Windows capture and checks the result against one committed
+  digest. The Linux and Windows CI gates each run it as a named step.
+- The normalization moved from the `assemble-capture` example into the
+  `bit-ids-probe` library, unchanged, so the test runs the code that records
+  are written with.
+- ⚠ Proved on Linux only so far. `OBS-10` stays open until a Windows CI run
+  shows the step green.
+- Record: [`TODO/observer.md`](TODO/observer.md) `OBS-10`. No version bump and
+  no deploy.
+
 ### 2026-10-16T02:50:00Z
 
 - ⭐ **Windows profiles are published** for qBittorrent 5.2.4, Transmission

@@ -98,6 +98,11 @@ jobs:
         run: cargo check --workspace --locked --all-targets
       - name: Rust tests
         run: cargo test --workspace --locked --all-targets
+      # ⭐ `OBS-10`'s acceptance, named on both lanes. *Rust tests* already runs
+      # it; this step is the line a reader of either log finds it on, and both
+      # lanes hold one captured run's bytes to the same committed digest.
+      - name: Cross-platform normalized events
+        run: cargo test --workspace --locked --test cross_platform_events
       - name: Rust lints
         run: cargo clippy --workspace --locked --all-targets -- -D warnings
       # ⭐ THE GO MODULE GETS WHAT THE RUST WORKSPACE GETS, `CI-10`. Nothing ran
@@ -273,6 +278,9 @@ jobs:
       - name: Rust tests
         shell: pwsh
         run: cargo test --workspace --locked --all-targets
+      - name: Cross-platform normalized events
+        shell: pwsh
+        run: cargo test --workspace --locked --test cross_platform_events
       - name: Rust lints
         shell: pwsh
         run: cargo clippy --workspace --locked --all-targets -- -D warnings

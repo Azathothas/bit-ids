@@ -30,6 +30,7 @@ dependencies = [
  "bit-ids",
  "bit-ids-lab",
  "bit-ids-wire",
+ "serde_json",
 ]
 
 [[package]]

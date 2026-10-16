@@ -24,6 +24,7 @@
 pub mod dht;
 pub mod local_discovery;
 pub mod mse;
+pub mod normalize;
 pub mod peer_exchange;
 pub mod peer_wire;
 pub mod tracker_http;

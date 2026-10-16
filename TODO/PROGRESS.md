@@ -46,7 +46,10 @@ schema fixtures under
 [`../crates/bit-ids/tests/fixtures/`](../crates/bit-ids/tests/fixtures/)
 describe a target that does not exist, and the wire fixtures under
 [`../crates/bit-ids-wire/tests/fixtures/`](../crates/bit-ids-wire/tests/fixtures/)
-were written by hand from published BEPs.
+were written by hand from published BEPs. ⚠ The one exception is
+[`../crates/bit-ids-probe/tests/fixtures/cross-platform-events/`](../crates/bit-ids-probe/tests/fixtures/cross-platform-events/),
+two transcripts copied unmodified from a published capture's raw evidence for
+`OBS-10`. They are test input, not records.
 
 | question | answer, with where the evidence is |
 | --- | --- |
@@ -129,7 +132,10 @@ still open is a host that never reached it.
 3. **`CI-11`**: the capture path in Go, leaves first, then a Windows lane of
    `capture-client.yml` capturing qBittorrent. Every client entry's
    two-platform Prove, and `OBS-10`, wait on it.
-4. **`OBS-10`**, which needs a Windows client capture, so it follows `CI-11`.
+4. **`OBS-10`**: built on 2026-10-16. One published qBittorrent 5.2.4 Windows
+   capture's transcripts normalize to a committed digest on Linux, and `ci.yml`
+   runs the same test on both gates. It closes when a `CI` run shows that step
+   green on the Windows job.
 5. **`CI-07`**: its Approach and Prove were rewritten on 2026-10-14 to the route
    `CI-10` made. `check-corpus`, `check-indexes`, `check-release`,
    `check-formats` and `check-staleness` are ported and run on both lanes;
@@ -234,3 +240,6 @@ Choices made while working unattended under the operator's standing rule, each f
 | the Windows release route with no resolution is could-not-run | the adapter declares the vendor's checksums document and no reason to install without one, which is the Linux half's standalone behaviour | `adapter_aria2-next_windows.go` |
 | the Windows version reading also requires `aria2` on the first line and a version-shaped field after `version` | a usage text or an error message is then refused rather than recorded, as Transmission's Windows half refuses one | `a2nwindows.go`, `CLIENT-14` |
 | whether `CLIENT-01` and `CLIENT-06` close now that agreeing Linux and Windows profiles are published | left OPEN: the Prove says "a run", and the two platforms were published from two runs at one version, because the store never rewrites the Linux records. The operator decides. 2026-10-16. | `CLIENT-01`, `CLIENT-06` |
+| `OBS-10`'s "one client build" is one captured run's recorded bytes, fed to the observer as compiled on each platform | a client build cannot be byte-identical across operating systems, and comparing two platforms' own captures would mix the clients' platform differences into a test of the observer. Holding the bytes fixed makes a difference the observer's. The fixtures are qBittorrent 5.2.4's Windows `package` transcripts from `data` at `4221e28`. Reversed by replacing the fixtures and the constant. 2026-10-16. | `cross_platform_events.rs`, `OBS-10` |
+| the normalization moved out of the `assemble-capture` example into `bit_ids_probe::normalize`, unchanged, and the example calls it | a test cannot call an example's functions, and a copy in the test would prove the copy. The four fields it gives for the fixtures equal the published record's | `normalize.rs`, `assemble-capture.rs`, `OBS-10` |
+| `OBS-10` stays OPEN rather than DONE | its Prove names a Windows run, and this host is Linux. It closes on a `CI` run whose Windows job shows the step green | `OBS-10` |

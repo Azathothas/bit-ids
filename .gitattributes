@@ -82,6 +82,12 @@
 *.webm          binary
 *.mp3           binary
 
+# Bytes copied out of a published capture, which `OBS-10`'s test digests on
+# Linux and on Windows against one committed constant. A checkout that
+# translated a line ending would hand the two compilations different input, so
+# no translation is applied here whatever the extension says.
+crates/bit-ids-probe/tests/fixtures/cross-platform-events/** -text
+
 # Generated and noisy in a diff. Collapsed in review, still tracked.
 *.lock          linguist-generated=true
 package-lock.json   linguist-generated=true

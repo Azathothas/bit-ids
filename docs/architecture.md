@@ -763,6 +763,14 @@ recorded exchange differ in bytes for no measurement.
 that looks like one. The codec returns nothing for that case and
 `opens_with_protocol_id` is the reader for those bytes.
 
+⭐ **What a capture's transcripts normalize to is one library body.**
+[`normalize`](../crates/bit-ids-probe/src/normalize.rs) turns the tracker and
+dialled-peer transcripts into a record's observed fields, every sample each
+rests on, and the sampling plan they show. It is pure over text a caller has
+read: no file, clock, locale or path. `assemble-capture` writes records with it,
+and `OBS-10`'s `cross_platform_events` test holds one published capture's
+transcripts to one committed digest on the Linux and Windows CI gates.
+
 ## 6. Connector contract
 
 The primary connector is the project-owned Rust active observer. It terminates

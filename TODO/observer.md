@@ -423,29 +423,96 @@ identical normalized events on Linux and Windows. That is the half of it that
 catches a platform difference in the observer, and what it needs is a client
 adapter.
 
-Premise: The blocker is named rather than assumed, and it is now **one** thing
-rather than two. `TODO/INDEX.md` carries `CLIENT-01` through `CLIENT-13` all
-open, so no adapter can be driven. ⭐ **The Windows half is no longer missing:**
-`CI-06` dispatched the capture workflow and its Windows job ran green end to
-end - the guard read the real `Get-NetRoute`, the route came off the host and
-went back, and the evidence bundle verified under `Get-FileHash` and then under
-`sha256sum -c` here. What that job captured is a fixture, which is exactly what
-this entry needs replaced by a client.
+Premise: A difference between the two compilations is a finding about the
+observer only when both were handed the same bytes. So the input is held fixed
+and the observer is the variable: one captured client run's recorded
+transcripts, normalized by the Linux build and by the Windows build of the code
+a record is written with.
 
-Approach: Once `OBS-02` through `OBS-05` and one client adapter exist, run the
-same lab and the same client build on both platforms, normalize the event
-stream to the declared identity fields, and compare. A difference is a finding
-about the observer until the same bytes are shown to differ, because the client
-is one build and the observer is two compilations.
+Approach: Commit the tracker and dialled-peer transcripts of one published
+capture as test fixtures, run them through
+[`bit_ids_probe::normalize`](../crates/bit-ids-probe/src/normalize.rs), take a
+SHA-256 over a canonical text of the fields and every sample they rest on, and
+assert it equals a constant committed in the test. Each lane checks the constant
+on its own, so neither compares against the other's output.
+
+Decision: "one client build" is one capture's recorded bytes, not one binary.
+A client build cannot be byte-identical across operating systems, and a
+comparison of two platforms' own captures would measure the clients' platform
+differences as well as the observer's. Decided unattended on 2026-10-16;
+[`PROGRESS.md`](PROGRESS.md) carries it.
 
 Prove: a matrix job runs `cargo test --workspace --locked --test cross_platform_events`
 on Linux and Windows and both produce the same normalized event digest for one
 client build.
 
-Blocked by: `OBS-02` through `OBS-05`, one of `CLIENT-01` through `CLIENT-13`,
-and `CI-03` for the Windows guard pair. Status stays OPEN rather than BLOCKED
-because nothing external prevents progress; the dependencies are this
-repository's own open work.
+### Built and proved on Linux; the Windows lane is what is left, 2026-10-16
+
+⭐ **The normalization is a library body now.** It lived inside the
+`assemble-capture` example, which a test cannot call, so it moved unchanged
+into `bit-ids-probe`'s `normalize` module and the example calls it. A test of a
+copy would prove the copy.
+
+⭐ **The fixtures are measurements, copied unmodified** from `data` at
+`4221e28b71c9`, its tip on 2026-10-16 (the files were appended in
+`477ade686836`), out of
+`raw/v1/qbittorrent/5.2.4/windows/x86-64/nsis-installer/cap-package/package/`:
+
+| file | bytes | sha256 |
+| --- | ---: | --- |
+| `tracker-http.transcript.json` | 7181 | `sha256:a13f7ec49a9efa6cbc7db2db9fccbc324aba62bed5224158f9803efd8b013fb4` |
+| `peer-wire-dialled.transcript.json` | 6910 | `sha256:0067f74d475321e5b05310cfd86bc2d27aff3f3971095e1e8ca318523330ed3c` |
+
+They are the evidence the published record
+`profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-installer/cap-package.json`
+cites, by those digests. ⚠ Read against rule 12 before committing: every address
+is on loopback, the info hash is the lab's synthetic torrent's, and the rest is
+what the build sent. Three sessions of two announces and two peer connections
+each: four fields, six samples each.
+
+⛔ **The four fields the test normalizes are the published record's
+`observations`, byte for byte**, compared as JSON on 2026-10-16. So the digest is
+over what a record says, not over a shape this test invented.
+
+The digest is `sha256:e3e98c6647b1e35b7b0e55ad10c7fad9146b3390d4677acec5af0461dbb09038`.
+
+| what could reach the digest | why it does not |
+| --- | --- |
+| a line ending | `.gitattributes` marks the fixture directory `-text`, and a case checks each file's length and digest against the record's, so a translated checkout fails as a line-ending defect rather than as a digest that moved |
+| a path separator | the fixtures are compiled in with `include_str!`, so no path is composed at run time |
+| the clock or the locale | nothing reads either; the offsets are the run's own, and the canonical text is decimal integers, lowercase hex and `serde_json`'s output |
+| a per-run hash seed | everything keyed is a `BTreeMap`; a case normalizes twice in one process and compares |
+
+⛔ **A control case changes one hex digit** of the first announce's peer ID and
+asserts the digest differs, because a digest that ignored its input would match
+any constant it was once given.
+
+`ci.yml` runs the command as its own step, *Cross-platform normalized events*,
+on the Linux gate and the Windows gate; *Rust tests* already ran the target.
+
+Closure evidence on this host, 2026-10-16:
+`cargo test --workspace --locked --test cross_platform_events` reports 4 passed,
+0 failed, exit 0. `cargo fmt --all -- --check` and
+`cargo clippy --workspace --all-targets --locked -- -D warnings` exit 0, and
+`sh scripts/common/check-gate.sh` ends 41 passed, 0 failed, 1 skipped.
+`bit-check check-assemble` reports 70 of 70 over the example that now calls the
+library, so the move changed no record the assembler writes.
+
+Guard mutation, each plant verified by its SHA-256 to have changed the file and
+restored the same way, exit codes read unpiped:
+
+| plant | verdict |
+| --- | --- |
+| a second `event=started` no longer opens a session | ⭐ refused by the digest case |
+| the peer transcript checked out with CRLF line endings | ⭐ refused by all four cases, the fixture case naming the carriage return |
+
+⚠ **What a runner must still show, and why the status stays OPEN.** This host
+is Linux, so half of the Prove is met. The entry closes when a `CI` run on a
+commit carrying this change shows *Cross-platform normalized events* green on
+the `windows-2025` job, which is that compilation matching the same constant,
+and green on the Linux job. A red Windows step with the fixture case green is
+a platform difference in the observer, which is this entry's finding to record
+rather than a constant to move.
 
 ## OBS-02: HTTP tracker observer
 
