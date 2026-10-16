@@ -3415,6 +3415,34 @@ are enforced.
 The host kept its route throughout and the evidence uploaded. ⭐ **`CI-08`'s
 containment half is closed on both platforms.**
 
+### ⛔ The hostile-environment pass found `COLUMNS`, and it is now a rule. 2026-10-16
+
+The Prove's driven pass ran the gate on `cc787d8` with four variables set:
+
+- `LANG=tr_TR.UTF-8` and `LC_ALL=tr_TR.UTF-8` (not installed on this host,
+  so this exercises the fallback);
+- `COLUMNS=20`;
+- `CARGO_TARGET_DIR` moved;
+- `TMPDIR` moved.
+
+It gave **40 of 42, one failed**, where the plain gate gives 41 of 42. The
+failing row was `check-step-bodies`: *the leaked group is gone and
+orphans.log does not name it*. Rerunning that harness with one variable at a
+time put it all on `COLUMNS=20`:
+
+- **Cause:** `ps` cuts every line to `$COLUMNS`, piped or not, so the install
+  step's process listings carried twenty-character stumps.
+- **Fix:** every `ps` in `tools/check` and in the tracked shell scripts now
+  asks for `-ww`, four in Go and two in shell.
+- **Rule:** `check-project` refuses a `ps` without `-ww`, and `check-bitcheck`
+  plants a refused and an accepted case (245 of 245). Stripping `-ww` from
+  `installstep_unix.go` is refused by the rule.
+- **Result:** the same hostile pass now gives 41 of 42 with the one expected
+  skip, the plain gate's verdict.
+
+⚠ **Still OPEN.** The driven pass now holds. A rule per stated default, as the
+Approach enumerates them, has not been audited in this pass.
+
 ## CI-09: The capture-to-publisher path, end to end
 
 Source: two workflows that have each never run, joined by an artifact

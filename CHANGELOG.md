@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-16T07:40:00Z
+
+- **A narrow console no longer changes the gate's verdict**: every `ps` asks
+  for whole lines, and `check-project` refuses one that does not. The gate
+  under a moved locale, `COLUMNS=20`, a moved `CARGO_TARGET_DIR` and a moved
+  `TMPDIR` now matches the plain gate.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-08`. No version bump and no deploy.
+
 ### 2026-10-16T07:05:00Z
 
 - ⭐ **`CI-11` is closed**: the client capture path is Go on both platforms. One

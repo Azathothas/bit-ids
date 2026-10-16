@@ -547,7 +547,7 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   # command line that merely CONTAINS the text - a shell whose script quotes it
   # included - and whose `pkill` twin then kills that shell. Measured on the
   # session host on 2026-10-14, where it ended the shell running this harness.
-  _left=$(ps -eo pid=,args= 2>/dev/null |
+  _left=$(ps -ww -eo pid=,args= 2>/dev/null |
     awk '{ $1 = $1 } / sleep 7123$/ && ($2 " " $3 == "sleep 7123" || $2 " " $3 " " $4 " " $5 == "timeout 600 sleep 7123") { print $1 }')
   if [ -n "$_left" ]; then
     fail "sh       the leaked group is still running after the step"

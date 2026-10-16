@@ -38,7 +38,7 @@ func (c *container) terminate(int) { syscall.Kill(c.sid, syscall.SIGTERM) }
 // sessionMembers lists the processes in the container's session, as `ps`
 // printed them, one line each.
 func (c *container) sessionMembers(seconds int) ([]string, []int) {
-	out, ok := boundedOutput(seconds, "ps", "-eo", "pid=,sid=,args=")
+	out, ok := boundedOutput(seconds, "ps", "-ww", "-eo", "pid=,sid=,args=")
 	if !ok {
 		return nil, nil
 	}
@@ -79,7 +79,7 @@ func (c *container) sweep(seconds int) (int, string) {
 }
 
 func processTable(seconds int) (string, bool) {
-	return boundedOutput(seconds, "ps", "-eo", "pid,ppid,pgid,stat,etimes,comm,args")
+	return boundedOutput(seconds, "ps", "-ww", "-eo", "pid,ppid,pgid,stat,etimes,comm,args")
 }
 
 func signalCode(ee *exec.ExitError) int {

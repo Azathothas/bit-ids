@@ -394,7 +394,7 @@ func (r *recorder) snapshot(elapsed int64) []byte {
 	// ⚠ D is uninterruptible sleep and Z a zombie: the two states a signal
 	// cannot end, so the two a bound cannot end either.
 	fmt.Fprintf(&w, "\n### blocked or zombie tasks\n")
-	ps, rc := r.bounded(5, "ps.out", "ps", "-eo", "pid,ppid,pgid,stat,wchan:32,etimes,comm")
+	ps, rc := r.bounded(5, "ps.out", "ps", "-ww", "-eo", "pid,ppid,pgid,stat,wchan:32,etimes,comm")
 	if rc != 0 {
 		fmt.Fprintf(&w, "(ps exit %d)\n", rc)
 	}
@@ -417,7 +417,7 @@ func (r *recorder) snapshot(elapsed int64) []byte {
 	for _, pid := range blocked {
 		r.section(&w, "kernel stack of "+pid, 5, "sudo", "-n", "cat", "/proc/"+pid+"/stack")
 	}
-	r.section(&w, "the newest 40 tasks", 5, "sh", "-c", "ps -eo pid,ppid,pgid,stat,wchan:32,etimes,comm --sort=etimes | head -41")
+	r.section(&w, "the newest 40 tasks", 5, "sh", "-c", "ps -ww -eo pid,ppid,pgid,stat,wchan:32,etimes,comm --sort=etimes | head -41")
 	r.section(&w, "kernel ring buffer", 5, "sudo", "-n", "dmesg", "--ctime")
 	for _, pattern := range []string{"install-step.log", "install-*/step.log", "install-*/watchdog.log", "install-*/install.log"} {
 		matches, _ := filepath.Glob(filepath.Join(r.logDir, pattern))

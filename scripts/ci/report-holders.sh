@@ -73,7 +73,7 @@ done
 # question. `etimes` is how long it has been alive, which separates something
 # this step started from something the image did.
 printf '## the process table\n'
-if ps -eo pid,ppid,pgid,stat,etimes,comm,args 2>/dev/null; then
+if ps -ww -eo pid,ppid,pgid,stat,etimes,comm,args 2>/dev/null; then
   :
 else
   printf 'ps could not be read on this host\n'

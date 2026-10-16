@@ -2483,6 +2483,15 @@ func (b *bitcheck) project() {
 	b.agree("project a cargo test in a script is out of this rule's scope", pc, 0)
 	b.unplantTracked(ps)
 
+	b.write(ps, "set -u\nps -eo pid,args\n")
+	b.plantTracked(ps)
+	b.agree("project a ps a narrow console truncates is refused", pc, 1)
+
+	b.write(ps, "set -u\nps -ww -eo pid,args\n")
+	b.plantTracked(ps)
+	b.agree("project a ps asked for whole lines is accepted", pc, 0)
+	b.unplantTracked(ps)
+
 	b.rewrite("provision.sh.projorig", "scripts/doctor/provision.sh", func(l string) (string, bool) {
 		if rest, ok := strings.CutPrefix(l, "SHFMT_VERSION="); ok {
 			return "SHFMT_PIN_REMOVED=" + rest, true

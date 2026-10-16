@@ -149,6 +149,7 @@ func checkProject(r *repo) (verdict, error) {
 	projectShfmt(f)
 	projectSetU(f)
 	projectTargetDir(f)
+	projectPsWidth(f)
 	projectLockfile(f)
 	projectAcceptance(f)
 	projectGitDependency(f)
@@ -1204,6 +1205,44 @@ func projectTargetDir(f *projectFails) {
 	}
 	if len(hits) > 0 {
 		f.say("a cargo output path is composed without CARGO_TARGET_DIR: " + strings.Join(hits, " "))
+	}
+}
+
+// -- every `ps` is asked for whole lines ----------------------------------------
+//
+// ⛔ `ps` CUTS EVERY LINE TO $COLUMNS, PIPED OR NOT. Measured on 2026-10-16
+// under `COLUMNS=20`, `CI-08`'s narrow-console pass: the install step's
+// orphans.log named twenty-character stumps, and `check-step-bodies` went red
+// on a host whose only difference was its console width. `-ww` asks for
+// unlimited width, so a `ps` in a shell script or in this binary carries it.
+var (
+	projPsShellRe = regexp.MustCompile(`(^|[^A-Za-z0-9_.-])ps -`)
+	projPsGoRe    = regexp.MustCompile(`"ps", "-|"ps -`)
+)
+
+func projectPsWidth(f *projectFails) {
+	var hits []string
+	scan := func(file string, re *regexp.Regexp) {
+		for i, line := range readLines(file) {
+			if strings.HasPrefix(trimBlankLeft(line), "#") || strings.HasPrefix(trimBlankLeft(line), "//") {
+				continue
+			}
+			if re.MatchString(line) && !strings.Contains(line, "-ww") {
+				hits = append(hits, fmt.Sprintf("%s:%d:%s", file, i+1, trimBlankLeft(line)))
+			}
+		}
+	}
+	for _, file := range gitLines("ls-files", "*.sh") {
+		scan(file, projPsShellRe)
+	}
+	for _, file := range gitLines("ls-files", "tools/check/*.go") {
+		// ⚠ Not this file: the rule's own pattern spells what it refuses.
+		if file != "tools/check/project.go" {
+			scan(file, projPsGoRe)
+		}
+	}
+	if len(hits) > 0 {
+		f.say("a ps without -ww, which a narrow console truncates: " + strings.Join(hits, " "))
 	}
 }
 
