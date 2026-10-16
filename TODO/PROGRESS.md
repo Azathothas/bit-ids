@@ -2,10 +2,10 @@
 
 State instant: 2026-10-14
 Total: 67
-Open: 22
+Open: 21
 In progress: 0
 Blocked: 0
-Done: 45
+Done: 46
 
 ⚠ Those five counts are compared against [`INDEX.md`](INDEX.md) by
 `check-project` on every gate. Nothing else in this header is checked, so no
@@ -134,8 +134,8 @@ still open is a host that never reached it.
    two-platform Prove, and `OBS-10`, wait on it.
 4. **`OBS-10`**: built on 2026-10-16. One published qBittorrent 5.2.4 Windows
    capture's transcripts normalize to a committed digest on Linux, and `ci.yml`
-   runs the same test on both gates. It closes when a `CI` run shows that step
-   green on the Windows job.
+   runs the same test on both gates. ⭐ **Closed on 2026-10-16**: CI run
+   38849622597 showed the step green on the Linux and Windows gates.
 5. **`CI-07`**: its Approach and Prove were rewritten on 2026-10-14 to the route
    `CI-10` made. `check-corpus`, `check-indexes`, `check-release`,
    `check-formats` and `check-staleness` are ported and run on both lanes;

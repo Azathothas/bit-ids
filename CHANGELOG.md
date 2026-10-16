@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-16T04:45:00Z
+
+- ⭐ **`OBS-10` is closed**: the Linux and Windows gates normalize one published
+  capture into one digest, CI run 38849622597.
+- Record: [`TODO/observer.md`](TODO/observer.md) `OBS-10`. No version bump and
+  no deploy.
+
 ### 2026-10-16T03:00:57Z
 
 - **The observer's normalization is checked across platforms.** A new test,

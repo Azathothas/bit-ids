@@ -416,7 +416,7 @@ are the candidates.
 ## OBS-10: Cross-platform normalized-event equality
 
 Source: split out of `OBS-01` on 2026-09-04
-Priority: P1 | Effort: M | Status: OPEN
+Priority: P1 | Effort: M | Status: DONE
 
 Problem: The original `OBS-01` Prove asked that a known client fixture produce
 identical normalized events on Linux and Windows. That is the half of it that
@@ -513,6 +513,16 @@ the `windows-2025` job, which is that compilation matching the same constant,
 and green on the Linux job. A red Windows step with the fixture case green is
 a platform difference in the observer, which is this entry's finding to record
 rather than a constant to move.
+
+### ⭐ Closed: both gates produce one digest. 2026-10-16
+
+CI run 38849622597 on `2564f16` ran *Cross-platform normalized events* on the
+Linux gate and on the Windows gate (`windows-2025`). Both passed: the
+observer's normalization, compiled on each platform, turns one published
+qBittorrent 5.2.4 capture's raw transcripts into the committed digest
+`sha256:e3e98c66...b09038`. "One client build" is read as one captured run's
+bytes, because a build cannot be byte-identical across operating systems.
+That reading is recorded in `TODO/PROGRESS.md` under *Decided unattended*.
 
 ## OBS-02: HTTP tracker observer
 

@@ -9,7 +9,7 @@ mapping of its own and the two twins cannot hold different ones.
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | Foundation | `FOUND` | 0 | 0 | 0 | 5 | 5 |
 | Schema | `SCHEMA` | 0 | 0 | 0 | 4 | 4 |
-| Observer | `OBS` | 1 | 0 | 0 | 10 | 11 |
+| Observer | `OBS` | 0 | 0 | 0 | 11 | 11 |
 | Acquisition | `ACQ` | 0 | 0 | 0 | 6 | 6 |
 | Clients | `CLIENT` | 13 | 0 | 0 | 1 | 14 |
 | Engines | `ENGINE` | 3 | 0 | 0 | 0 | 3 |
@@ -18,7 +18,7 @@ mapping of its own and the two twins cannot hold different ones.
 | Publishing | `PUB` | 0 | 0 | 0 | 5 | 5 |
 | CI | `CI` | 5 | 0 | 0 | 6 | 11 |
 | Documentation | `DOC` | 0 | 0 | 0 | 2 | 2 |
-| Total | | 22 | 0 | 0 | 45 | 67 |
+| Total | | 21 | 0 | 0 | 46 | 67 |
 
 Effort inventory: 1 S, 13 M, 51 L, 2 XL. `check-project` derives that line from
 the index and refuses it when they disagree. `CI-10` and `CI-11` are the XL entries; the

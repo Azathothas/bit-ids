@@ -1,17 +1,17 @@
 # Work index
 
 Total: 67
-Open: 22
+Open: 21
 In progress: 0
 Blocked: 0
-Done: 45
+Done: 46
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 25 | 25 |
-| P1 | 22 | 0 | 0 | 19 | 41 |
+| P1 | 21 | 0 | 0 | 20 | 41 |
 | P2 | 0 | 0 | 0 | 1 | 1 |
-| Total | 22 | 0 | 0 | 45 | 67 |
+| Total | 21 | 0 | 0 | 46 | 67 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -33,7 +33,7 @@ Done: 45
 | OBS-07 | P1 | M | DONE | Known-client positive controls |
 | OBS-08 | P0 | M | DONE | Synthetic torrent for the observation lab |
 | OBS-09 | P0 | M | DONE | Raw evidence journal and bundle writer |
-| OBS-10 | P1 | M | OPEN | Cross-platform normalized-event equality |
+| OBS-10 | P1 | M | DONE | Cross-platform normalized-event equality |
 | OBS-11 | P1 | L | DONE | Message stream encryption, DHT and web-seed observers |
 | ACQ-01 | P0 | L | DONE | Acquisition route schema |
 | ACQ-02 | P0 | L | DONE | Latest stable release resolver |
