@@ -6354,3 +6354,18 @@ install bound holds.
 
 ⛔ **Not established off a runner.** No step of the Windows half has run on
 Windows. `CLIENT-14` lists what a dispatch proves, in reading order.
+
+### ⭐ The Windows lane publishes. 2026-10-16
+
+Capture-client runs 38838965380 and 38838967241 on `05d0d21` were green.
+The first carried the Windows lanes of qBittorrent and Transmission; the
+second carried aria2-next 3.0.4 on Linux and Windows. Each was assembled
+and published:
+
+- assemble-bundle 38840840749, then publish-data 38841340795;
+- assemble-bundle 38841851826, then publish-data 38841951112.
+
+`data` is at `4221e28`: 14 records, 151 objects. A fresh clone verifies with
+`sha256sum -c` and `validate-corpus`. With this, the Windows client capture
+lane is proved end to end, from install to publication, for three clients.
+

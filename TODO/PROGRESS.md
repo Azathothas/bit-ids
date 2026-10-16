@@ -114,7 +114,11 @@ still open is a host that never reached it.
    installed and captured, and **published on 2026-10-15**: run
    38705799000's pair is on `data` at `bfeab59`, 6 of 6 records across three
    targets in the published view. Its entry in
-   [`clients.md`](clients.md) carries the drive.
+   [`clients.md`](clients.md) carries the drive. ⭐ **Windows published on 2026-10-16**: qBittorrent
+   5.2.4 and Transmission 4.1.3 on both Windows routes (run 38838965380),
+   and aria2-next 3.0.4 on Linux and Windows from one run (38838967241).
+   `data` is at `4221e28`, 14 of 14 records in the published view, and the
+   Linux and Windows profiles agree on every observed field.
 2. **`CI-08`**: `capture.yml`'s Linux job runs in `contained.sh`, proved on
    `capture` run 38612214714. ⭐ Its Windows job no longer cuts the host's
    route: on 2026-10-15 it blocks the capture's own programs at the firewall,
@@ -229,3 +233,4 @@ Choices made while working unattended under the operator's standing rule, each f
 | Windows `stop` deletes the token on every path, sends `aria2.shutdown`, waits ten seconds, then kills, and writes `stop.txt` | ten seconds is the Linux half's measured grace; Windows has no SIGTERM for a console process in another process group | `adapter_aria2-next_windows.go`, `CLIENT-14` |
 | the Windows release route with no resolution is could-not-run | the adapter declares the vendor's checksums document and no reason to install without one, which is the Linux half's standalone behaviour | `adapter_aria2-next_windows.go` |
 | the Windows version reading also requires `aria2` on the first line and a version-shaped field after `version` | a usage text or an error message is then refused rather than recorded, as Transmission's Windows half refuses one | `a2nwindows.go`, `CLIENT-14` |
+| whether `CLIENT-01` and `CLIENT-06` close now that agreeing Linux and Windows profiles are published | left OPEN: the Prove says "a run", and the two platforms were published from two runs at one version, because the store never rewrites the Linux records. The operator decides. 2026-10-16. | `CLIENT-01`, `CLIENT-06` |

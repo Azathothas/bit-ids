@@ -434,6 +434,30 @@ sha256sum. The Linux pair in the same run captured through the Go adapter.
 `CI-11` names the four gaps it found. A re-capture on the fixed tree and its
 assembly is what moves this Prove.
 
+### ⭐ The Windows pair is published, and agrees with Linux. 2026-10-16
+
+- **Capture:** capture-client run 38838965380 on `05d0d21`, Windows only.
+- **Assembly:** assemble-bundle run 38840840749.
+- **Publish:** publish-data run 38841340795 appended 111 objects to `data`,
+  read back and verified.
+- **Records:** at `windows/x86-64/nsis-payload` (the 7-Zip extraction) and
+  `nsis-installer` (winget), both `publishable` and `build_equivalent` across
+  the routes.
+- **Independent check:** a fresh clone of `data` passes `sha256sum -c` and
+  `validate-corpus`, with 14 of 14 records in the published view.
+
+Published Linux and Windows profiles agree on every observed field (peer-wire
+`peer_id` and `reserved`, tracker `peer_id` and `user_agent`), read from `data`
+at `4221e28`.
+
+⚠ **Left OPEN on purpose, decided unattended.** The Prove reads "a trusted run
+publishes agreeing Linux and Windows profiles". The two platforms' published
+profiles come from two runs: Linux from 38705799000 and Windows from
+38838965380, at one version. The one run that captured all eight lanes,
+38820888070, assembled and agreed but could not be published, because the
+store never rewrites the Linux records already on `data`. Whether two runs
+satisfy the Prove is the operator's call; `TODO/PROGRESS.md` records it.
+
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository
@@ -1555,6 +1579,23 @@ Capture-client run 38794881216 on `469c7e8` is green on all four lanes:
 ⚠ Like qBittorrent's, the Windows pair becomes a record only after a
 re-capture on the tree that closes `CI-11`'s four assembly gaps.
 
+### ⭐ The Windows pair is published, and agrees with Linux. 2026-10-16
+
+- **Capture:** capture-client run 38838965380 on `05d0d21`.
+- **Assembly and publish:** assemble-bundle run 38840840749 and publish-data
+  run 38841340795.
+- **Records:** at `windows/x86-64/msi-payload` (`msiexec /a`) and
+  `msi-installer` (winget with the daemon features), both `publishable` and
+  `build_equivalent`.
+
+Published Linux and Windows profiles agree on every observed field (peer-wire
+`peer_id` and `reserved`, tracker `peer_id` and `user_agent`), read from `data`
+at `4221e28`.
+
+⚠ Left OPEN for the same reason as `CLIENT-01`. The two platforms come from
+two runs, and this Prove also asks that source expectations be labelled as
+non-authoritative notes, which nothing has yet checked.
+
 ## CLIENT-07: Deluge capture adapter
 
 Source: operator scope and upstream project
@@ -2300,3 +2341,17 @@ differs and is reported `true` refuses at `start` by name.
    `client/rpc-token` may ship.
 7. The capture itself: announces from `-qB5230-` with `aria2-next.exe` and
    `bit-check.exe` under the firewall rules.
+### ⭐ 3.0.4 is published on Linux and Windows from one run. 2026-10-16
+
+The vendor released 3.0.4 on 2026-10-15, so no route resolves 3.0.3 any more.
+
+- **Capture:** capture-client run 38838967241 on `05d0d21` captured all four
+  lanes:
+  - Linux release and source;
+  - Windows release (the vendor's executable);
+  - Windows package (Scoop `main/aria2-next`).
+- **Assembly and publish:** assemble-bundle run 38841851826 and publish-data
+  run 38841951112.
+- **On `data` at `4221e28`:** 14 of 14 records valid and admitted to the
+  published view.
+

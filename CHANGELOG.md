@@ -5,6 +5,16 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-16T02:50:00Z
+
+- ⭐ **Windows profiles are published** for qBittorrent 5.2.4, Transmission
+  4.1.3 and aria2-next 3.0.4 (Linux too for aria2-next 3.0.4), each on two
+  routes. `data` holds 14 records, and each client's Linux and Windows profiles
+  agree on every observed field.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-01`, `CLIENT-06` and
+  `CLIENT-14`, and [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no
+  deploy.
+
 ### 2026-10-16T00:55:00Z
 
 - **The Windows firewall proof no longer fails on an HTTP error** from its
