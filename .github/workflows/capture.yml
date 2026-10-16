@@ -232,10 +232,14 @@ jobs:
             exit 1
           }
           try {
-            $null = Invoke-WebRequest -Uri $env:PROBE_URL -UseBasicParsing -TimeoutSec 20
+            # ⚠ ANY HTTP ANSWER IS A REACHED HOST: a 403 or a 404 still came
+            # from the address, and api.github.com rate-limits a shared runner's
+            # unauthenticated calls. capture-client run 38829879023 failed its
+            # control on one. Only a connection that never forms is refused here.
+            $null = Invoke-WebRequest -Uri $env:PROBE_URL -UseBasicParsing -TimeoutSec 20 -SkipHttpErrorCheck
           }
           catch {
-            [Console]::Error.WriteLine('the host itself cannot reach the address, so the refusal proves nothing')
+            [Console]::Error.WriteLine('the host itself cannot reach the address, so the refusal proves nothing: ' + $_.Exception.Message)
             exit 1
           }
           Write-Output ('blocked: ' + $driver[0] + ' could not connect (exit 7); the host itself could')

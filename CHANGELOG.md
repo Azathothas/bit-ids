@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-16T00:55:00Z
+
+- **The Windows firewall proof no longer fails on an HTTP error** from its
+  control address: any HTTP answer shows the host reached it. A new case
+  covers it.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-15T23:45:00Z
 
 - **Both Windows pairs assemble on a runner**: qBittorrent 5.2.4 and

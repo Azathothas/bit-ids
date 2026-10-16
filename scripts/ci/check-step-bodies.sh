@@ -428,6 +428,29 @@ STUB
     ended "pwsh     a block with no reachable control proves nothing" 1
     said "pwsh     ... and says the refusal proves nothing" "the refusal proves nothing"
 
+    # ⭐ AND ANY HTTP ANSWER IS A REACHED HOST. A server that answers 404 is
+    # still the address answering; capture-client run 38829879023's control was
+    # refused for an HTTP error status from api.github.com. `CI-11`.
+    _port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
+    mkdir -p "$WORK/www" || exit 2
+    python3 -m http.server "$_port" --bind 127.0.0.1 --directory "$WORK/www" >/dev/null 2>&1 &
+    _server=$!
+    _waited=0
+    until python3 -c 'import socket,sys; socket.create_connection(("127.0.0.1", int(sys.argv[1])), 1)' "$_port" 2>/dev/null; do
+      _waited=$((_waited + 1))
+      [ "$_waited" -lt 20 ] || break
+      sleep 0.25
+    done
+    PROBE_URL="http://127.0.0.1:$_port/no-such-path"
+    BIT_IDS_STUB_CURL_RC=7
+    export PROBE_URL BIT_IDS_STUB_CURL_RC
+    run_body "$WORK/prove.ps1" pwsh "$TREE"
+    ended "pwsh     a control answered with an HTTP error still proves the block" 0
+    kill "$_server" 2>/dev/null
+    wait "$_server" 2>/dev/null
+    PROBE_URL="http://127.0.0.1:9/"
+    export PROBE_URL
+
     programs_are "$OBSERVER"
     BIT_IDS_STUB_CURL_RC=7
     export BIT_IDS_STUB_CURL_RC

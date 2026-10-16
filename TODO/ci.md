@@ -6294,3 +6294,16 @@ A red row is now read on its own before any rerun.
 ⚠ `6415736` was pushed before its check-workflow result was read, and that
 result was this same failure.
 
+### ⚠ The firewall proof's control takes any HTTP answer as a reached host. 2026-10-16
+
+Capture-client run 38829879023 on `4172d5f`, the first Windows-only dispatch,
+failed one lane of four: qBittorrent's package lane, in *Prove the firewall
+blocks*. The blocked `bit-check` was refused, as it should be. The control
+then failed: `Invoke-WebRequest` from the unblocked host throws on an HTTP
+error status, and an unauthenticated call to `api.github.com` from a shared
+runner address can be answered with one. Any HTTP answer means the host
+reached the address, so the control now passes `-SkipHttpErrorCheck` in both
+workflows and names the exception when it does refuse. A new
+`check-step-bodies` case serves a 404 from a local server and requires the
+proof to pass. With the switch removed, that case fails.
+
