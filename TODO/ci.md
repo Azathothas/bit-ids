@@ -5756,7 +5756,7 @@ a row closes by its harness joining `bit-check`.
 
 Source: operator direction on 2026-10-15, choosing how the Windows client
 capture lane is built
-Priority: P1 | Effort: XL | Status: OPEN
+Priority: P1 | Effort: XL | Status: DONE
 
 Problem: Every client entry's Prove asks for agreeing Linux and Windows
 profiles, and `OBS-10` asks for the same normalized events on both. The client
@@ -6484,3 +6484,19 @@ Fourteen mutants, each planted in `tools/check` and run through the whole of
 next `capture` and `capture-client` dispatches are the proof: *Assert
 containment* green inside the namespace, and a `flight-recorder (...)` check
 run that opens, posts and closes.
+
+### ⭐ Closed: the Prove ran on `554dd1d`. 2026-10-16
+
+`capture-client` run 38862040107 is green on all four lanes:
+
+- **Linux:** qBittorrent 5.2.4 release and source, each inside `"$BIT_CHECK"
+  contained`, with `bit-check flight-recorder` posting its check runs (for
+  example 116846484677, *the job reached its last step at +667s*).
+- **Windows:** release and package, each behind the capture's firewall rules,
+  with the block proved.
+
+Every lane's bundle verified. No step on the capture path runs a shell script:
+the last two, `contained.sh` and `flight-recorder.sh`, are `bit-check` since
+`554dd1d`. `capture` run 38862043177 and CI run 38862031879 on the same commit
+are green too.
+

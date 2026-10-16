@@ -2,10 +2,10 @@
 
 State instant: 2026-10-14
 Total: 67
-Open: 20
+Open: 19
 In progress: 0
 Blocked: 0
-Done: 47
+Done: 48
 
 ⚠ Those five counts are compared against [`INDEX.md`](INDEX.md) by
 `check-project` on every gate. Nothing else in this header is checked, so no
@@ -131,8 +131,9 @@ still open is a host that never reached it.
    capture still verified over loopback. The
    orphaned-subprocess residual and the `sh -c` and `bash -e` split are closed.
 3. **`CI-11`**: the capture path in Go, leaves first, then a Windows lane of
-   `capture-client.yml` capturing qBittorrent. Every client entry's
-   two-platform Prove, and `OBS-10`, wait on it.
+   `capture-client.yml` capturing qBittorrent. ⭐ **Closed on 2026-10-16**:
+   capture-client run 38862040107 captured qBittorrent 5.2.4 on Linux and on
+   Windows from one workflow, with no `sh` script on the capture path.
 4. **`OBS-10`**: built on 2026-10-16. One published qBittorrent 5.2.4 Windows
    capture's transcripts normalize to a committed digest on Linux, and `ci.yml`
    runs the same test on both gates. ⭐ **Closed on 2026-10-16**: CI run

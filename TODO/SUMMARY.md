@@ -16,9 +16,9 @@ mapping of its own and the two twins cannot hold different ones.
 | Corpus | `CORPUS` | 0 | 0 | 0 | 4 | 4 |
 | Library | `LIB` | 0 | 0 | 0 | 2 | 2 |
 | Publishing | `PUB` | 0 | 0 | 0 | 5 | 5 |
-| CI | `CI` | 4 | 0 | 0 | 7 | 11 |
+| CI | `CI` | 3 | 0 | 0 | 8 | 11 |
 | Documentation | `DOC` | 0 | 0 | 0 | 2 | 2 |
-| Total | | 20 | 0 | 0 | 47 | 67 |
+| Total | | 19 | 0 | 0 | 48 | 67 |
 
 Effort inventory: 1 S, 13 M, 51 L, 2 XL. `check-project` derives that line from
 the index and refuses it when they disagree. `CI-10` and `CI-11` are the XL entries; the

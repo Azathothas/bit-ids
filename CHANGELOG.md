@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-16T07:05:00Z
+
+- ⭐ **`CI-11` is closed**: the client capture path is Go on both platforms. One
+  dispatch, capture-client run 38862040107, captured qBittorrent 5.2.4 on Linux
+  and Windows with no shell script on the capture path.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-16T05:29:42Z
 
 - ⭐ **The capture path runs no `sh` script.** The network namespace a Linux
