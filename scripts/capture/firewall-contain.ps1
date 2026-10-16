@@ -1,7 +1,7 @@
 ﻿# firewall-contain.ps1 - block every program a Windows capture runs from
 # reaching anything off this host, without touching the host's own routes.
 #
-# ⭐ THE WINDOWS COUNTERPART OF contained.sh, AND NOT ITS TWIN. contained.sh
+# ⭐ THE WINDOWS COUNTERPART OF `bit-check contained`, AND NOT ITS TWIN. That
 # runs the capture in a network namespace that holds loopback alone. Windows
 # has no namespace, and the route cut that stood in for one severed runners
 # from GitHub (`TODO/ci.md`, `CI-08`). So this writes one outbound block rule

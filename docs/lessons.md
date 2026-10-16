@@ -18,7 +18,7 @@ reported, and a host that loses contact reports nothing more. Runs 3 to 34 of
 `capture-client` were read as *Install the client* hanging; it had finished in
 seconds, and the next step had cut the route the runner agent talks over. ⭐ Get
 the host's state off the machine while the job runs before believing which step
-is stuck: `scripts/ci/flight-recorder.sh`.
+is stuck: `bit-check flight-recorder`.
 
 ⛔ **A bound that never fires is evidence about the bound's target.** Thirteen
 bounds on one step all failed the same way because the step was not running.

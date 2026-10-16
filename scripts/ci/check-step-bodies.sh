@@ -42,7 +42,9 @@
 # ⚠ AND ONLY THE STEPS A SESSION HOST CAN EXECUTE. The claim writes under
 # /var/lib, the cut deletes a default route, and the capture needs both; the
 # guards and the product are stubbed here, so what runs is the workflow's own
-# block over a stub rather than a capture.
+# block over a stub rather than a capture. ⚠ The containment is the exception:
+# its cases make a real network namespace, through `sudo -n`, and a host that
+# cannot is a failed row rather than a pass.
 #
 # Usage:
 #   sh scripts/ci/check-step-bodies.sh
@@ -696,9 +698,11 @@ fi
 #
 # ⚠ THE STUB IS ON ITS OWN PATH ENTRY, prepended only while these cases run, so no
 # other body in this file can reach a `curl` that answers nothing true.
+# ⚠ The *Start* body runs `"$BIT_CHECK" flight-recorder` since 2026-10-16
+# (`CI-11`), so the tree needs no copy of a script, and the recorder's requests
+# still go through `curl`, which is what the stub answers.
 RECBIN="$WORK/recbin"
-mkdir -p "$RECBIN" "$TREE/scripts/ci" || exit 2
-cp "$ROOT/scripts/ci/flight-recorder.sh" "$TREE/scripts/ci/" || exit 2
+mkdir -p "$RECBIN" || exit 2
 cat >"$RECBIN/curl" <<'STUBCURL'
 #!/bin/sh
 # Answers the checks API's create and update, and logs what each call asked for.
@@ -778,7 +782,7 @@ export GH_TOKEN GITHUB_API_URL GITHUB_REPOSITORY GITHUB_SHA LABEL \
 # reported a recorder that had exited as still running. The bracket matches the
 # recorder and cannot match its own spelling.
 recorder_running() {
-  pgrep -f "[f]light-recorder.sh $RECLABEL" >/dev/null 2>&1
+  pgrep -f "[f]light-recorder $RECLABEL" >/dev/null 2>&1
 }
 
 # ⚠ The done file is written a moment before the recorder exits, so "gone" is
@@ -786,7 +790,7 @@ recorder_running() {
 recorder_gone() {
   # shellcheck disable=SC2016
   timeout 5 sh -c 'while pgrep -f "$1" >/dev/null 2>&1; do sleep 1; done' sh \
-    "[f]light-recorder.sh $RECLABEL"
+    "[f]light-recorder $RECLABEL"
 }
 
 # One start, a wait, and one stop, through the lifted bodies.
@@ -911,7 +915,7 @@ if lift "$CLIENT_WF" linux "Start the flight recorder" "$WORK/rec-start.sh" &&
   RUNNER_TEMP="$TREE/temp"
   # ⚠ A case that failed can leave a recorder posting to nothing until its
   # limit, so whatever is left of this label's is ended here.
-  pkill -f "[f]light-recorder.sh $RECLABEL" 2>/dev/null || true
+  pkill -f "[f]light-recorder $RECLABEL" 2>/dev/null || true
 else
   fail "sh       capture-client.yml has no linux step named Start or Stop the flight recorder"
 fi
@@ -1045,6 +1049,105 @@ if lift "$CLIENT_WF" linux "Arrive at the install barrier" "$WORK/bar-arrive.sh"
   RUNNER_TEMP="$TREE/temp"
 else
   fail "sh       capture-client.yml has no linux step named Arrive at or Wait at the install barrier"
+fi
+
+# -- 4d. the containment, a network namespace with loopback alone -----------
+#
+# ⛔ THE CAPTURE IS CONTAINED, NOT THE HOST (`CI-08`), and until 2026-10-16
+# nothing here ran the containment: `check-workflow` reads that the guard and the
+# capture are wrapped, and only a dispatch showed what the wrapper did. These
+# cases run both workflows' own *Assert containment* bodies and the wrapper
+# itself, for real, which needs `sudo -n` and a kernel that makes a namespace.
+# ⚠ A host without them has verified nothing about it, so that is a failed row
+# here, as a host without pwsh is above, and never a pass.
+# ⚠ The wrapper is `bit-check contained` since 2026-10-16 (`CI-11`), which
+# re-runs this same binary as its inner step.
+contain() { "$BIT_CHECK" contained "$@"; }
+mkdir -p "$WORK/contained-home" || exit 2
+if ! sudo -n unshare --net -- true >/dev/null 2>&1; then
+  fail "sh       sudo -n cannot make a network namespace on this host, so the containment cases did not run"
+else
+  # ⛔ THE CONTROL FIRST: the guard refuses this host as it stands. Without a
+  # route outside, a guard that passes inside would say nothing about the
+  # namespace.
+  "$BIT_CHECK" assert-disposable --egress >/dev/null 2>&1
+  _rc=$?
+  if [ "$_rc" = 1 ]; then
+    pass "sh       control: outside any namespace the egress guard refuses this host (exit 1)"
+  else
+    fail "sh       control: outside any namespace the egress guard answered $_rc, so this host has no route to contain"
+  fi
+  for _wf in "$CAPTURE_WF" "$CLIENT_WF"; do
+    _name=$(basename "$_wf")
+    if lift "$_wf" linux "Assert containment" "$WORK/contain-assert.sh"; then
+      run_body "$WORK/contain-assert.sh" default "$TREE"
+      ended "sh       $_name's Assert containment passes inside its namespace" 0
+    else
+      fail "sh       $_name has no linux step named Assert containment"
+    fi
+  done
+
+  # ⛔ BIT_CHECK REACHES THE COMMAND, which capture run 38763293262 refused for
+  # want of, and only when it is set, as `${BIT_CHECK:+...}` carried it.
+  # shellcheck disable=SC2016
+  _got=$(contain -- sh -c 'printf "%s" "${BIT_CHECK-unset}"' 2>&1)
+  if [ "$_got" = "$BIT_CHECK" ]; then
+    pass "sh       BIT_CHECK is carried into the namespace"
+  else
+    fail "sh       BIT_CHECK is not carried into the namespace: [$_got]"
+  fi
+  # shellcheck disable=SC2016
+  _got=$(env -u BIT_CHECK "$BIT_CHECK" contained -- sh -c 'printf "%s" "${BIT_CHECK-unset}"' 2>&1)
+  if [ "$_got" = unset ]; then
+    pass "sh       an unset BIT_CHECK stays unset in the namespace"
+  else
+    fail "sh       an unset BIT_CHECK arrived in the namespace as [$_got]"
+  fi
+  # ⚠ The caller's HOME and PATH, not root's: a capture writes its state under
+  # HOME. The HOME here is one no account has, so root's cannot pass for it.
+  # shellcheck disable=SC2016
+  _got=$(HOME="$WORK/contained-home" contain -- sh -c 'printf "%s|%s" "$HOME" "$PATH"' 2>&1)
+  if [ "$_got" = "$WORK/contained-home|$PATH" ]; then
+    pass "sh       the caller's HOME and PATH are carried into the namespace"
+  else
+    fail "sh       the namespace has another HOME or PATH: [$_got]"
+  fi
+  # ⭐ LOOPBACK IS UP, which is how the observer and the product meet.
+  _got=$(contain -- ip -o link show lo 2>&1)
+  case "$_got" in
+    *[\<,]UP[,\>]*) pass "sh       loopback is up inside the namespace" ;;
+    *) fail "sh       loopback is not up inside the namespace: [$_got]" ;;
+  esac
+  # ⚠ The caller's uid, and the command's own exit code.
+  _got=$(contain -- id -u 2>&1)
+  if [ "$_got" = "$(id -u)" ]; then
+    pass "sh       the command runs as the caller, uid $_got"
+  else
+    fail "sh       the command runs as uid [$_got], not the caller's $(id -u)"
+  fi
+  contain -- sh -c 'exit 7' >/dev/null 2>&1
+  _rc=$?
+  if [ "$_rc" = 7 ]; then
+    pass "sh       the command's exit code is the wrapper's"
+  else
+    fail "sh       the command exited 7 and the wrapper answered $_rc"
+  fi
+  # ⛔ AND ROOT IS DROPPED, which a root caller cannot see through the case
+  # above: the inner step, as root in a fresh namespace, hands the command an
+  # unprivileged uid and that account's groups.
+  _got=$(sudo -n unshare --net -- "$BIT_CHECK" contained --inner 65534 65534 -- sh -c 'printf "%s %s" "$(id -u)" "$(id -g)"' 2>&1)
+  if [ "$_got" = "65534 65534" ]; then
+    pass "sh       the inner step drops root to the uid and gid it is given"
+  else
+    fail "sh       the inner step ran the command as [$_got], not 65534 65534"
+  fi
+  contain -- >/dev/null 2>&1
+  _rc=$?
+  if [ "$_rc" = 2 ]; then
+    pass "sh       no command is could-not-run (exit 2)"
+  else
+    fail "sh       no command answered $_rc, not 2"
+  fi
 fi
 
 # -- 5. a step this harness names and the workflow does not have --------------

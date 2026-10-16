@@ -149,6 +149,15 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   refusals no host state can provoke. ⭐ It is also where the two capture
   runners are compared, because `check-twins.sh` pairs the `common/` checks and
   these take a host and a running process rather than a tree.
+- `bit-check contained`, in
+  [`../tools/check/contained_linux.go`](../tools/check/contained_linux.go) and
+  `capture/contained.sh` until 2026-10-16 (`CI-11`), runs a command as its
+  caller in a network namespace that holds loopback alone. Both capture
+  workflows run their Linux guard and capture through it. ⛔ It asks `sudo -n`
+  for the namespace alone, carries `PATH`, `HOME` and, when set, `BIT_CHECK`
+  across `env_reset`, brings `lo` up, and drops back to the caller's uid, gid
+  and groups with `setpriv` before the command runs. ⚠ Linux only; elsewhere
+  it answers 2. `check-step-bodies` runs it for real.
 - `bit-check capture-client`, in [`../tools/check/captureclient.go`](../tools/check/captureclient.go)
   and `capture/capture-client.sh` until 2026-10-15 (`CI-11`), is the same shape for
   a capture of an **installed build**. ⛔ The difference is the driver: an
@@ -323,7 +332,12 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   measure `capture-client.yml`'s install block ending over a product that leaks
   one process - with a planted `3>&1` bringing the hang straight back, which is
   what says the redirection is doing the work rather than the case being easy.
-- [`ci/flight-recorder.sh`](ci/flight-recorder.sh) posts a runner's state to a
+  ⭐ It also runs both workflows' *Assert containment* bodies and `bit-check
+  contained` itself in a real network namespace, through `sudo -n`; a host
+  that cannot make one is a failed row, as a host without `pwsh` is.
+- `bit-check flight-recorder`, in
+  [`../tools/check/flightrecorder.go`](../tools/check/flightrecorder.go) and
+  `ci/flight-recorder.sh` until 2026-10-16 (`CI-11`), posts a runner's state to a
   check run on the commit every few seconds while a capture job runs, so the
   evidence leaves the host as it is taken. ⭐ Posts that stop mean the host lost
   contact at that moment. ⛔ The job's last step, *Stop the flight recorder*,

@@ -32,8 +32,8 @@
 //
 // ⛔ --egress READS THE KERNEL'S ROUTING TABLE AND SENDS NOTHING. A default
 // route is a destination of all zeroes with the GATEWAY flag set, and the
-// table is an argument so a test can hand it a file; `contained.sh` runs this
-// inside the capture's namespace, where the table is loopback alone.
+// table is an argument so a test can hand it a file; `bit-check contained`
+// runs this inside the capture's namespace, where the table is loopback alone.
 //
 // ⚠ Override the state directory with BIT_IDS_STATE_DIR only to test this.
 //

@@ -87,23 +87,24 @@ jobs:
       # This job deleted the runner's default routes and restored them after the
       # capture until 2026-10-14. `capture-client` measured on 2026-10-11 that
       # the same cut severs the runner agent from GitHub, which is what ran
-      # thirty-two dispatches into the ground; `contained.sh` gives the guard
-      # and the capture a namespace with loopback alone, and the host keeps its
-      # route throughout. `CI-08`. ⚠ Windows has no namespace to run a process
-      # in, so the Windows job below blocks the capture's programs at the
-      # firewall instead, and never cuts either.
+      # thirty-two dispatches into the ground; `bit-check contained` gives the
+      # guard and the capture a namespace with loopback alone, and the host
+      # keeps its route throughout. `CI-08`. ⚠ Windows has no namespace to run
+      # a process in, so the Windows job below blocks the capture's programs at
+      # the firewall instead, and never cuts either.
       #
       # ⛔ THE GUARD MUST PASS, AND IT READS THE KERNEL OF THE NAMESPACE THE
       # CAPTURE RUNS IN, which is the routing table that matters.
       - name: Assert containment
-        run: sh scripts/capture/contained.sh -- "$BIT_CHECK" assert-disposable --egress
+        run: |
+          "$BIT_CHECK" contained -- "$BIT_CHECK" assert-disposable --egress
 
       - name: Capture
         env:
           RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-linux
           SECONDS_TO_SERVE: ${{ inputs.seconds }}
         run: |
-          sh scripts/capture/contained.sh -- "$BIT_CHECK" capture-run \
+          "$BIT_CHECK" contained -- "$BIT_CHECK" capture-run \
             --run-id "$RUN_ID" \
             --out "$RUNNER_TEMP/capture" \
             --observer "$GITHUB_WORKSPACE/target/debug/examples/evidence-bundle" \

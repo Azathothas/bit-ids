@@ -141,6 +141,21 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # ⭐ `bit-check` FIRST, BECAUSE THE CLAIM IS ONE OF ITS COMMANDS. The guard
+      # is `bit-check assert-disposable` since 2026-10-15, `CI-11`, and every
+      # later step finds the binary through BIT_CHECK; nothing on the capture
+      # path builds it. ⚠ This writes this project's own binary into RUNNER_TEMP
+      # before the claim, which is not a product's state: the claim's marker is
+      # what a survived host carries, and this build leaves none. ⚠ It is ahead
+      # of the flight recorder too, which is `bit-check flight-recorder` since
+      # 2026-10-16: a Go build with no dependencies fetches nothing, so the one
+      # step the recorder cannot see is one that cannot wedge on the network.
+      - name: Build bit-check
+        run: |
+          set -eu
+          (cd tools/check && go build -o "$RUNNER_TEMP/bit-check" .)
+          printf 'BIT_CHECK=%s\n' "$RUNNER_TEMP/bit-check" >>"$GITHUB_ENV"
+
       # ⛔ EVIDENCE THAT LEAVES THE HOST AS IT IS TAKEN. Runs 3 to 34 wedged in
       # *Install the client* and left no artifact and no job log at all, so every
       # instrument that wrote to this disk measured nothing. The recorder posts a
@@ -154,22 +169,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           LABEL: ${{ matrix.adapter }}-${{ matrix.route }}
         run: |
-          setsid sh scripts/ci/flight-recorder.sh "$LABEL" "$RUNNER_TEMP" \
+          setsid "$BIT_CHECK" flight-recorder "$LABEL" "$RUNNER_TEMP" \
             >"$RUNNER_TEMP/flight-recorder.log" 2>&1 </dev/null &
           sleep 5
           cat "$RUNNER_TEMP/flight-recorder.log"
-
-      # ⭐ `bit-check` FIRST, BECAUSE THE CLAIM IS ONE OF ITS COMMANDS. The guard
-      # is `bit-check assert-disposable` since 2026-10-15, `CI-11`, and every
-      # later step finds the binary through BIT_CHECK; nothing on the capture
-      # path builds it. ⚠ This writes this project's own binary into RUNNER_TEMP
-      # before the claim, which is not a product's state: the claim's marker is
-      # what a survived host carries, and this build leaves none.
-      - name: Build bit-check
-        run: |
-          set -eu
-          (cd tools/check && go build -o "$RUNNER_TEMP/bit-check" .)
-          printf 'BIT_CHECK=%s\n' "$RUNNER_TEMP/bit-check" >>"$GITHUB_ENV"
 
       # ⛔ FIRST, BEFORE ANYTHING ELSE WRITES TO THE HOST, and before anything is
       # installed. The claim refuses a host that already ran a capture, and a
@@ -406,13 +409,14 @@ jobs:
       # job could not report: on the images of 2026-09 onward it never came back,
       # and runs 21 to 34 each showed *Install the client* running forever with
       # no log and no artifact over a step that had finished in seconds. Measured
-      # on 2026-10-11 by `scripts/ci/flight-recorder.sh`, whose posts stopped the
-      # instant the route was cut and never resumed. ⭐ `contained.sh` runs the
+      # on 2026-10-11 by the flight recorder, whose posts stopped the instant
+      # the route was cut and never resumed. ⭐ `bit-check contained` runs the
       # guard and the capture in a network namespace that holds loopback alone,
       # so the guard reads the namespace's own empty route table and the agent
-      # never loses its link.
+      # never loses its link. It was a shell script until 2026-10-16, `CI-11`.
       - name: Assert containment
-        run: sh scripts/capture/contained.sh -- "$BIT_CHECK" assert-disposable --egress
+        run: |
+          "$BIT_CHECK" contained -- "$BIT_CHECK" assert-disposable --egress
 
       # ⭐ AND HERE A PRODUCT THIS PROJECT DID NOT WRITE IS HANDED THE TORRENT.
       # It learns the tracker's address by reading the file, which is what a
@@ -426,7 +430,7 @@ jobs:
           PEER_PORT: ${{ inputs.peer_port }}
           ADAPTER: ${{ matrix.adapter }}
         run: |
-          sh scripts/capture/contained.sh -- "$BIT_CHECK" capture-client \
+          "$BIT_CHECK" contained -- "$BIT_CHECK" capture-client \
             --run-id "$RUN_ID" \
             --out "$RUNNER_TEMP/capture" \
             --observer "$GITHUB_WORKSPACE/target/debug/examples/client-capture" \
@@ -593,7 +597,7 @@ jobs:
   # connector's interpreter. Every step that writes, reads or proves the rules
   # asks it, and the capture asks the guard again over the same list.
   #
-  # ⚠ NO FLIGHT RECORDER HERE. `scripts/ci/flight-recorder.sh` reads `/proc`
+  # ⚠ NO FLIGHT RECORDER HERE. `bit-check flight-recorder` reads `/proc`
   # and stays Linux-only; this lane never cuts its route, which is what the
   # recorder was built to see through, so the job log reaches GitHub whole.
   windows:

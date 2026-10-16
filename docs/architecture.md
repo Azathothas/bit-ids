@@ -1210,10 +1210,11 @@ non-injective layout section 4 describes, in a second place.
 - There are no measured profiles in the tree. The observer layer and the client
   adapter layer are complete, and `capture-client` has installed `aria2-next` on
   hosted runners through its `release` and `source` routes and put it on the
-  wire. ⭐ The capture runs inside a network namespace that holds loopback alone,
-  [`../scripts/capture/contained.sh`](../scripts/capture/contained.sh), rather
-  than by deleting the host's routes, which severed the runner agent; `CI-08`
-  carries the measurement. ⚠ A `Profile` has been assembled from a dispatch's
+  wire. ⭐ The capture runs inside a network namespace that holds loopback
+  alone, through `bit-check contained` in
+  [`../tools/check/contained_linux.go`](../tools/check/contained_linux.go),
+  rather than by deleting the host's routes, which severed the runner agent;
+  `CI-08` carries the measurement. ⚠ A `Profile` has been assembled from a dispatch's
   artifacts into a scratch store and none is published; `CI-09` owns the rest.
 - ⭐ Every path [`publishing.md`](publishing.md) promises is written as of
   `PUB-05`, whose SQLite rendering is the one place this workspace takes a

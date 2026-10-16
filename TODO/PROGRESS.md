@@ -96,7 +96,7 @@ the caller implements.
 
 ⛔ **A hang is measured from off the host before it is bounded.** `TODO/RULES.md`
 owns the rule and `docs/AGENTS.md` absolute 16 restates it.
-`scripts/ci/flight-recorder.sh` is the instrument, and its check run is closed by
+`bit-check flight-recorder` is the instrument, and its check run is closed by
 the job's last step, in the request that carries its last snapshot, so one
 still open is a host that never reached it.
 
@@ -122,8 +122,9 @@ still open is a host that never reached it.
    and aria2-next 3.0.4 on Linux and Windows from one run (38838967241).
    `data` is at `4221e28`, 14 of 14 records in the published view, and the
    Linux and Windows profiles agree on every observed field.
-2. **`CI-08`**: `capture.yml`'s Linux job runs in `contained.sh`, proved on
-   `capture` run 38612214714. ⭐ Its Windows job no longer cuts the host's
+2. **`CI-08`**: `capture.yml`'s Linux job runs in a network namespace,
+   proved on `capture` run 38612214714. The wrapper is `bit-check contained`
+   since 2026-10-16 and has not been dispatched in that form. ⭐ Its Windows job no longer cuts the host's
    route: on 2026-10-15 it blocks the capture's own programs at the firewall,
    reads the rules back and proves them, the operator's settled shape, proved
    on `capture` run 38722969612: the blocked `curl.exe` exited 7 and the
@@ -215,6 +216,10 @@ Choices made while working unattended under the operator's standing rule, each f
 | the `package` slugs are `nsis-payload` for the release route and `nsis-installer` for the winget route | one installer's bytes reach the host in two forms, extracted with no installer code run and placed by the installer, and `Build.package` names the form | `adapter_qbittorrent_windows.go`, `CLIENT-01` |
 | the prover is `bit-check probe-egress`, run as the capture's own blocked `bit-check`, rather than adding `curl.exe` to the list | a client capture runs no `curl`, and blocking a program only to prove with it proves nothing about the programs that run. It passes only on a connect the host refused | `probeegress.go`, `capture-client.yml`, `CI-11` |
 | the Windows lane's barrier arrives as `<adapter>-windows` | its pair is a separate run manifest. Under the bare adapter name a Linux `release` lane and a Windows `release` lane of one dispatch would satisfy each other | `capture-client.yml`, `CI-11` |
+| *Build bit-check* moved ahead of *Start the flight recorder* in `capture-client.yml`'s Linux job | the recorder is `bit-check flight-recorder` now and `BIT_CHECK` reaches only later steps. A Go build with no dependencies fetches nothing, so the one step the recorder cannot see cannot wedge on the network. Reversed by building the recorder in its own step | `capture-client.yml`, `CI-11` |
+| `check-step-bodies` runs `bit-check contained` in a real network namespace through `sudo -n`, and a host that cannot make one is a failed row | a namespace that was never made has verified nothing, and the `pwsh` cases already treat an absent tool that way. The CI gate's runner has passwordless `sudo` and makes namespaces, as every capture dispatch shows | `check-step-bodies.sh`, `CI-11` |
+| the recorder's two `sh -c` pipelines (the newest 40 tasks, the newest files) stay inline host-tool commands, byte for byte | they are not script files and the recorder is Linux-only; a Go spelling of `ps \| head` and `find \| sort \| tail` would change what a timed-out read reports. The request bodies are written in Go, so `jq` is no longer required | `flightrecorder.go`, `CI-11` |
+| a recorder interval or limit that is not a whole number is exit 2 at the start | the shell half's `test` failed inside the loop instead: a bad limit closed the run at once and a bad interval posted without a pause. No workflow sets either | `flightrecorder.go`, `CI-11` |
 | no `compiles` key on the Windows half; it declares `routes=package,release` | neither route compiles, and a key with no value could not be told from one that declines to say. The Windows install bound is fixed in the workflow | `adapter_qbittorrent_windows.go` |
 | the barrier's token goes to `curl` through a header file, `-H @file`, mode 0600, and not as an argument | a token in an argument list can be read by any process on the host. The harness stub's `-H` arm already skips either spelling | `installbarrier.go` |
 | Transmission's Windows release route lays the MSI out with `msiexec /a` (an administrative image) rather than 7-Zip | the MSI's AdminExecuteSequence, read on 2026-10-15, runs no custom action, service, registry write or launch condition, and Windows Installer lays the files out by the package's own Directory and File tables. 7-Zip would give cabinet members named by File-table keys in one flat directory, so this project would have to reimplement that layout | `adapter_transmission_windows.go`, `CLIENT-06` |

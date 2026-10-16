@@ -15,7 +15,7 @@ that prevents progress, and the event that would unblock it.
 ⛔ **When a step looks hung, get evidence OFF the machine while it is running,
 before adding any bound.** A host that stops reporting leaves no log and no
 artifact, so an instrument that writes to its own disk measures nothing.
-`scripts/ci/flight-recorder.sh` posts the host's state to a check run as it
+`bit-check flight-recorder` posts the host's state to a check run as it
 goes, and its silence is itself a measurement: the moment the posts stop is the
 moment the host lost contact.
 

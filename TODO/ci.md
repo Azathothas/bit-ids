@@ -6385,3 +6385,102 @@ and published:
 `sha256sum -c` and `validate-corpus`. With this, the Windows client capture
 lane is proved end to end, from install to publication, for three clients.
 
+### ⭐ The capture path runs no `sh` script: `contained` and `flight-recorder`. 2026-10-16
+
+The two scripts left on `capture-client.yml`'s capture path are Go now.
+`bit-check contained`, in
+[`../tools/check/contained_linux.go`](../tools/check/contained_linux.go),
+replaces `scripts/capture/contained.sh`. `bit-check flight-recorder`, in
+[`../tools/check/flightrecorder.go`](../tools/check/flightrecorder.go),
+replaces `scripts/ci/flight-recorder.sh`. Both shell halves are deleted.
+
+- **contained** keeps the same chain: `sudo -n env` with `PATH`, `HOME` and,
+  when set, `BIT_CHECK` carried explicitly (the carry capture run 38763293262
+  needed), then `unshare --net`, `ip link set lo up` inside, and `setpriv
+  --reuid --regid --init-groups` back to the caller. The inner step re-runs
+  this same binary, as the shell half re-ran `sh "$0"`. It is Linux-only by
+  build tag, and elsewhere it answers 2.
+- **flight-recorder** keeps the same reads under the same `timeout` bounds,
+  the same requests through `curl`, the same interval, limit, dry run, stop
+  file and done file, and the same output lines. The request bodies are
+  written in Go, so `jq` is no longer required. It answers 2 on Windows.
+
+The workflow lines that changed:
+
+| workflow | step | was | is |
+| --- | --- | --- | --- |
+| `capture.yml` | *Assert containment* | `sh scripts/capture/contained.sh -- "$BIT_CHECK" assert-disposable --egress` | `"$BIT_CHECK" contained -- "$BIT_CHECK" assert-disposable --egress` |
+| `capture.yml` | *Capture* | `sh scripts/capture/contained.sh -- "$BIT_CHECK" capture-run \` | `"$BIT_CHECK" contained -- "$BIT_CHECK" capture-run \` |
+| `capture-client.yml` | *Assert containment* | `sh scripts/capture/contained.sh -- "$BIT_CHECK" assert-disposable --egress` | `"$BIT_CHECK" contained -- "$BIT_CHECK" assert-disposable --egress` |
+| `capture-client.yml` | *Capture* | `sh scripts/capture/contained.sh -- "$BIT_CHECK" capture-client \` | `"$BIT_CHECK" contained -- "$BIT_CHECK" capture-client \` |
+| `capture-client.yml` | *Start the flight recorder* | `setsid sh scripts/ci/flight-recorder.sh "$LABEL" "$RUNNER_TEMP" \` | `setsid "$BIT_CHECK" flight-recorder "$LABEL" "$RUNNER_TEMP" \` |
+
+⚠ **The build moved ahead of the recorder.** `capture-client.yml`'s *Build
+bit-check* now comes straight after the checkout and before *Start the flight
+recorder*, because the recorder is that binary and `GITHUB_ENV` reaches only
+later steps. A Go build with no dependencies fetches nothing.
+
+⛔ **`check-workflow` reads the new spelling.** The namespace rule requires
+`"$BIT_CHECK" contained -- ` in each Linux job's *Assert containment* and
+*Capture*, where it required `scripts/capture/contained.sh -- `. Its probe
+removes the wrapper from `capture-client.yml`'s *Capture* and requires the
+reader to see it gone. The rule and the probe were driven by hand through
+`workflow-step.sh` over both workflows and the probe's mutation; the operator
+runs `check-workflow` itself.
+
+⭐ **The containment is now run by a harness.** Nothing ran `contained.sh`
+before; `check-workflow` only read that the steps were wrapped. A new section
+of `check-step-bodies` runs both workflows' *Assert containment* bodies and the
+wrapper itself in a real namespace, through `sudo -n`, with a control outside
+it. A host that cannot make a namespace is a failed row, as a host without
+`pwsh` is. 46 cases became 57.
+
+| held against the shell halves before they were deleted | result |
+| --- | --- |
+| `check-step-bodies` (with the 11 new cases) over the shell halves, then over shims that `exec "$BIT_CHECK" contained "$@"` and `exec "$BIT_CHECK" flight-recorder "$@"` | 57 of 57 both times, and the two outputs byte-identical |
+| `check-step-bodies` on the final form, the shell halves deleted | 57 of 57, output byte-identical to the shell halves' run |
+| contained, both halves driven as root on the session host: the egress guard inside, `id`, the carried `PATH`, `HOME` and `BIT_CHECK` (set, unset and empty), loopback, routes, exit 7, stderr, a missing command (127), five argument errors, and the inner step dropping to uid 1000 with its ten groups | identical exit codes, stdout and stderr, once the usage text's own spelling is normalized. Inside, the guard passes and the namespace has no route and one link; outside, `assert-disposable --egress` refuses with `default route via eth0` |
+| the recorder, both halves, with no network: two argument errors, each of the four missing variables, a create refused by a closed loopback port, and a dry run over a fixture log directory (install logs, a file with no final newline, a directory named like a log, a zombie task) | identical exit codes, stdout and stderr; identical section sequence, exit lines, log tails and zombie row |
+
+⛔ The recorder was never pointed at the real API from the session host. Every
+posting case ran against `check-step-bodies`' stub `curl`, and every other
+drive used a closed loopback port.
+
+Fourteen mutants, each planted in `tools/check` and run through the whole of
+`check-step-bodies`, and each refused:
+
+| mutant | refused by |
+| --- | --- |
+| contained: `BIT_CHECK` not carried | the carry case (1). ⚠ Not by the *Assert containment* bodies, whose `"$BIT_CHECK"` is expanded outside, which is why run 38763293262 failed only in its Capture step |
+| contained: `--net` dropped | both workflows' *Assert containment* bodies (2) |
+| contained: loopback left down | the loopback case (1) |
+| contained: `--reuid` dropped | 9 cases, because `setpriv` refuses `--init-groups` without it |
+| contained: the uid ignored and root kept | the inner-drop case (1), which a root caller's own uid case cannot see |
+| contained: `HOME` not carried | the `HOME` and `PATH` case (1), on a `HOME` no account has |
+| contained: the command run as a child and 0 answered | the exit-code case (1) |
+| recorder: the closing request carries no text | the snapshot case and the refused-text case (2) |
+| recorder: the closing request carries no conclusion | the snapshot case (1) |
+| recorder: a refused snapshot not asked again | the refused-text case (1) |
+| recorder: a closing request with no answer asked again | the no-answer case (1) |
+| recorder: the done file claims completion unread | the refused case and the no-answer case (2) |
+| recorder: the stop file ignored | 5 cases: the stop and every closing case |
+| recorder: the last snapshot titled as the loop's | the snapshot case (1), on its title |
+
+⚠ **What differs, on purpose:**
+
+- `contained`'s usage text names `bit-check contained`.
+- A recorder interval or limit that is not a whole number is exit 2 at the
+  start. The shell half's `test` failed inside the loop: a bad limit closed
+  the run at once and a bad interval posted without a pause.
+- The recorder's two `sh -c` pipelines, the newest 40 tasks and the newest
+  files, are kept byte for byte as inline host-tool commands. They are not
+  script files, and the recorder is Linux-only.
+
+⭐ **The first half of the Prove holds in the tree.** No step of
+`capture-client.yml` runs a script file under `sh`. The one `sh` left in it is
+*Stop the flight recorder*'s inline, bounded wait for the done file.
+
+⛔ **Not established on a runner.** No dispatch has run either port yet. The
+next `capture` and `capture-client` dispatches are the proof: *Assert
+containment* green inside the namespace, and a `flight-recorder (...)` check
+run that opens, posts and closes.

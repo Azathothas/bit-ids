@@ -848,10 +848,10 @@ if unit capture-fork; then
       # ⛔ TWO SHAPES OF CONTAINMENT, AND A JOB IS HELD TO THE ONE IT USES. A job
       # that contains the capture in a network namespace must have the guard and
       # the capture both RUN inside it - a capture step that dropped
-      # `contained.sh` would measure a host with a route off it, and every
-      # ordering rule would still pass. A job that contains the capture at the
-      # firewall must write the rules after the build, read them back, and prove
-      # them, all before it captures.
+      # `bit-check contained` would measure a host with a route off it, and
+      # every ordering rule would still pass. A job that contains the capture at
+      # the firewall must write the rules after the build, read them back, and
+      # prove them, all before it captures.
       # ⛔ AND CUTTING THE HOST'S ROUTE IS NO SHAPE AT ALL ANY MORE. It severed
       # the runner agent from GitHub (`TODO/ci.md`, `CI-08`); the Linux jobs left
       # it on 2026-10-11 and 2026-10-14 and the Windows job on 2026-10-15, so a
@@ -902,9 +902,11 @@ if unit capture-fork; then
         order_case "$job" "Assert containment" "Capture"
         order_case "$job" "Capture" "Upload the evidence bundle"
         for _contained in "Assert containment" Capture; do
+          # ⚠ The needle is the workflow's own text, so its `$` is literal.
+          # shellcheck disable=SC2016
           case "$(step_command "$CAPWF" "$job" "$_contained")" in
-            *"scripts/capture/contained.sh -- "*) pass "workflow  $CAPNAME $job: [$_contained] runs in its own network namespace" ;;
-            *) fail "workflow  $CAPNAME $job: [$_contained] cuts no route and does not run through contained.sh" ;;
+            *'"$BIT_CHECK" contained -- '*) pass "workflow  $CAPNAME $job: [$_contained] runs in its own network namespace" ;;
+            *) fail "workflow  $CAPNAME $job: [$_contained] cuts no route and does not run through bit-check contained" ;;
           esac
         done
       fi
@@ -1181,13 +1183,14 @@ if unit static-readers; then
     # ⛔ AND THE NAMESPACE RULE IS REFUTED BY TAKING THE WRAPPER AWAY, which is
     # the one edit that leaves every ordering rule above green.
     # shellcheck disable=SC2016
-    sed 's|sh scripts/capture/contained.sh -- "$BIT_CHECK" capture-client|"$BIT_CHECK" capture-client|' \
+    sed 's|"$BIT_CHECK" contained -- "$BIT_CHECK" capture-client|"$BIT_CHECK" capture-client|' \
       "$CLIENTWF" >"$MUTWF"
     if cmp -s "$CLIENTWF" "$MUTWF"; then
       fail "probe    the namespace mutation did not change the workflow"
     else
+      # shellcheck disable=SC2016
       case "$(step_command "$MUTWF" linux Capture)" in
-        *"scripts/capture/contained.sh -- "*) fail "probe    the namespace reader still sees contained.sh after it was removed" ;;
+        *'"$BIT_CHECK" contained -- '*) fail "probe    the namespace reader still sees bit-check contained after it was removed" ;;
         *) pass "probe    the namespace reader sees a capture step that left its namespace" ;;
       esac
     fi

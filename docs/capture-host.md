@@ -242,8 +242,8 @@ what happened without reading an expression.
 | build the observer | while the network still exists, and it is every binary the job runs rather than only the observer |
 | resolve the release artifact | ⛔ before the install, which needs its answer, and outside the capture's namespace, which has no route. Only on the `release` lane: a package index needs no artifact chosen |
 | install the client | ⛔ also outside the namespace, with the network in reach. `capture-client` refuses to install anything itself. ⛔ The route's output goes to a **file** and is printed afterwards, so nothing the product spawns inherits the step's own output pipe: a runner ends a step when the command has gone *and* that pipe has reached end of file, and one process left holding it keeps the step open with a zero exit code in it |
-| start the flight recorder | second, so every later step is visible from off the host: blocked tasks, memory, disk, the kernel ring buffer and the newest logs, posted to a check run on the commit. Its posts stopping is the moment the host lost contact |
-| assert containment | ⛔ inside a network namespace that holds loopback alone, through [`../scripts/capture/contained.sh`](../scripts/capture/contained.sh); the guard reads the namespace's own route table |
+| start the flight recorder | second, straight after `bit-check` is built, because the recorder is `bit-check flight-recorder`; so every later step is visible from off the host: blocked tasks, memory, disk, the kernel ring buffer and the newest logs, posted to a check run on the commit. Its posts stopping is the moment the host lost contact |
+| assert containment | ⛔ inside a network namespace that holds loopback alone, through `bit-check contained` in [`../tools/check/contained_linux.go`](../tools/check/contained_linux.go); the guard reads the namespace's own route table |
 | capture | in that same kind of namespace, so the observer and the build reach each other over loopback and nothing else |
 | upload the evidence bundle | the bundle and the install record together, `if-no-files-found: error` |
 | upload the install logs | last, and `if: always()`, so a lane whose install refused still uploads its logs |
@@ -257,9 +257,10 @@ running until cancelled, with no log and no artifact, over a step that had
 finished in seconds. `TODO/ci.md` under `CI-08` carries the runs that showed it.
 [`../scripts/ci/check-workflow.sh`](../scripts/ci/check-workflow.sh) refuses a
 job that neither cuts a route nor runs its guard and capture through
-`contained.sh`, and refuses any job that cuts the host's route.
+`bit-check contained`, and refuses any job that cuts the host's route.
 ⭐ [`../.github/workflows/capture.yml`](../.github/workflows/capture.yml)'s
-Linux job runs through `contained.sh` since 2026-10-14. Its Windows job is
+Linux job runs in a namespace since 2026-10-14, through `bit-check contained`
+since 2026-10-16, when the shell wrapper was ported. Its Windows job is
 contained at the firewall since 2026-10-15, because Windows has no network
 namespace to run a process in, and the same check holds it to containing the
 programs after the build, reading the rules back and proving them before it

@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-16T05:29:42Z
+
+- ⭐ **The capture path runs no `sh` script.** The network namespace a Linux
+  capture runs in is `bit-check contained`, and the recorder that posts a
+  runner's state off the host is `bit-check flight-recorder`. Both behave as
+  the shell scripts they replace, which are deleted: the same `sudo -n env`
+  carry of `PATH`, `HOME` and `BIT_CHECK`, the same check-run posts, stop file
+  and done file.
+- `check-step-bodies` now runs the containment for real, in a namespace,
+  with 11 new cases.
+- ⚠ Not dispatched yet: the next `capture` and `capture-client` runs prove
+  both on a runner.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
+
 ### 2026-10-16T05:05:00Z
 
 - **`CI-09` is closed**: the capture-to-publisher path has run end to end, from
