@@ -8,9 +8,13 @@
       "rows": [
         {"key": "aria2-next", "record": "record:sha256:56daa3c88410dd4c5a168d0d59c222a82fa2f81b6a62d9b57e400328452d0145", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json"},
         {"key": "aria2-next", "record": "record:sha256:80d18abe24d342b896251f9ad2526e297f9acbd0b9412f16b9f9fde96dac028c", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-source.json"},
+        {"key": "qbittorrent", "record": "record:sha256:4de854dc66ad61d01e3e61a4b6ca80ffa4d27a5cbfe2ac9a8769d21bfcdf8cc2", "path": "profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-payload/cap-release.json"},
+        {"key": "qbittorrent", "record": "record:sha256:97d331ee6bfe300f7dd9634f6ed50d152fba91ea8743fb8c33bf692f51ca763a", "path": "profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-installer/cap-package.json"},
         {"key": "qbittorrent", "record": "record:sha256:99d2683ed6c5ef942b88c5650646f694cb36aa1c64cc949ca7ab02634974409c", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/appimage/cap-release.json"},
         {"key": "qbittorrent", "record": "record:sha256:9f0216017f66a3b85d25be78c3a4680e3bb54e012c45de4dc2f5f6e05813606b", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/elf-binary/cap-source.json"},
         {"key": "transmission", "record": "record:sha256:1289b9e6c5862a3b52a166e885ceafcfbfd3d65a7226f22198ae368c0321611a", "path": "profiles/v1/transmission/4.1.3/linux/x86-64/elf-binary/cap-release.json"},
+        {"key": "transmission", "record": "record:sha256:1acaefca4746ebbda52d92ec315c1799ddd1ccd2b60ca37abc098bdac8b13d55", "path": "profiles/v1/transmission/4.1.3/windows/x86-64/msi-payload/cap-release.json"},
+        {"key": "transmission", "record": "record:sha256:24eebd29941873d074568c437a9097e2d8b1829599c7e96b513eae64f9f9f758", "path": "profiles/v1/transmission/4.1.3/windows/x86-64/msi-installer/cap-package.json"},
         {"key": "transmission", "record": "record:sha256:2c75b750b2e3fdf3ae86da1d60d6ec1929be15884d5451e2ec648b9cb995675e", "path": "profiles/v1/transmission/4.1.3/linux/x86-64/elf-binary/cap-source.json"}
       ]
     },
@@ -18,9 +22,13 @@
       "kind": "peer_prefix",
       "rows": [
         {"key": "2d5452343133302d", "record": "record:sha256:1289b9e6c5862a3b52a166e885ceafcfbfd3d65a7226f22198ae368c0321611a", "path": "profiles/v1/transmission/4.1.3/linux/x86-64/elf-binary/cap-release.json"},
+        {"key": "2d5452343133302d", "record": "record:sha256:1acaefca4746ebbda52d92ec315c1799ddd1ccd2b60ca37abc098bdac8b13d55", "path": "profiles/v1/transmission/4.1.3/windows/x86-64/msi-payload/cap-release.json"},
+        {"key": "2d5452343133302d", "record": "record:sha256:24eebd29941873d074568c437a9097e2d8b1829599c7e96b513eae64f9f9f758", "path": "profiles/v1/transmission/4.1.3/windows/x86-64/msi-installer/cap-package.json"},
         {"key": "2d5452343133302d", "record": "record:sha256:2c75b750b2e3fdf3ae86da1d60d6ec1929be15884d5451e2ec648b9cb995675e", "path": "profiles/v1/transmission/4.1.3/linux/x86-64/elf-binary/cap-source.json"},
         {"key": "2d7142353233302d", "record": "record:sha256:56daa3c88410dd4c5a168d0d59c222a82fa2f81b6a62d9b57e400328452d0145", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json"},
         {"key": "2d7142353233302d", "record": "record:sha256:80d18abe24d342b896251f9ad2526e297f9acbd0b9412f16b9f9fde96dac028c", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-source.json"},
+        {"key": "2d7142353234302d", "record": "record:sha256:4de854dc66ad61d01e3e61a4b6ca80ffa4d27a5cbfe2ac9a8769d21bfcdf8cc2", "path": "profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-payload/cap-release.json"},
+        {"key": "2d7142353234302d", "record": "record:sha256:97d331ee6bfe300f7dd9634f6ed50d152fba91ea8743fb8c33bf692f51ca763a", "path": "profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-installer/cap-package.json"},
         {"key": "2d7142353234302d", "record": "record:sha256:99d2683ed6c5ef942b88c5650646f694cb36aa1c64cc949ca7ab02634974409c", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/appimage/cap-release.json"},
         {"key": "2d7142353234302d", "record": "record:sha256:9f0216017f66a3b85d25be78c3a4680e3bb54e012c45de4dc2f5f6e05813606b", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/elf-binary/cap-source.json"}
       ]
@@ -38,7 +46,11 @@
         {"key": "linux", "record": "record:sha256:56daa3c88410dd4c5a168d0d59c222a82fa2f81b6a62d9b57e400328452d0145", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json"},
         {"key": "linux", "record": "record:sha256:80d18abe24d342b896251f9ad2526e297f9acbd0b9412f16b9f9fde96dac028c", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-source.json"},
         {"key": "linux", "record": "record:sha256:99d2683ed6c5ef942b88c5650646f694cb36aa1c64cc949ca7ab02634974409c", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/appimage/cap-release.json"},
-        {"key": "linux", "record": "record:sha256:9f0216017f66a3b85d25be78c3a4680e3bb54e012c45de4dc2f5f6e05813606b", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/elf-binary/cap-source.json"}
+        {"key": "linux", "record": "record:sha256:9f0216017f66a3b85d25be78c3a4680e3bb54e012c45de4dc2f5f6e05813606b", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/elf-binary/cap-source.json"},
+        {"key": "windows", "record": "record:sha256:1acaefca4746ebbda52d92ec315c1799ddd1ccd2b60ca37abc098bdac8b13d55", "path": "profiles/v1/transmission/4.1.3/windows/x86-64/msi-payload/cap-release.json"},
+        {"key": "windows", "record": "record:sha256:24eebd29941873d074568c437a9097e2d8b1829599c7e96b513eae64f9f9f758", "path": "profiles/v1/transmission/4.1.3/windows/x86-64/msi-installer/cap-package.json"},
+        {"key": "windows", "record": "record:sha256:4de854dc66ad61d01e3e61a4b6ca80ffa4d27a5cbfe2ac9a8769d21bfcdf8cc2", "path": "profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-payload/cap-release.json"},
+        {"key": "windows", "record": "record:sha256:97d331ee6bfe300f7dd9634f6ed50d152fba91ea8743fb8c33bf692f51ca763a", "path": "profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-installer/cap-package.json"}
       ]
     },
     {
@@ -47,7 +59,11 @@
         {"key": "3.0.3", "record": "record:sha256:56daa3c88410dd4c5a168d0d59c222a82fa2f81b6a62d9b57e400328452d0145", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json"},
         {"key": "3.0.3", "record": "record:sha256:80d18abe24d342b896251f9ad2526e297f9acbd0b9412f16b9f9fde96dac028c", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-source.json"},
         {"key": "4.1.3", "record": "record:sha256:1289b9e6c5862a3b52a166e885ceafcfbfd3d65a7226f22198ae368c0321611a", "path": "profiles/v1/transmission/4.1.3/linux/x86-64/elf-binary/cap-release.json"},
+        {"key": "4.1.3", "record": "record:sha256:1acaefca4746ebbda52d92ec315c1799ddd1ccd2b60ca37abc098bdac8b13d55", "path": "profiles/v1/transmission/4.1.3/windows/x86-64/msi-payload/cap-release.json"},
+        {"key": "4.1.3", "record": "record:sha256:24eebd29941873d074568c437a9097e2d8b1829599c7e96b513eae64f9f9f758", "path": "profiles/v1/transmission/4.1.3/windows/x86-64/msi-installer/cap-package.json"},
         {"key": "4.1.3", "record": "record:sha256:2c75b750b2e3fdf3ae86da1d60d6ec1929be15884d5451e2ec648b9cb995675e", "path": "profiles/v1/transmission/4.1.3/linux/x86-64/elf-binary/cap-source.json"},
+        {"key": "5.2.4", "record": "record:sha256:4de854dc66ad61d01e3e61a4b6ca80ffa4d27a5cbfe2ac9a8769d21bfcdf8cc2", "path": "profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-payload/cap-release.json"},
+        {"key": "5.2.4", "record": "record:sha256:97d331ee6bfe300f7dd9634f6ed50d152fba91ea8743fb8c33bf692f51ca763a", "path": "profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-installer/cap-package.json"},
         {"key": "5.2.4", "record": "record:sha256:99d2683ed6c5ef942b88c5650646f694cb36aa1c64cc949ca7ab02634974409c", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/appimage/cap-release.json"},
         {"key": "5.2.4", "record": "record:sha256:9f0216017f66a3b85d25be78c3a4680e3bb54e012c45de4dc2f5f6e05813606b", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/elf-binary/cap-source.json"}
       ]
@@ -60,7 +76,11 @@
         {"key": "2026-10-15T04:26:16Z", "record": "record:sha256:2c75b750b2e3fdf3ae86da1d60d6ec1929be15884d5451e2ec648b9cb995675e", "path": "profiles/v1/transmission/4.1.3/linux/x86-64/elf-binary/cap-source.json"},
         {"key": "2026-10-15T04:26:18Z", "record": "record:sha256:1289b9e6c5862a3b52a166e885ceafcfbfd3d65a7226f22198ae368c0321611a", "path": "profiles/v1/transmission/4.1.3/linux/x86-64/elf-binary/cap-release.json"},
         {"key": "2026-10-15T08:35:41Z", "record": "record:sha256:99d2683ed6c5ef942b88c5650646f694cb36aa1c64cc949ca7ab02634974409c", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/appimage/cap-release.json"},
-        {"key": "2026-10-15T08:35:41Z", "record": "record:sha256:9f0216017f66a3b85d25be78c3a4680e3bb54e012c45de4dc2f5f6e05813606b", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/elf-binary/cap-source.json"}
+        {"key": "2026-10-15T08:35:41Z", "record": "record:sha256:9f0216017f66a3b85d25be78c3a4680e3bb54e012c45de4dc2f5f6e05813606b", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/elf-binary/cap-source.json"},
+        {"key": "2026-10-16T02:11:15Z", "record": "record:sha256:1acaefca4746ebbda52d92ec315c1799ddd1ccd2b60ca37abc098bdac8b13d55", "path": "profiles/v1/transmission/4.1.3/windows/x86-64/msi-payload/cap-release.json"},
+        {"key": "2026-10-16T02:11:30Z", "record": "record:sha256:97d331ee6bfe300f7dd9634f6ed50d152fba91ea8743fb8c33bf692f51ca763a", "path": "profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-installer/cap-package.json"},
+        {"key": "2026-10-16T02:11:31Z", "record": "record:sha256:24eebd29941873d074568c437a9097e2d8b1829599c7e96b513eae64f9f9f758", "path": "profiles/v1/transmission/4.1.3/windows/x86-64/msi-installer/cap-package.json"},
+        {"key": "2026-10-16T02:11:38Z", "record": "record:sha256:4de854dc66ad61d01e3e61a4b6ca80ffa4d27a5cbfe2ac9a8769d21bfcdf8cc2", "path": "profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-payload/cap-release.json"}
       ]
     }
   ],
@@ -68,7 +88,11 @@
     {"target": "aria2-next", "platform": "linux", "arch": "x86-64", "package": "elf-binary", "version": "3.0.3", "record": "record:sha256:56daa3c88410dd4c5a168d0d59c222a82fa2f81b6a62d9b57e400328452d0145", "path": "profiles/v1/aria2-next/3.0.3/linux/x86-64/elf-binary/cap-release.json"},
     {"target": "qbittorrent", "platform": "linux", "arch": "x86-64", "package": "appimage", "version": "5.2.4", "record": "record:sha256:99d2683ed6c5ef942b88c5650646f694cb36aa1c64cc949ca7ab02634974409c", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/appimage/cap-release.json"},
     {"target": "qbittorrent", "platform": "linux", "arch": "x86-64", "package": "elf-binary", "version": "5.2.4", "record": "record:sha256:9f0216017f66a3b85d25be78c3a4680e3bb54e012c45de4dc2f5f6e05813606b", "path": "profiles/v1/qbittorrent/5.2.4/linux/x86-64/elf-binary/cap-source.json"},
-    {"target": "transmission", "platform": "linux", "arch": "x86-64", "package": "elf-binary", "version": "4.1.3", "record": "record:sha256:1289b9e6c5862a3b52a166e885ceafcfbfd3d65a7226f22198ae368c0321611a", "path": "profiles/v1/transmission/4.1.3/linux/x86-64/elf-binary/cap-release.json"}
+    {"target": "qbittorrent", "platform": "windows", "arch": "x86-64", "package": "nsis-installer", "version": "5.2.4", "record": "record:sha256:97d331ee6bfe300f7dd9634f6ed50d152fba91ea8743fb8c33bf692f51ca763a", "path": "profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-installer/cap-package.json"},
+    {"target": "qbittorrent", "platform": "windows", "arch": "x86-64", "package": "nsis-payload", "version": "5.2.4", "record": "record:sha256:4de854dc66ad61d01e3e61a4b6ca80ffa4d27a5cbfe2ac9a8769d21bfcdf8cc2", "path": "profiles/v1/qbittorrent/5.2.4/windows/x86-64/nsis-payload/cap-release.json"},
+    {"target": "transmission", "platform": "linux", "arch": "x86-64", "package": "elf-binary", "version": "4.1.3", "record": "record:sha256:1289b9e6c5862a3b52a166e885ceafcfbfd3d65a7226f22198ae368c0321611a", "path": "profiles/v1/transmission/4.1.3/linux/x86-64/elf-binary/cap-release.json"},
+    {"target": "transmission", "platform": "windows", "arch": "x86-64", "package": "msi-installer", "version": "4.1.3", "record": "record:sha256:24eebd29941873d074568c437a9097e2d8b1829599c7e96b513eae64f9f9f758", "path": "profiles/v1/transmission/4.1.3/windows/x86-64/msi-installer/cap-package.json"},
+    {"target": "transmission", "platform": "windows", "arch": "x86-64", "package": "msi-payload", "version": "4.1.3", "record": "record:sha256:1acaefca4746ebbda52d92ec315c1799ddd1ccd2b60ca37abc098bdac8b13d55", "path": "profiles/v1/transmission/4.1.3/windows/x86-64/msi-payload/cap-release.json"}
   ],
   "corrections": [
   ]
