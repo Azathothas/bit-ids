@@ -1,0 +1,355 @@
+{
+  "schema": "bit-ids/profile/1",
+  "id": "record:sha256:2837d7b6e991e011f6dc90d5b3f64eb9aa1b2e8b0bf925e15185be13806c2f6d",
+  "target": {
+    "id": "aria2-next",
+    "display_name": "aria2-next",
+    "kind": "client",
+    "engine": null
+  },
+  "build": {
+    "version": "3.0.4",
+    "channel": "stable",
+    "platform": "linux",
+    "arch": "x86-64",
+    "package": "elf-binary",
+    "executable": "sha256:37033011459f03f6b7d005333e8efe0f6d453944120c821eccecb9e3ac9707be"
+  },
+  "acquisition": [
+    {
+      "id": "route-release",
+      "kind": "github_release",
+      "resolver": "https-api-gh-pkgforge-dev-repos-aninsomniacy-aria2-next-releases",
+      "delivery": "https-release-asset",
+      "origin": "https://github.com/AnInsomniacy/aria2-next/releases/download/v3.0.4/aria2-next-3.0.4-linux-x86_64",
+      "source": {
+        "form": "release_asset",
+        "detail": {
+          "repository": "AnInsomniacy/aria2-next",
+          "tag": "v3.0.4",
+          "asset": "aria2-next-3.0.4-linux-x86_64"
+        }
+      },
+      "resolved_version": "3.0.4",
+      "artifact": "sha256:37033011459f03f6b7d005333e8efe0f6d453944120c821eccecb9e3ac9707be",
+      "signature": "not_checked",
+      "installed_probe": "aria2-next --version",
+      "installed_evidence": "ev-release-installed-version",
+      "installed_executable": "sha256:37033011459f03f6b7d005333e8efe0f6d453944120c821eccecb9e3ac9707be",
+      "installed_version": "3.0.4"
+    },
+    {
+      "id": "route-source",
+      "kind": "source_build",
+      "resolver": "https-github-com-aninsomniacy-aria2-next-git",
+      "delivery": "git-clone-and-local-build",
+      "origin": "https://github.com/AnInsomniacy/aria2-next.git",
+      "source": {
+        "form": "source_commit",
+        "detail": {
+          "repository": "AnInsomniacy/aria2-next",
+          "commit": "ff005332c1965983fa8f1283a520169dd17be2d1"
+        }
+      },
+      "resolved_version": "3.0.4",
+      "artifact": "sha256:d659383c254035238a82c9f33e232694363ee22a86ee95d1056460ec1ca7eb36",
+      "signature": "not_checked",
+      "installed_probe": "aria2-next --version",
+      "installed_evidence": "ev-source-installed-version",
+      "installed_executable": "sha256:d659383c254035238a82c9f33e232694363ee22a86ee95d1056460ec1ca7eb36",
+      "installed_version": "3.0.4"
+    }
+  ],
+  "capture": {
+    "id": "cap-release",
+    "captured_at": "2026-10-16T02:20:34Z",
+    "fixture": "sha256:56a8a91562f24e5ef3b42c1c95745cdd8743b1befbf878960ec9f85e2ee150af",
+    "observed_route": "route-release",
+    "observer": "bit-ids-probe",
+    "connectors": [
+      {
+        "id": "bit-ids-probe",
+        "version": "0.0.0"
+      },
+      {
+        "id": "cpython-stdlib",
+        "version": "3.12.3"
+      }
+    ]
+  },
+  "observations": [
+    {
+      "path": "peer_wire/peer_id",
+      "state": {
+        "kind": "patterned",
+        "detail": {
+          "pattern": {
+            "length": 20,
+            "runs": [
+              {
+                "kind": "fixed",
+                "detail": {
+                  "bytes": "2d7142353233302d"
+                }
+              },
+              {
+                "kind": "varying",
+                "detail": {
+                  "length": 12,
+                  "alphabet": null
+                }
+              }
+            ]
+          },
+          "samples": 6
+        }
+      },
+      "evidence": [
+        "ev-release-peer"
+      ]
+    },
+    {
+      "path": "peer_wire/reserved",
+      "state": {
+        "kind": "constant",
+        "detail": {
+          "value": "0000000000100005",
+          "samples": 6
+        }
+      },
+      "evidence": [
+        "ev-release-peer"
+      ]
+    },
+    {
+      "path": "tracker_http/peer_id",
+      "state": {
+        "kind": "patterned",
+        "detail": {
+          "pattern": {
+            "length": 20,
+            "runs": [
+              {
+                "kind": "fixed",
+                "detail": {
+                  "bytes": "2d7142353233302d"
+                }
+              },
+              {
+                "kind": "varying",
+                "detail": {
+                  "length": 12,
+                  "alphabet": null
+                }
+              }
+            ]
+          },
+          "samples": 6
+        }
+      },
+      "evidence": [
+        "ev-release-tracker"
+      ]
+    },
+    {
+      "path": "tracker_http/user_agent",
+      "state": {
+        "kind": "constant",
+        "detail": {
+          "value": "71426974746f7272656e742f352e322e33",
+          "samples": 6
+        }
+      },
+      "evidence": [
+        "ev-release-tracker"
+      ]
+    }
+  ],
+  "corroboration": [
+    {
+      "path": "peer_wire/peer_id",
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-release-peer",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "2d7142353233302d423378624f527e3366555f72"
+          }
+        },
+        {
+          "connector": "cpython-stdlib",
+          "evidence": "ev-release-peer",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "2d7142353233302d423378624f527e3366555f72"
+          }
+        }
+      ],
+      "agreement": "exact",
+      "conflict": null
+    },
+    {
+      "path": "peer_wire/reserved",
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-release-peer",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "0000000000100005"
+          }
+        },
+        {
+          "connector": "cpython-stdlib",
+          "evidence": "ev-release-peer",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "0000000000100005"
+          }
+        }
+      ],
+      "agreement": "exact",
+      "conflict": null
+    },
+    {
+      "path": "tracker_http/peer_id",
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-release-tracker",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "2d7142353233302d3550214a5169773971633935"
+          }
+        },
+        {
+          "connector": "cpython-stdlib",
+          "evidence": "ev-release-tracker",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "2d7142353233302d3550214a5169773971633935"
+          }
+        }
+      ],
+      "agreement": "exact",
+      "conflict": null
+    },
+    {
+      "path": "tracker_http/user_agent",
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-release-tracker",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "71426974746f7272656e742f352e322e33"
+          }
+        },
+        {
+          "connector": "cpython-stdlib",
+          "evidence": "ev-release-tracker",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "71426974746f7272656e742f352e322e33"
+          }
+        }
+      ],
+      "agreement": "exact",
+      "conflict": null
+    }
+  ],
+  "normalizations": [],
+  "evidence": [
+    {
+      "id": "ev-release-installed-version",
+      "kind": "process_output",
+      "path": "release/version.txt",
+      "bytes": 544,
+      "sha256": "sha256:c224a45ff92344ab6cc0b074491c81e609c98121264f63e9e7648e33967898ee",
+      "connector": null
+    },
+    {
+      "id": "ev-release-metainfo",
+      "kind": "metainfo",
+      "path": "release/fixture/generated.torrent",
+      "bytes": 273,
+      "sha256": "sha256:56a8a91562f24e5ef3b42c1c95745cdd8743b1befbf878960ec9f85e2ee150af",
+      "connector": null
+    },
+    {
+      "id": "ev-release-peer",
+      "kind": "peer_transcript",
+      "path": "release/peer-wire-dialled.transcript.json",
+      "bytes": 7042,
+      "sha256": "sha256:9f47dafeacf416a45dba013a3c52d185960ce1a483b58f01c4233b40c2fb6254",
+      "connector": "bit-ids-probe"
+    },
+    {
+      "id": "ev-release-tracker",
+      "kind": "tracker_capture",
+      "path": "release/tracker-http.transcript.json",
+      "bytes": 7181,
+      "sha256": "sha256:c3b244f9426331779b4790f891dd3016559cb95cefc9489aae7a944166fff966",
+      "connector": "bit-ids-probe"
+    },
+    {
+      "id": "ev-source-installed-version",
+      "kind": "process_output",
+      "path": "source/version.txt",
+      "bytes": 544,
+      "sha256": "sha256:c224a45ff92344ab6cc0b074491c81e609c98121264f63e9e7648e33967898ee",
+      "connector": null
+    },
+    {
+      "id": "ev-source-metainfo",
+      "kind": "metainfo",
+      "path": "source/fixture/generated.torrent",
+      "bytes": 273,
+      "sha256": "sha256:3e552184e46b10de54afca894c196cebecb3fce776587450fef7bb66eb91c99f",
+      "connector": null
+    },
+    {
+      "id": "ev-source-peer",
+      "kind": "peer_transcript",
+      "path": "source/peer-wire-dialled.transcript.json",
+      "bytes": 7042,
+      "sha256": "sha256:ed3903c3e6798e671903683f668b204bb21e973189d89b2899f5584e2c4667e6",
+      "connector": "bit-ids-probe"
+    },
+    {
+      "id": "ev-source-tracker",
+      "kind": "tracker_capture",
+      "path": "source/tracker-http.transcript.json",
+      "bytes": 7181,
+      "sha256": "sha256:af193f09f79586b95770c60676cb824a7e53a1532f4e695463f7494e615976f0",
+      "connector": "bit-ids-probe"
+    }
+  ],
+  "supersedes": null,
+  "adjudication": null
+}
