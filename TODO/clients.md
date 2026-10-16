@@ -2202,3 +2202,101 @@ two sessions whose tails differ, and answered one of the lab's two peer
 connections. ⚠ The two builds' `--version` answers are byte-identical now, so
 the compiler that told 2.7.5's pair apart is no longer in what they report.
 `CI-09` carries the records.
+
+### ⭐ aria2-next's Windows half is built, and not yet dispatched. 2026-10-15
+
+[`../tools/check/adapter_aria2-next_windows.go`](../tools/check/adapter_aria2-next_windows.go)
+registers `aria2-next` on Windows, so `capture-client.yml` can run with
+`windows_adapters: ["aria2-next"]` over its default routes, `release` and
+`package`.
+[`../tools/check/a2nwindows.go`](../tools/check/a2nwindows.go) holds what it
+decides without Windows in it: the command line, the version reading, Scoop's
+manifest, where Scoop placed the build, and the JSON-RPC bodies and answers.
+`bit-check aria2-next-windows --selftest` asks each of them on any host, 84
+cases, all held, and `check-bitcheck` runs it. ⭐ The option read-back moved
+into that file as one function, `aria2NextOptionsRefusal`, and the Linux half
+now calls it with the same messages, so the two halves judge one list.
+
+| route | what it does | `package` |
+| --- | --- | --- |
+| `release` | `aria2-next-<version>-windows-x86_64.exe` from GitHub, placed by `install-rootless --install` at `<prefix>\bin\aria2-next.exe` under the resolution's digests. It reaches `both`: the vendor's checksums document and the listing's digest | `pe-binary` |
+| `package` | Scoop's own installer, fetched by `install-rootless --fetch` and run with `-ScoopDir %USERPROFILE%\scoop -RunAsAdmin`, then `scoop install main/aria2-next --no-update-scoop` with no version. The manifest and the bucket's git commit are kept in `scoop-index.txt` before the install. The placed file must digest to the manifest's hash and answer the manifest's version | `pe-binary` |
+
+⭐ **The routes were read rather than assumed**, through `AGENTS.md` rule 8's
+route on 2026-10-15:
+
+| source | what it carries for Windows x64 |
+| --- | --- |
+| the vendor's `v3.0.3` release | eight assets, two of them Windows builds: `aria2-next-3.0.3-windows-x86_64.exe`, 18225664 bytes, listing digest `sha256:b2f2f7a9...d2be9465`, and `-windows-arm64.exe`. `aria2-next-3.0.3-checksums.sha256` names the same digest. The file is a console PE built with llvm-mingw against the UCRT, and imports no Visual C++ runtime |
+| winget, `AnInsomniacy.Aria2Next` | ⛔ stops at **2.8.3**, a `portable` installer of the vendor's asset. Its 3.0.3 pull request, microsoft/winget-pkgs#452639, was closed unmerged. Its 3.0.4 pull request is open |
+| Scoop, `ScoopInstaller/Main` `bucket/aria2-next.json` | ⭐ **3.0.3** from commit `1359d92` (2026-10-14T08:38Z) to `2384d7c` (2026-10-15T08:38Z), with the vendor's own x64 URL and hash `b2f2f7a9...d2be9465`. It names **3.0.4** since then. `Extras`, `Versions` and `Nonportable` carry no `aria2-next` |
+| Chocolatey's community feed | no `aria2-next`, `aria2next` or `aria2.next` package. The first page of a search for `aria2` answers versions of `aria2`, `persepolis` and `firedm` |
+
+So Scoop is the one package manager that carries this product at the vendor's
+version, which is the operator's condition for a second route. ⛔ **Its pair
+shares its origin, as Transmission's winget pair does.** Scoop's x64 URL is the
+release route's own GitHub asset. The resolvers differ: a commit of Scoop's
+bucket against the vendor's release listing. So do the delivery and its check:
+Scoop's downloader and manifest hash against `install-rootless` and the
+vendor's document. That is what `E-ACQ-07` and `E-ACQ-08` compare. ⚠ Scoop's
+bucket is kept current by Scoop's own bot reading the vendor's releases, so
+this index follows the vendor rather than judging it.
+
+⛔ **3.0.3 is no longer what either route resolves.** The vendor published
+3.0.4 at 2026-10-15T05:02Z and Scoop's bucket followed at 08:38Z. A dispatch
+now would resolve 3.0.4 on the release lane and install 3.0.4 on the package
+lane: one version on both, by each route's own resolver. ⚠ The adapter pins
+nothing, which is absolute 5. The published Linux pair is 3.0.3, and no Linux
+3.0.4 pair exists, so a Windows capture now would not sit at the Linux pair's
+version. The resolution was driven offline over the live listing: 3.0.4 selects
+`aria2-next-3.0.4-windows-x86_64.exe` alone among eight assets, and a
+3.0.3-only listing selects the 3.0.3 file with `digest_source=both`.
+`install-rootless --install` placed that 3.0.3 file under the 3.0.3 resolution
+as `both`, sha256 `b2f2f7a9...d2be9465`.
+
+⚠ **What differs from the Linux half, each for a reason in the adapter's
+header:**
+
+- RPC is the adapter's own HTTP client on loopback with no proxy, not `curl`.
+  So `start` and `stop` run no program beside the build and `bit-check`, and
+  `describe` names no `helpers=`.
+- `stop` deletes the token on every path out. It sends `aria2.shutdown`, waits
+  the Linux half's ten seconds, then kills, because Windows has no SIGTERM for
+  a console process in another process group. `stop.txt` says which of the two
+  ended it.
+- There is no PATH lookup, because Scoop puts a shim named `aria2-next.exe` on
+  PATH. The build is the one version directory under
+  `apps\aria2-next`, never `current` and never the shim.
+- The version reading also requires `aria2` on the first line and a
+  version-shaped field after `version`.
+
+⭐ **The Windows build's options were read rather than run.** Every option key
+the Linux 3.0.3 build reported over RPC on the session host, 104 of them, is a
+string in the Windows 3.0.3 executable. Its discovery-family strings are the
+same seven: `bt-enable-lpd`, `bt-lpd-interface`, `bt-port-mapping`,
+`ed2k-port-mapping`, `enable-dht`, `enable-dht6` and `enable-peer-exchange`.
+The Linux build reported exactly the thirteen judged-harmless options as
+`true`. ⚠ The Windows build's own defaults are not measured. A default that
+differs and is reported `true` refuses at `start` by name.
+
+⛔ **What needs a runner, in the order to read a dispatch:**
+
+1. Whether `resolve-release` verifies the vendor's checksums document on
+   Windows, through `sha256sum` or `certutil`. The release lane's
+   `release/resolution.txt` should say `digest_source=both`.
+2. Whether Scoop's installer runs under `-RunAsAdmin` into
+   `%USERPROFILE%\scoop` and clones its bucket with git. The package lane's
+   `install.log` and `scoop-installer.txt` show it, and `scoop-index.txt` names
+   the bucket commit and the manifest's version.
+3. Whether `scoop install main/aria2-next --no-update-scoop` places one version
+   directory whose `aria2-next.exe` digests to the manifest's hash.
+   `scoop-index.txt` records `placed_sha256` beside `index_sha256`.
+4. Whether `aria2-next.exe --version` answers on both routes. `version.err`
+   beside each install record carries the whole answer.
+5. Whether the Windows build's options pass the shared read-back:
+   `client/rpc-options.json`. A refusal names the option.
+6. Whether `aria2.shutdown` ends it within ten seconds, so it announces
+   `stopped`. `client/stop.txt` says `rpc-shutdown` or `killed`, and no
+   `client/rpc-token` may ship.
+7. The capture itself: announces from `-qB5230-` with `aria2-next.exe` and
+   `bit-check.exe` under the firewall rules.

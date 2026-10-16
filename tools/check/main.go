@@ -62,6 +62,7 @@
 //	bit-check probe-egress <host:port>
 //	bit-check qbittorrent-windows --selftest
 //	bit-check transmission-windows --selftest
+//	bit-check aria2-next-windows --selftest
 //	bit-check --rows
 //
 // ⛔ Read the exit code from this process, unpiped. ⚠ `go run . <check>` is a
@@ -229,6 +230,9 @@ func main() {
 	}
 	if args[0] == "transmission-windows" {
 		os.Exit(transmissionWindows(args[1:]))
+	}
+	if args[0] == "aria2-next-windows" {
+		os.Exit(aria2NextWindows(args[1:]))
 	}
 
 	name := args[0]

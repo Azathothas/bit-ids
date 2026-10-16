@@ -57,20 +57,23 @@ on:
         default: "51413"
         type: string
       # ⭐ THE WINDOWS LANE, `CI-11`. Its own adapter list, because only a
-      # target with a Windows half can run there: `qbittorrent` and
-      # `transmission` today. ⚠ THE DEFAULT IS NONE, so a bare dispatch runs
-      # what it ran before this lane existed; pass `["qbittorrent"]` to run
-      # it. Decided unattended on 2026-10-15 and recorded in
+      # target with a Windows half can run there: `qbittorrent`,
+      # `transmission` and `aria2-next` today. ⚠ THE DEFAULT IS NONE, so a
+      # bare dispatch runs what it ran before this lane existed; pass
+      # `["qbittorrent"]` to run it. Decided unattended on 2026-10-15 and
+      # recorded in
       # `TODO/PROGRESS.md`.
       windows_adapters:
         description: >-
-          Which adapters to run on Windows, as a JSON array, of qbittorrent
-          and transmission, e.g. ["qbittorrent"]. [] runs no Windows lane.
+          Which adapters to run on Windows, as a JSON array, of qbittorrent,
+          transmission and aria2-next, e.g. ["qbittorrent"]. [] runs no
+          Windows lane.
         required: true
         default: '[]'
         type: string
       # ⚠ ITS OWN ROUTES TOO: the Windows half's second route is a package
-      # manager, winget, where Linux's is a source build.
+      # manager, winget or (for `aria2-next`) Scoop, where Linux's is a
+      # source build.
       windows_routes:
         description: >-
           Which acquisition routes the Windows lane runs, as a JSON array, of
@@ -598,7 +601,8 @@ jobs:
     if: inputs.windows_adapters != '[]'
     runs-on: windows-2025
     # ⚠ Nothing on this lane compiles, so the bound is a download lane's with
-    # room for winget, whose first call also refreshes its index.
+    # room for winget, whose first call also refreshes its index, or for Scoop,
+    # which is installed and clones its bucket first.
     timeout-minutes: 45
     # ⛔ READ ONLY, with `checks: write` for the install barrier's check runs.
     permissions:
@@ -661,10 +665,10 @@ jobs:
           exit 0
 
       # ⛔ THE ARTIFACT IS CHOSEN HERE, out of the adapter's own `describe`, which
-      # names qBittorrent's `_lt20` installer or Transmission's x64 MSI. ⚠ The
-      # URL is written with a bare `\n` rather than through `>`, which on
-      # Windows would end it with `\r\n` and hand `install-rootless` a URL with
-      # a carriage return in it.
+      # names qBittorrent's `_lt20` installer, Transmission's x64 MSI or
+      # aria2-next's x64 executable. ⚠ The URL is written with a bare `\n`
+      # rather than through `>`, which on Windows would end it with `\r\n` and
+      # hand `install-rootless` a URL with a carriage return in it.
       - name: Resolve the release artifact
         if: matrix.route == 'release'
         shell: pwsh
@@ -689,8 +693,8 @@ jobs:
       # the whole tree. ⚠ Each bound outlasts the one inside it: install-client's
       # own bounds sum to about 930 seconds, under BIT_IDS_STEP_TIMEOUT, under
       # OUTER_TIMEOUT, under the step's `timeout-minutes`, under the job's.
-      # ⚠ The version bound is 120 seconds, not 60, because this build is asked
-      # its version by starting it and reading its Web UI.
+      # ⚠ The version bound is 120 seconds, not 60, because qBittorrent's build
+      # is asked its version by starting it and reading its Web UI.
       - name: Install the client
         id: install
         shell: pwsh

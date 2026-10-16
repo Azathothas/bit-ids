@@ -12,6 +12,25 @@ Nothing is released yet. Entries accumulate here until the first
   covers it.
 - Record: [`TODO/ci.md`](TODO/ci.md) `CI-11`. No version bump and no deploy.
 
+### 2026-10-15T23:58:28Z
+
+- ⭐ **aria2-next has a Windows half**: `bit-check adapter aria2-next` on
+  Windows drives the vendor's console build over its own JSON-RPC, with the
+  Linux half's flags and the same five discovery switches off. Its release
+  route places the vendor's x64 executable under the vendor's checksums and
+  the listing's digest. Its package route is Scoop's `main/aria2-next`, the
+  one package manager carrying the vendor's version; winget's stops at 2.8.3
+  and Chocolatey has none.
+- Both halves now read the build's options back through one function, so the
+  switches they require off and the options judged harmless are one list.
+- `bit-check aria2-next-windows --selftest` checks the pure decisions on any
+  host: 84 cases, and six mutants were each refused. `check-bitcheck` runs it.
+- ⚠ The vendor's newest stable is now 3.0.4 and Scoop follows it, so a
+  dispatch would capture 3.0.4 on Windows, beside a published Linux 3.0.3.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-11` and
+  [`TODO/clients.md`](TODO/clients.md) `CLIENT-14`. Not yet dispatched. No
+  version bump and no deploy.
+
 ### 2026-10-15T23:45:00Z
 
 - **Both Windows pairs assemble on a runner**: qBittorrent 5.2.4 and

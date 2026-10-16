@@ -2037,6 +2037,14 @@ func (b *bitcheck) adapters() {
 	} else {
 		b.h.bad(fmt.Sprintf("adapters the Windows transmission adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
 	}
+	// ⭐ AND aria2-next's: the command line, the version reading, Scoop's
+	// manifest and where Scoop placed the build are a2nwindows.go, and so is the
+	// option read-back both halves of that adapter ask. `CI-11`, `CLIENT-14`.
+	if rc, out := b.run("aria2-next-windows", "--selftest"); rc == 0 && strings.Contains(out, `"failed":0}`) {
+		b.h.ok("adapters the Windows aria2-next adapter's selftest holds: go (exit 0)")
+	} else {
+		b.h.bad(fmt.Sprintf("adapters the Windows aria2-next adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
+	}
 
 	// ⛔ A RELEASE FETCH WITH NO TIME LIMIT. ⚠ Planted in the installer, because
 	// `ACQ-06` moved every release retrieval there, and in its Go file since

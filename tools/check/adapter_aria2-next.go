@@ -68,7 +68,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/rand"
 	"encoding/base64"
@@ -413,27 +412,11 @@ func aria2NextSource(k *adapterKit, workdir string) {
 	}
 }
 
-// The option families a discovery switch belongs to, and the options this file
-// has judged harmless when the build reports them `true`.
-var (
-	aria2NextKeyRe     = regexp.MustCompile(`"[^"]+":`)
-	aria2NextFamilyRe  = regexp.MustCompile(`^(enable-dht[a-z0-9-]*|[a-z0-9-]*port-mapping|[a-z0-9-]*-lpd|[a-z0-9-]*-lsd|[a-z0-9-]*peer-exchange)$`)
-	aria2NextTrueRe    = regexp.MustCompile(`"[^"]+": *"?true`)
-	aria2NextTrueKeyRe = regexp.MustCompile(`^"([^"]+)".*`)
-	aria2NextResultRe  = regexp.MustCompile(`^.*"result":"([^"]*)".*$`)
-	aria2NextHarmless  = " allow-overwrite auto-file-renaming check-certificate enable-color enable-http-keep-alive enable-rpc follow-metalink follow-torrent http-accept-gzip keep-unfinished-download-result rpc-save-upload-metadata save-not-found show-console-readout "
-)
-
-// lines is a file's lines, as `grep` reads them.
-func lines(b []byte) []string {
-	var out []string
-	s := bufio.NewScanner(bytes.NewReader(b))
-	s.Buffer(make([]byte, 0, 64*1024), 1<<30)
-	for s.Scan() {
-		out = append(out, s.Text())
-	}
-	return out
-}
+// aria2NextResultRe reads the download's gid out of `aria2.addTorrent`'s answer.
+// ⚠ The option families, the options judged harmless when `true` and `lines`
+// are in a2nwindows.go, which both halves build, because the read-back they
+// serve is one function for both: aria2NextOptionsRefusal.
+var aria2NextResultRe = regexp.MustCompile(`^.*"result":"([^"]*)".*$`)
 
 func aria2NextStart(k *adapterKit, args []string) {
 	if len(args) < 3 {
@@ -576,54 +559,22 @@ func aria2NextStart(k *adapterKit, args []string) {
 		k.refuse("aria2-next refused to report its global options")
 	}
 	options, _ := os.ReadFile(filepath.Join(workdir, "rpc-options.json"))
-	has := func(key, value string) bool {
-		return bytes.Contains(options, []byte(`"`+key+`":"`+value+`"`))
-	}
-	// ⛔ EVERY DISCOVERY SWITCH THIS FILE PASSES IS REPORTED, AND FALSE. A switch
-	// the build stopped reporting is one nothing here can show took effect.
-	for _, sw := range []string{"enable-dht", "bt-enable-lpd", "enable-peer-exchange", "bt-port-mapping", "ed2k-port-mapping"} {
-		if !has(sw, "false") {
-			k.refuse("aria2-next reports " + sw + " is not false; a discovery surface is live")
-		}
-	}
-	// ⛔ AND EVERY KEY OF THOSE FAMILIES THE BUILD REPORTS, NAMED OR NOT, reads
-	// `false` too. `ed2k-port-mapping` was on in 3.0.2 and named nowhere.
-	// ⚠ The KEYS are what is taken off the dump, `"key":` whatever follows it,
-	// and each is then asked for the exact pair: a value this parse cannot read
-	// refuses rather than passing unread.
-	for _, line := range lines(options) {
-		for _, m := range aria2NextKeyRe.FindAllString(line, -1) {
-			key := strings.NewReplacer(`"`, "", ":", "").Replace(m)
-			if key == "" || !aria2NextFamilyRe.MatchString(key) {
-				continue
-			}
-			if !has(key, "false") {
-				k.refuse("aria2-next reports " + key + " and not as false; a discovery surface is live")
-			}
-		}
-	}
-	// ⛔ AND A SWITCH THAT IS ON IS ONE THIS FILE HAS JUDGED. A family is still a
-	// set of spellings, and the next surface need not share one: libtorrent calls
-	// local discovery LSD, and 3.0.0's notes say its ED2K speaks Kad. So every
-	// option the build reports as `true` must be named in aria2NextHarmless, each
-	// read off 3.0.2's own dump and none a discovery surface, and a new default
-	// reported as `true` refuses whatever it is called. ⚠ A surface a build turns
-	// on with another value, such as a port or `auto`, is not caught here.
-	for _, line := range lines(options) {
-		for _, m := range aria2NextTrueRe.FindAllString(line, -1) {
-			key := strings.Trim(aria2NextTrueKeyRe.ReplaceAllString(m, "$1"), " \t")
-			if key == "" || strings.Contains(aria2NextHarmless, " "+key+" ") {
-				continue
-			}
-			k.refuse("aria2-next reports " + key + " as true, and this file has not judged it; a discovery surface may be live")
-		}
-	}
-
+	// ⛔ EVERY DISCOVERY SWITCH THIS FILE PASSES IS REPORTED, AND FALSE; EVERY KEY
+	// OF THOSE FAMILIES THE BUILD REPORTS, NAMED OR NOT, reads `false` too
+	// (`ed2k-port-mapping` was on in 3.0.2 and named nowhere); and a switch that
+	// is ON is one this file has judged. A family is still a set of spellings, and
+	// the next surface need not share one: libtorrent calls local discovery LSD,
+	// and 3.0.0's notes say its ED2K speaks Kad. So every option the build reports
+	// as `true` must be named in aria2NextHarmless, each read off 3.0.2's own dump
+	// and none a discovery surface. ⚠ A surface a build turns on with another
+	// value, such as a port or `auto`, is not caught here.
 	// ⛔ AND THE PORT THE OBSERVER IS WATCHING IS READ BACK FROM THE BUILD. A peer
 	// port that silently did not take is a capture watching a port nothing is on,
 	// and it would look exactly like a client that never announced.
-	if port != "0" && !has("listen-port", port) {
-		k.refuse("aria2-next reports a listen port other than " + port)
+	// ⭐ One function, in a2nwindows.go, so the Windows half asks the same
+	// questions of its build in the same words.
+	if msg := aria2NextOptionsRefusal(options, port); msg != "" {
+		k.refuse(msg)
 	}
 
 	// ⭐ THE TORRENT GOES IN OVER RPC, base64-ENCODED, WHICH IS THE CASE

@@ -10,7 +10,7 @@ their contract.** Each is a `bit-check` command, `bit-check adapter <name>
 | target | adapter |
 | --- | --- |
 | `aria2` | [`../../../tools/check/adapter_aria2.go`](../../../tools/check/adapter_aria2.go) |
-| `aria2-next` | [`../../../tools/check/adapter_aria2-next.go`](../../../tools/check/adapter_aria2-next.go) |
+| `aria2-next` | [`../../../tools/check/adapter_aria2-next.go`](../../../tools/check/adapter_aria2-next.go), with a Windows half registered under the same name |
 | `qbittorrent` | [`../../../tools/check/adapter_qbittorrent.go`](../../../tools/check/adapter_qbittorrent.go), with a Windows half registered under the same name |
 | `transmission` | [`../../../tools/check/adapter_transmission.go`](../../../tools/check/adapter_transmission.go), with a Windows half registered under the same name |
 
@@ -147,8 +147,10 @@ A Windows runner has no `sh`, so an adapter's Windows half is Go, registered
 by name and run as `bit-check adapter <name> <subcommand>`, under the same
 contract. `qbittorrent` has one,
 [`../../../tools/check/adapter_qbittorrent_windows.go`](../../../tools/check/adapter_qbittorrent_windows.go),
-and so does `transmission`,
-[`../../../tools/check/adapter_transmission_windows.go`](../../../tools/check/adapter_transmission_windows.go).
+so does `transmission`,
+[`../../../tools/check/adapter_transmission_windows.go`](../../../tools/check/adapter_transmission_windows.go),
+and so does `aria2-next`,
+[`../../../tools/check/adapter_aria2-next_windows.go`](../../../tools/check/adapter_aria2-next_windows.go).
 Three things in the first differ from Linux, and each is a fact of the build:
 
 - ⛔ **`version` starts the build.** The Windows GUI build compiles
@@ -179,6 +181,22 @@ release route lays the vendor's MSI out as an administrative image, `msiexec
 `Daemon` and `CmdTools` features named because a default install carries
 neither. `CLIENT-06` in [`../../../TODO/clients.md`](../../../TODO/clients.md)
 carries the measurements.
+
+⭐ **`aria2-next`'s Windows half differs from Linux least.** Its build is the
+vendor's bare console executable, `version` is `aria2-next --version`, and
+`start` passes the Linux half's flags. Both halves read the build's options
+back through one function, `aria2NextOptionsRefusal` in
+[`../../../tools/check/a2nwindows.go`](../../../tools/check/a2nwindows.go), so
+the switches, the families and the options judged harmless when `true` are one
+list. RPC is the adapter's own HTTP client on loopback, so it declares no
+`helpers=`. `stop` sends `aria2.shutdown` first and gives it the Linux half's
+ten seconds; it kills a build still running after them, or one that did not
+answer. Its release route places the vendor's
+`-windows-x86_64.exe` with `install-rootless --install`. Its package route is
+Scoop's `main/aria2-next`, because winget's index stops at 2.8.3 and
+Chocolatey's has no such package. `CLIENT-14` in
+[`../../../TODO/clients.md`](../../../TODO/clients.md) carries the
+measurements.
 
 ## ⛔ The workdir IS the evidence bundle
 
@@ -244,9 +262,10 @@ once does not see.** `aria2-next` 3.0.0 added `ed2k-port-mapping`, UPnP for its
 ED2K ports, which 3.0.2 has on by default, and 3.0.2 no longer reports
 `enable-dht6`. The
 read-back refused the first 3.0.2 capture over the missing key, and the options
-dump that came back named the new switch. ⭐ So `adapter_aria2-next.go` holds every
-switch of the four families its build reports to `false`, named in the file or
-not, beside the list it passes. `CLIENT-14` in
+dump that came back named the new switch. ⭐ So both halves of `aria2-next`
+hold every switch of the four families its build reports to `false`, named or
+not, beside the list they pass, through one function in
+[`../../../tools/check/a2nwindows.go`](../../../tools/check/a2nwindows.go). `CLIENT-14` in
 [`../../../TODO/clients.md`](../../../TODO/clients.md) carries the measurement.
 
 ## The routes

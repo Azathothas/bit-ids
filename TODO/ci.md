@@ -6307,3 +6307,50 @@ workflows and names the exception when it does refuse. A new
 `check-step-bodies` case serves a 404 from a local server and requires the
 proof to pass. With the switch removed, that case fails.
 
+### ⭐ aria2-next's Windows half is built, and not yet dispatched. 2026-10-15
+
+[`../tools/check/adapter_aria2-next_windows.go`](../tools/check/adapter_aria2-next_windows.go)
+registers `aria2-next` on Windows, so `capture-client.yml` can run with
+`windows_adapters: ["aria2-next"]` over the default `windows_routes`, `release`
+and `package`. Its pure decisions are in
+[`../tools/check/a2nwindows.go`](../tools/check/a2nwindows.go), whose selftest,
+`bit-check aria2-next-windows --selftest`, `check-bitcheck` runs beside the
+other two. The routes, the measurements behind them and the reading order for
+a dispatch are under `CLIENT-14` in [`clients.md`](clients.md).
+
+| route | source | why |
+| --- | --- | --- |
+| `release` | the vendor's `aria2-next-<version>-windows-x86_64.exe`, placed by `install-rootless --install` | the release publishes it with a listing digest and a checksums document, so the route reaches `both` |
+| `package` | Scoop's `main/aria2-next`, with Scoop installed by its own installer | the one package manager that carries the vendor's version. winget stops at 2.8.3 and Chocolatey has no package |
+
+⛔ **The pair shares its origin**, as Transmission's winget pair does: Scoop's
+x64 URL is the release route's own asset. Its resolver, delivery and check are
+Scoop's own.
+
+⛔ **The vendor's newest stable moved to 3.0.4 on 2026-10-15**, and Scoop's
+bucket followed three hours later. The adapter pins nothing, so a dispatch now
+captures 3.0.4 on both Windows lanes, beside the published Linux 3.0.3 pair.
+
+⭐ **The option read-back is one function for both halves.**
+`aria2NextOptionsRefusal` moved out of the Linux adapter unchanged, message for
+message, and the Linux `start` calls it. The Linux `start` and `stop` were
+driven against the session host's 3.0.3 build after the move, with a torrent
+whose only tracker is a closed loopback port. Both exited 0, the options dump
+held every switch `false`, and the token was gone after `stop`.
+
+⚠ **The workflow changed in its words only.** The `windows_adapters`
+description and three comments now name `aria2-next`, Scoop or both. No step,
+default or bound changed. Neither Windows route compiles, so the lane's fixed
+install bound holds.
+
+| held before commit | result |
+| --- | --- |
+| `bit-check aria2-next-windows --selftest` | 84 of 84 |
+| six mutants, each in a scratch copy of `tools/check` | each refused: `ed2k-port-mapping` dropped from the switches (1 case), the first of two Scoop version directories accepted (2), an unjudged `true` passed (1), Scoop's URL not checked against its version (2), any token after `version` read as one (1), the family sweep skipped (4) |
+| `resolve-release` over the live listing, with a stub `describe` printing the Windows keys | 3.0.4 selects `aria2-next-3.0.4-windows-x86_64.exe` alone among eight assets; a 3.0.3-only listing selects the 3.0.3 file with `digest_source=both` |
+| `install-rootless --install` of the 3.0.3 Windows file under that resolution | placed as `aria2-next.exe`, `both`, sha256 `b2f2f7a9...d2be9465` |
+| `gofmt -l`, `go vet ./...`, `GOOS=windows go vet ./...`, `GOOS=windows go build` | clean |
+| `sh scripts/common/check-gate.sh` | 42 checks: 41 passed, 0 failed, 1 skipped |
+
+⛔ **Not established off a runner.** No step of the Windows half has run on
+Windows. `CLIENT-14` lists what a dispatch proves, in reading order.
