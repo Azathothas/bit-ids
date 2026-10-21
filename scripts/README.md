@@ -171,7 +171,11 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   [`../tools/check/transcriptpeer.go`](../tools/check/transcriptpeer.go), since
   2026-10-21: a substring test of the peer ID's hex refused aria2, whose peer ID
   carries raw bytes the request escapes. `capture-client --selftest` proves it,
-  and `check-bitcheck` plants the old test. `CLIENT-05`.
+  and `check-bitcheck` plants the old test. `CLIENT-05`. ⛔ It also refuses a
+  connector that names itself as the target, in
+  [`../tools/check/selfcorroboration.go`](../tools/check/selfcorroboration.go),
+  by the test `E-COR-20` applies to a record; the selftest holds its cases and
+  `check-bitcheck` removes the guard.
 - `bit-check scan-bundle`, in
   [`../tools/check/scanbundle.go`](../tools/check/scanbundle.go), is rule 12
   over a directory about to be uploaded: a file whose name says it holds a credential,

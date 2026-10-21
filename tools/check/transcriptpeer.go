@@ -221,6 +221,27 @@ func captureClientSelftest() int {
 		[]byte(`{"schema": "bit-ids/transcript/1", "segments": [{"direction": "from_target", "bytes": "`+
 			strings.ToUpper(hex.EncodeToString(announce(ascii)))+`"}]}`))
 
+	// ⛔ AND THE CONNECTOR IS NEVER THE TARGET, selfcorroboration.go. The
+	// cases are `profile_schema.rs`'s, so the two homes of `E-COR-20`'s test
+	// answer one table.
+	self := func(label string, want bool, describe, target string) {
+		cases++
+		if got := connectorIsTarget([]byte(describe), target) != ""; got != want {
+			failed++
+			fmt.Fprintf(os.Stderr, "capture-client --selftest: FAILED %s (refused=%v, wanted %v)\n", label, got, want)
+		}
+	}
+	self("aria2 is refused as the connector of aria2", true, "id=aria2\nversion=1.37.0\n", "aria2")
+	self("aria2-next is refused as the connector of aria2", true, "id=aria2-next\nversion=3.0.3\n", "aria2")
+	self("aria2 is refused as the connector of aria2-next", true, "id=aria2\nversion=1.37.0\n", "aria2-next")
+	self("aria2c is refused as the connector of aria2", true, "id=aria2c\nversion=1.37.0\n", "aria2")
+	self("a connector running on aria2 under another name is refused", true,
+		"id=rpc-reader\nversion=0.0.0\nruntime=aria2c\n", "aria2")
+	self("cpython-stdlib is accepted as the connector of aria2", false,
+		"id=cpython-stdlib\nversion=3.12.3\nruntime=cpython\n", "aria2")
+	self("cpython-stdlib is accepted as the connector of aria2-next", false,
+		"id=cpython-stdlib\nversion=3.12.3\nruntime=cpython\n", "aria2-next")
+
 	fmt.Printf(`{"schema":"capture-client-selftest/1","cases":%d,"failed":%d}`+"\n", cases, failed)
 	if failed != 0 {
 		return 1

@@ -873,6 +873,71 @@ both lanes read `compiles`, so each gets the build bounds. Then check:
 3. whether `assemble-bundle` makes two `publishable` records with
    `build_equivalent` across them. It was not run by hand here.
 
+### ⛔ aria2 cannot corroborate aria2: `E-COR-20` and the capture guard. 2026-10-21
+
+⚠ **Until this section nothing enforced the Problem's last clause.** A record's
+`capture.connectors[]` carries an `id` and a `version`, and no rule compared
+either with the target. `capture-client` read the connector's described `id`
+and never compared it with the adapter's `target`.
+
+⭐ **Two homes now enforce it, with one identity test.** A connector and a
+target are one implementation when either identifier contains the other:
+
+| layer | what it refuses | where |
+| --- | --- | --- |
+| the record | `E-COR-20`: any declared connector whose `id` is the target, or the target's `engine`, by that test, at `capture.connectors[i]` | `crates/bit-ids/src/validate.rs`, `same_implementation` |
+| the capture | exit 1 when the connector's `--describe` `id` or `runtime` is the adapter's `target`, before the connector reads anything | [`../tools/check/selfcorroboration.go`](../tools/check/selfcorroboration.go), called from `captureclient.go` |
+
+⚠ **Why containment and not equality.** The connector the architecture plans is
+`aria2c`, which equality and a hyphen-prefix test both let through. Containment
+refuses `aria2` beside `aria2`, `aria2c`, `aria2c-rpc`, `libaria2` and
+`aria2-next`, in both directions. It also refuses `qbittorrent` beside
+`qbittorrent-enhanced`, a fork that shares code, which is the pessimistic side.
+⛔ Every declared connector is tested, the observer included, rather than only
+those that observe a field. A declared connector is what `E-CAP-01` counts.
+
+⚠ **The identifier is the identity because it is all a record carries.** A
+connector built on aria2 under an unrelated name would pass the record's rule.
+The capture guard narrows that by testing `runtime=` too, and a connector names
+its implementation, as `cpython-stdlib` does. Both choices are under *Decided
+unattended*.
+
+⭐ **Measured on 2026-10-21:**
+
+- `cargo test -p bit-ids --test profile_schema`: 28 passed, 0 failed. Six tests
+  are new. `aria2` beside `aria2` is refused with `E-COR-20` and nothing else.
+  `cpython-stdlib` beside `aria2` and `aria2-next` is accepted. Seven spellings
+  are refused, and so are an engine connector and an observer that is the
+  target. No catalogue target is refused beside `bit-ids-probe` or
+  `cpython-stdlib`. `E-COR-20` has its row in the planted table.
+- ⛔ With the call to `check_self_corroboration` removed, 5 tests fail.
+- `capture-client --selftest`: 22 cases, all held, 7 of them new.
+  `check-bitcheck` removes the guard in its scratch tree, builds that copy, and
+  the selftest exits 1 on *aria2 is refused as the connector of aria2*.
+- `check-capture-client`: 138 of 138. Three new cases drive the real runner with
+  a stub connector named `stub-client`, `stub-client-next` and `stub`, beside
+  the stub target `stub-client`. With the call in `captureclient.go` disabled,
+  135 of 138, 3 failed.
+- All 18 records on `data` at `5a3eb7a` still read as valid under the new
+  rule, aria2 1.37.0's two among them. Their second connector is
+  `cpython-stdlib`.
+
+⚠ **Whether the Prove is met.** Its first half, *tests reject aria2
+self-corroboration*, is met by this section. Its second half is met by
+`capture-client` run 39590380931: two routes, `release` and `source`, both
+`publishable`, `build_equivalent` across them. Those records rest on the Rust
+observer and `cpython-stdlib`'s decoding of the captured bytes. ⛔ Two things
+stop this section from closing the entry:
+
+- The *Approach* names a separate packet oracle. None exists; the second reading
+  is of the bytes the observer recorded, which `OBS-07` states the cost of.
+  `CLIENT-14` closed on the same kind of reading.
+- The title and *Approach* also name aria2 **as a connector** for other
+  targets. Nothing in the tree drives aria2 that way yet. `E-COR-20` is what
+  will keep it honest when something does.
+
+So the Status is left for the operator.
+
 ## CLIENT-06: Transmission capture adapter
 
 Source: operator scope and bit-cli source-profile generator study

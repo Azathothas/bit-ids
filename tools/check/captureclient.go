@@ -840,7 +840,8 @@ func runCaptureClient(args []string) error {
 		os.Remove(tmp)
 		return b
 	}
-	connectorID := keyField(describeConnector(false), "id")
+	connectorDesc := describeConnector(false)
+	connectorID := keyField(connectorDesc, "id")
 	if connectorID == "" {
 		return cannot("the connector did not describe its own identifier")
 	}
@@ -851,6 +852,13 @@ func runCaptureClient(args []string) error {
 	if strings.HasPrefix(connectorID, "-") || strings.HasSuffix(connectorID, "-") ||
 		strings.Contains(connectorID, "--") || strings.Trim(connectorID, "abcdefghijklmnopqrstuvwxyz0123456789-") != "" {
 		return cannot("the connector named itself [%s], which is not a slug", connectorID)
+	}
+	// ⛔ A CONNECTOR NEVER CORROBORATES ITSELF. Asked before the second reading
+	// runs, by the identity test `E-COR-20` applies to a record, in
+	// selfcorroboration.go. `CLIENT-05`.
+	if named := connectorIsTarget(connectorDesc, target); named != "" {
+		return refuse("the connector describes itself as %s, which may be the target %s itself; "+
+			"a build cannot corroborate its own capture", named, target)
 	}
 	// ⛔ THE REPORT'S PATH IS THE CONNECTOR'S OWN DEFAULT, NEVER COMPOSED HERE.
 	switch rc := boundedCall(at("connector.log"), true, at("connector.err"), true, adapterSeconds, killAfter,

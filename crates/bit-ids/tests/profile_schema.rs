@@ -14,6 +14,7 @@
 //! a guard nobody knows works, so the last test reads the validator's own
 //! source and fails if the table has stopped covering a code.
 
+use bit_ids::canonical::{Slug, Version};
 use bit_ids::identity::{RecordId, RecordKey, SchemaVersion};
 use bit_ids::{DocumentError, Profile, Violations};
 use serde_json::{Value, json};
@@ -376,6 +377,154 @@ fn profile_schema_refuses_to_write_a_record_it_would_refuse_to_read() {
     }
 }
 
+// -- a connector never corroborates itself, `CLIENT-05` ----------------------
+
+/// Renames the golden record's independent connector everywhere it is named,
+/// keeping the lists the schema orders ascending, so a refusal can only be
+/// about the name.
+fn rename_connector(document: &mut Value, to: &str) {
+    let text = serde_json::to_string(document)
+        .expect("serializes")
+        .replace("\"packet-oracle\"", &format!("\"{to}\""));
+    *document = serde_json::from_str(&text).expect("still JSON");
+    document["capture"]["connectors"]
+        .as_array_mut()
+        .expect("an array")
+        .sort_by(|a, b| a["id"].as_str().cmp(&b["id"].as_str()));
+    for entry in document["corroboration"].as_array_mut().expect("an array") {
+        entry["observations"]
+            .as_array_mut()
+            .expect("an array")
+            .sort_by(|a, b| a["connector"].as_str().cmp(&b["connector"].as_str()));
+    }
+}
+
+/// Puts another target under test, with the record identifier derived again so
+/// `E-ID-01` stays quiet.
+fn retarget(document: &mut Value, target: &str, engine: Option<&str>) {
+    document["target"]["id"] = json!(target);
+    document["target"]["engine"] = json!(engine);
+    let slug = |value: &Value| Slug::parse(value.as_str().expect("a string")).expect("a slug");
+    let target = slug(&document["target"]["id"]);
+    let platform = slug(&document["build"]["platform"]);
+    let arch = slug(&document["build"]["arch"]);
+    let package = slug(&document["build"]["package"]);
+    let capture = slug(&document["capture"]["id"]);
+    let version =
+        Version::parse(document["build"]["version"].as_str().expect("a string")).expect("version");
+    let id = RecordId::derive(&RecordKey {
+        schema: &SchemaVersion::current(),
+        target: &target,
+        version: &version,
+        platform: &platform,
+        arch: &arch,
+        package: &package,
+        capture: &capture,
+    });
+    document["id"] = json!(id.to_string());
+}
+
+fn paired(target: &str, engine: Option<&str>, connector: &str) -> Value {
+    let mut document = golden_value();
+    rename_connector(&mut document, connector);
+    retarget(&mut document, target, engine);
+    document
+}
+
+fn validates(document: &Value) -> Result<(), String> {
+    let text = serde_json::to_string(document).expect("serializes");
+    Profile::from_json(&text)
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
+#[test]
+fn profile_schema_rejects_aria2_corroborating_aria2() {
+    let violations = refuse(&paired("aria2", None, "aria2"));
+    assert!(violations.has("E-COR-20"), "{violations}");
+    assert_eq!(
+        violations.codes().collect::<Vec<_>>(),
+        ["E-COR-20"],
+        "the pairing is the only defect planted"
+    );
+}
+
+#[test]
+fn profile_schema_accepts_cpython_stdlib_corroborating_aria2() {
+    // ⛔ THE CONTROL. Every refusal here passes over a rule that refused all.
+    validates(&paired("aria2", None, "cpython-stdlib")).expect("an independent connector");
+    validates(&paired("aria2-next", None, "cpython-stdlib")).expect("an independent connector");
+}
+
+#[test]
+fn profile_schema_rejects_every_spelling_of_aria2_beside_aria2() {
+    // Both directions of the fork, the executable's name, and a wrapper.
+    for (target, connector) in [
+        ("aria2", "aria2-next"),
+        ("aria2-next", "aria2"),
+        ("aria2", "aria2c"),
+        ("aria2", "aria2c-rpc"),
+        ("aria2", "libaria2"),
+        ("aria2-next", "aria2-next"),
+        ("libtorrent", "libtorrent-rasterbar"),
+    ] {
+        let violations = refuse(&paired(target, None, connector));
+        assert!(
+            violations.has("E-COR-20"),
+            "{connector} beside {target}: {violations}"
+        );
+    }
+}
+
+#[test]
+fn profile_schema_rejects_a_connector_that_is_the_targets_engine() {
+    let violations = refuse(&paired(
+        "qbittorrent",
+        Some("libtorrent"),
+        "libtorrent-alerts",
+    ));
+    assert!(violations.has("E-COR-20"), "{violations}");
+    validates(&paired("qbittorrent", Some("libtorrent"), "cpython-stdlib"))
+        .expect("an engine is only refused when it is the connector");
+}
+
+#[test]
+fn profile_schema_rejects_a_self_corroborating_observer_too() {
+    // ⚠ The observer is a declared connector like any other; a target that is
+    // this project's observer would be read by itself.
+    let mut document = golden_value();
+    retarget(&mut document, "bit-ids-probe", None);
+    assert!(refuse(&document).has("E-COR-20"));
+}
+
+#[test]
+fn profile_schema_answers_the_self_corroboration_test_in_both_directions() {
+    use bit_ids::validate::same_implementation;
+    assert!(same_implementation("aria2", "aria2"));
+    assert!(same_implementation("aria2-next", "aria2"));
+    assert!(same_implementation("aria2", "aria2-next"));
+    assert!(!same_implementation("cpython-stdlib", "aria2"));
+    assert!(!same_implementation("bit-ids-probe", "bittorrent"));
+    assert!(!same_implementation("", "aria2"));
+    // ⛔ Every target in the catalogue against the two connectors this project
+    // ships: none is refused, so the rule costs no capture it should not.
+    let catalogue = include_str!("../../../catalogue/clients.toml");
+    let targets: Vec<&str> = catalogue
+        .lines()
+        .filter_map(|line| line.strip_prefix("id = \""))
+        .filter_map(|rest| rest.strip_suffix('"'))
+        .collect();
+    assert!(targets.len() > 10, "read {} targets", targets.len());
+    for target in targets {
+        for connector in ["bit-ids-probe", "cpython-stdlib"] {
+            assert!(
+                !same_implementation(connector, target),
+                "{connector} would be refused beside {target}"
+            );
+        }
+    }
+}
+
 // -- every guard is planted against, and every code is covered -------------
 
 type Mutation = fn(&mut Value);
@@ -630,6 +779,10 @@ const PLANTED: &[(&str, Mutation)] = &[
         for index in 0..2 {
             entry["observations"][index]["seen"] = json!({ "kind": "out_of_scope" });
         }
+    }),
+    // The independent connector renamed after the target it corroborates.
+    ("E-COR-20", |document| {
+        rename_connector(document, "fixture-client");
     }),
     ("E-NRM-01", |document| {
         let first = document["normalizations"][0].clone();

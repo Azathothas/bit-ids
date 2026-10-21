@@ -964,6 +964,50 @@ fn check_corroboration(profile: &Profile, out: &mut Vec<SchemaError>) {
     }
 }
 
+/// Whether a connector identifier and a target identifier may name one
+/// implementation, which is `E-COR-20`'s identity test.
+///
+/// ⛔ PESSIMISTIC ON PURPOSE: either identifier holding the other anywhere is
+/// one implementation. That refuses `aria2` beside `aria2`, `aria2c`,
+/// `aria2c-rpc`, `libaria2` and `aria2-next` in both directions. A refused
+/// pairing that was in fact independent costs a capture; an accepted circular
+/// one puts a build's own reading of itself into the corpus as corroboration.
+/// ⚠ A record carries a connector's identifier and not its code, so this rests
+/// on a connector naming its implementation, as `cpython-stdlib` does.
+#[must_use]
+pub fn same_implementation(connector: &str, target: &str) -> bool {
+    !connector.is_empty()
+        && !target.is_empty()
+        && (connector.contains(target) || target.contains(connector))
+}
+
+/// No connector corroborates the build it is, or the engine that build embeds.
+///
+/// ⛔ `CLIENT-05`: aria2 is a target and a candidate connector, and aria2
+/// reading aria2's bytes would agree with itself on every field forever. Every
+/// DECLARED connector is tested, not only those that observe a field, because
+/// a declared connector is what `E-CAP-01` counts as the second one.
+fn check_self_corroboration(profile: &Profile, out: &mut Vec<SchemaError>) {
+    let target = &profile.target;
+    for (index, connector) in profile.capture.connectors.iter().enumerate() {
+        let names = core::iter::once(("target", &target.id))
+            .chain(target.engine.iter().map(|engine| ("engine", engine)));
+        for (role, name) in names {
+            if same_implementation(connector.id.as_str(), name.as_str()) {
+                out.push(SchemaError::new(
+                    "E-COR-20",
+                    format!("capture.connectors[{index}]"),
+                    format!(
+                        "connector {} may be the {role} {name} itself, so its reading would \
+                         corroborate the build with its own implementation",
+                        connector.id
+                    ),
+                ));
+            }
+        }
+    }
+}
+
 /// Checks every publication invariant this schema owns.
 ///
 /// All invariants are checked, not just the first that fails, because a record
@@ -982,6 +1026,7 @@ pub fn validate(profile: &Profile) -> Result<(), Violations> {
     check_evidence(profile, &mut out);
     check_observations(profile, &mut out);
     check_corroboration(profile, &mut out);
+    check_self_corroboration(profile, &mut out);
     check_normalizations(profile, &mut out);
     check_adjudication(profile, &mut out);
     Violations::from_errors(out)

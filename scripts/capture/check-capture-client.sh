@@ -757,6 +757,19 @@ BIT_IDS_STUBC_ID=stub_connector
 run_case 2 "which is not a slug" \
   "a connector naming itself something that is not a slug is could-not-run" \
   --connector "$STUBC"
+
+# ⛔ A CONNECTOR THAT IS THE TARGET IS REFUSED BEFORE IT READS ANYTHING, in both
+# directions of the name, which is `E-COR-20`'s test applied on the host.
+# `CLIENT-05`: aria2 is a target and a candidate connector.
+BIT_IDS_STUBC_ID=stub-client
+run_case 1 "may be the target stub-client itself" \
+  "a connector naming itself as the target is refused" --connector "$STUBC"
+BIT_IDS_STUBC_ID=stub-client-next
+run_case 1 "may be the target stub-client itself" \
+  "a connector whose name holds the target's is refused" --connector "$STUBC"
+BIT_IDS_STUBC_ID=stub
+run_case 1 "may be the target stub-client itself" \
+  "a connector whose name the target's holds is refused" --connector "$STUBC"
 BIT_IDS_STUBC_ID=stub-connector
 
 BIT_IDS_STUBC_RC=3

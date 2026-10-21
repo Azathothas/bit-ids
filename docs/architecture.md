@@ -815,6 +815,16 @@ is `exact`, `normalized`, `disagrees` or `not_corroborated`. Only the first two
 are publishable. A normalization is named and tested; it cannot discard order
 or unknown bytes merely to obtain agreement.
 
+⛔ **No connector corroborates itself.** `E-COR-20` refuses a record in which any
+declared connector's identifier holds the target's, or the target's engine's,
+or is held by it. aria2 is both a target and a planned connector, and aria2
+reading aria2's bytes would agree on every field. The test is pessimistic on
+purpose: `aria2` is refused beside `aria2c`, `libaria2` and `aria2-next`, both
+ways round. ⚠ A record carries a connector's identifier and not its code, so a
+connector's identifier names its implementation, as `cpython-stdlib` does.
+`capture-client` applies the same test to the connector's `--describe` `id`
+and `runtime`, and refuses before the second reading runs.
+
 ## 7. Acquisition equivalence
 
 A route is distinct when its resolver and delivery mechanism are independent,

@@ -5,6 +5,17 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-21T14:23:41Z
+
+- ⛔ **A connector can no longer corroborate the build it is.** `E-COR-20`
+  refuses a record whose declared connector's identifier contains the target's
+  or its engine's, or is contained in it, so aria2 cannot corroborate aria2.
+- `capture-client` refuses the same pairing before the second reading runs,
+  testing the connector's described `id` and `runtime`. Its selftest holds 22
+  cases, and `check-bitcheck` removes the guard and sees the selftest refuse.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-05`. No version bump and
+  no deploy.
+
 ### 2026-10-21T11:55:00Z
 
 - **The install barrier survives a refused arrival**: an arrival is posted up

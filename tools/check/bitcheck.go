@@ -2071,6 +2071,59 @@ func (b *bitcheck) plantedPeerIDSelftest() {
 	}
 }
 
+// plantedSelfCorroboration removes capture-client's self-corroboration guard
+// in a scratch copy - connectorIsTarget answers "" before it tests anything -
+// builds that copy and asks its selftest, which must refuse on aria2's case.
+// `CLIENT-05`, `E-COR-20`.
+func (b *bitcheck) plantedSelfCorroboration() {
+	const sc = "tools/check/selfcorroboration.go"
+	const line = "\tfor _, key := range []string{\"id\", \"runtime\"} {"
+	b.save(sc, "selfcorroboration.orig")
+	defer b.put("selfcorroboration.orig", sc)
+	landed := false
+	b.rewrite("selfcorroboration.orig", sc, func(l string) (string, bool) {
+		if l == line && !landed {
+			landed = true
+			return "\tif target != \"\" {\n\t\treturn \"\"\n\t}\n" + l, true
+		}
+		return l, true
+	})
+	if !landed {
+		b.h.bad("adapters the self-corroboration guard could not be removed: selfcorroboration.go no longer has [" + strings.TrimSpace(line) + "]")
+		return
+	}
+	b.plantedSelftest("the self-corroboration guard, removed,", "FAILED aria2 is refused as the connector of aria2")
+}
+
+// plantedSelftest builds the scratch tree's planted copy and asks its
+// capture-client selftest, which must exit 1 naming the case `named` ends.
+func (b *bitcheck) plantedSelftest(what, named string) {
+	goTool, err := exec.LookPath("go")
+	if err != nil {
+		b.h.bad("adapters " + what + " cannot be built: go is not on PATH")
+		return
+	}
+	planted := b.w("planted-bit-check")
+	if runtime.GOOS == "windows" {
+		planted += ".exe"
+	}
+	build := exec.Command(goTool, "build", "-o", planted, ".")
+	build.Dir = b.p("tools/check")
+	if out, err := build.CombinedOutput(); err != nil {
+		b.h.bad("adapters " + what + " did not build: " + strings.TrimSpace(string(out)))
+		return
+	}
+	cmd := exec.Command(planted, "capture-client", "--selftest")
+	cmd.Dir = b.tree
+	out, err := cmd.CombinedOutput()
+	rc := exitOf(err)
+	if rc == 1 && strings.Contains(string(out), named) {
+		b.h.ok("adapters " + what + " is refused by the selftest: go (exit 1)")
+	} else {
+		b.h.bad(fmt.Sprintf("adapters %s was not refused: exit %d: %s", what, rc, strings.TrimSpace(string(out))))
+	}
+}
+
 func (b *bitcheck) adapters() {
 	b.agree("adapters clean tree", "check-adapters", 0)
 
@@ -2083,6 +2136,7 @@ func (b *bitcheck) adapters() {
 		b.h.bad(fmt.Sprintf("adapters capture-client's peer-ID selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
 	}
 	b.plantedPeerIDSelftest()
+	b.plantedSelfCorroboration()
 
 	// ⭐ THE WINDOWS ADAPTER'S DECISIONS, ASKED ON THIS HOST. The adapter builds
 	// for Windows alone; what it decides without Windows in it - the profile, the

@@ -204,7 +204,7 @@ second. `cargo fmt --all -- --check`, `cargo check`, `cargo test` and
 `cargo clippy` at `--workspace --locked --all-targets`, `shellcheck`,
 `shfmt -d -i 2 -ci` and `sh scripts/common/check-gate.sh` all exit 0.
 
-Every diagnostic code has a planted defect: `E-COR-01` through `E-COR-19`,
+Every diagnostic code has a planted defect: `E-COR-01` through `E-COR-20`,
 `E-NRM-01`, `E-NRM-02` and `E-ADJ-01` through `E-ADJ-05` in
 `tests/profile_schema.rs`, and `E-PUB-01` and `E-PUB-02` in `tests/agreement.rs`,
 each with a coverage test that reads the module's own source. Three further
