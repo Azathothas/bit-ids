@@ -213,6 +213,16 @@ recognises. `CLIENT-07` in
 [`../../../TODO/clients.md`](../../../TODO/clients.md) carries the
 measurements.
 
+⛔ **Deluge's Windows package route is resolved by winget and not delivered by
+it.** winget's index pins the vendor's installer at an `http` URL, and a
+record may not name an http retrieval. So the route takes the version and the
+InstallerSha256 from `winget show`, fetches the same file over https from the
+vendor's ftp.osuosl.org mirror, and holds it to both digests. Its
+`package-index.txt` then says `delivery=https-vendor-mirror-nsis`, which
+`install-client` and `assemble-capture` carry in place of
+`host-package-manager`. A package route that writes no `delivery=` records as
+before.
+
 ## ⛔ The workdir IS the evidence bundle
 
 **Anything an adapter writes into the workdir is uploaded as an artifact.**

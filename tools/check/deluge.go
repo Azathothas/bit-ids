@@ -78,47 +78,20 @@ const (
 // that form and is nothing off Windows. Unpinned, as upstream leaves it:
 // 2.4.2 is the newest, with a cp312 win_amd64 wheel.
 // ⚠ The same file caps `twisted[tls]<23` on win32, and that cap is NOT taken:
-// Twisted 22.10's classifiers stop at Python 3.10 and the runner's is 3.12.
-var delugePins = []string{"libtorrent==2.0.15", "setuptools<81", "pyOpenSSL<26.3",
+// run 39616084687's Windows source lane captured on Twisted 26, and Twisted is
+// not on the wire.
+// ⛔ AND libtorrent IS 1.2.19 ON WINDOWS, THE VENDOR INSTALLER'S OWN. The first
+// green Windows pair, run 39616084687, assembled `divergent`: the installer's
+// libtorrent 1.2.19 and the source route's 2.0.15 differ in the peer wire's
+// reserved bytes and in the tracker user agent, so neither route could
+// publish. The two routes on one host have to run one engine, and the
+// vendor's build fixes it at 1.2.19, whose Windows wheels stop at cp310; the
+// Windows source route runs on Python 3.10 for it, see delugePickPython.
+// Linux keeps 2.0.15, and a field that differs by platform is
+// platform-scoped under the operator's settled rule.
+var delugePins = []string{`libtorrent==2.0.15; sys_platform != "win32"`, `libtorrent==1.2.19; sys_platform == "win32"`,
+	"setuptools<81", "pyOpenSSL<26.3",
 	`windows-curses; sys_platform == "win32"`}
-
-// delugeWingetScope is the Scope `DelugeTeam.Deluge` 2.2.0's installer
-// manifest declares: none. Read through rule 8's route on 2026-10-21.
-const delugeWingetScope = ""
-
-// delugeWingetInstallArgs is the package route's `winget install` line after
-// the executable.
-//
-// ⛔ NO `--scope machine`, WHERE THE qBittorrent AND Transmission ROUTES PASS
-// ONE. Their manifests declare `Scope: machine`; Deluge's declares no Scope,
-// and winget treats a `--scope` the installer does not declare as a
-// requirement nothing meets: capture-client run 39588980862 answered *No
-// applicable installer found*, 0x8A150010, for exactly that line. The NSIS
-// installer still installs for the machine, because `--location` names
-// `%ProgramFiles%\Deluge` and the runner's account is an administrator.
-// ⚠ `--architecture x64` is named instead, because the manifest offers x86
-// and x64 and the record should not depend on winget's preference.
-// ⚠ `--location` is the NSIS installer's `/D=`, so the build lands where the
-// adapter looks.
-func delugeWingetInstallArgs(dir, log string) []string {
-	args := []string{"install", "--id", delugeWingetID, "--exact", "--source", "winget"}
-	if delugeWingetScope != "" {
-		args = append(args, "--scope", delugeWingetScope)
-	}
-	return append(args, "--architecture", "x64", "--silent", "--disable-interactivity", "--location", dir,
-		"--accept-package-agreements", "--accept-source-agreements", "--log", log)
-}
-
-// delugeWingetApplicable refuses an install line asking for a scope the
-// manifest does not declare, which is the line that found no installer.
-func delugeWingetApplicable(args []string, manifestScope string) error {
-	for i, a := range args {
-		if a == "--scope" && i+1 < len(args) && args[i+1] != manifestScope {
-			return fmt.Errorf("the line asks for scope %s and the manifest declares [%s]", args[i+1], manifestScope)
-		}
-	}
-	return nil
-}
 
 // delugeImportCheck is what a pip route asks the venv's interpreter after the
 // install: the engine, the daemon's modules and the console's, each of which
@@ -358,16 +331,86 @@ func delugePipReport(body []byte, pkg string) (version, url, sha string, err err
 	return version, url, sha, nil
 }
 
-// delugeWingetOrigin is the installer URL winget's index pins for the
-// package route.
+// delugeDelivery is what the Windows package route records as its delivery:
+// the vendor's installer, fetched over https by `install-rootless --fetch`
+// and run by this adapter, rather than by winget.
+const delugeDelivery = "https-vendor-mirror-nsis"
+
+// delugeWingetField is the one value `winget show` prints under `Installer:`
+// for key, such as `Installer Url` or `Installer SHA256`. ⛔ Two different
+// ones is a refusal, as wingetInstallerURL refuses two URLs.
+func delugeWingetField(show, key string) (string, error) {
+	found := ""
+	for _, l := range strings.Split(show, "\n") {
+		l = strings.TrimSpace(strings.TrimRight(l, "\r"))
+		v, ok := strings.CutPrefix(l, key+":")
+		if !ok {
+			continue
+		}
+		v = strings.TrimSpace(v)
+		if found != "" && found != v {
+			return "", fmt.Errorf("winget's index named two values for %s, %s and %s", key, found, v)
+		}
+		found = v
+	}
+	if found == "" {
+		return "", fmt.Errorf("winget's index named no %s", key)
+	}
+	return found, nil
+}
+
+var delugeSHA256Re = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
+
+// delugeIndexSHA256 is the InstallerSha256 winget's index pins, in lower case.
+func delugeIndexSHA256(show string) (string, error) {
+	v, err := delugeWingetField(show, "Installer SHA256")
+	if err != nil {
+		return "", err
+	}
+	if !delugeSHA256Re.MatchString(v) {
+		return "", fmt.Errorf("winget's index named [%s] as the installer's SHA256", v)
+	}
+	return strings.ToLower(v), nil
+}
+
+var delugeIndexURLRe = regexp.MustCompile(`^https?://download\.deluge-torrent\.org/windows/(deluge-[0-9][0-9A-Za-z.]*-win64-setup\.exe)$`)
+
+// delugeMirrorURL is the https URL the Windows package route fetches, for the
+// installer URL winget's index pins, and the installer's file name.
 //
-// ⚠ AN http URL IS ACCEPTED HERE, AND ONLY HERE. `DelugeTeam.Deluge` 2.2.0's
-// manifest names `http://download.deluge-torrent.org/windows/deluge-2.2.0-win64-setup.exe`,
-// read on 2026-10-16, and winget checks the download against the manifest's
-// InstallerSha256 `B2E414DD...8F4E889`, which is the vendor's own `.sha256`.
-// The record carries the URL as the index named it.
-func delugeWingetOrigin(show string) (string, error) {
-	return wingetInstallerURLWith(show, "http://", "https://")
+// ⛔ THE INDEX PINS AN http URL AND NO RECORD MAY NAME ONE. `DelugeTeam.Deluge`
+// 2.2.0 names `http://download.deluge-torrent.org/windows/deluge-2.2.0-win64-setup.exe`,
+// and so does Scoop's extras bucket, and `Url::parse` refuses a plain http
+// retrieval because it cannot support a claim about which bytes arrived:
+// assemble-bundle run 39617383153 refused the pair for it. So the route fetches
+// the same file from the vendor's own mirror, `ftp.osuosl.org/pub/deluge/windows/`,
+// over https, and records that URL, which is what it really fetched.
+// ⚠ THE NAME IS KEPT AND THE BYTES ARE CHECKED TWICE: against the index's
+// InstallerSha256 and against the vendor's `.sha256` beside the file, measured
+// equal on 2026-10-16 (`b2e414dd...8f4e889`). A URL of any other shape is
+// refused rather than mapped.
+func delugeMirrorURL(indexURL string) (string, string, error) {
+	m := delugeIndexURLRe.FindStringSubmatch(indexURL)
+	if m == nil {
+		return "", "", fmt.Errorf("winget's index pins [%s], which is not the vendor's win64 installer on download.deluge-torrent.org", indexURL)
+	}
+	return "https://ftp.osuosl.org/pub/deluge/windows/" + m[1], m[1], nil
+}
+
+// delugeNSISCmdLine is the command line that runs the vendor's installer
+// silently into dir, written whole.
+//
+// ⛔ NSIS READS `/D=` UNQUOTED AND LAST, so it is never left to an argument
+// quoter, which would quote a path holding a space. ⚠ This is the line winget
+// runs for a `nullsoft` installer with `--silent --location`: `/S` and `/D=`.
+// A path holding a double quote or a newline is refused.
+func delugeNSISCmdLine(setup, dir string) (string, error) {
+	for _, p := range []string{setup, dir} {
+		if p == "" || strings.ContainsAny(p, "\"\r\n") {
+			return "", fmt.Errorf("path [%s] cannot be written on the installer's command line", p)
+		}
+	}
+	return fmt.Sprintf(`"%s" /S /D=%s`, setup, dir), nil
 }
 
 // delugeScrub takes the daemon's credential out of a workdir before it ships,
@@ -556,21 +599,23 @@ func delugeSelftest(args []string) int {
 	}
 
 	// The pins.
-	check("the routes pin libtorrent 2.0.15", len(delugePins) == 4 && delugePins[0] == "libtorrent==2.0.15")
-	check("the routes pin pyOpenSSL below 26.3, which still carries X509Req", len(delugePins) == 4 && delugePins[2] == "pyOpenSSL<26.3")
-	check("Windows gets windows-curses, upstream's marker and all", len(delugePins) == 4 &&
-		delugePins[3] == `windows-curses; sys_platform == "win32"`)
+	check("Linux pins libtorrent 2.0.15", len(delugePins) == 5 && delugePins[0] == `libtorrent==2.0.15; sys_platform != "win32"`)
+	check("Windows pins the vendor installer's libtorrent, 1.2.19", len(delugePins) == 5 &&
+		delugePins[1] == `libtorrent==1.2.19; sys_platform == "win32"`)
+	check("the routes pin pyOpenSSL below 26.3, which still carries X509Req", len(delugePins) == 5 && delugePins[3] == "pyOpenSSL<26.3")
+	check("Windows gets windows-curses, upstream's marker and all", len(delugePins) == 5 &&
+		delugePins[4] == `windows-curses; sys_platform == "win32"`)
+	tc := []string{`C:\hostedtoolcache\windows\Python\3.12.10\x64\python.exe`, `C:\hostedtoolcache\windows\Python\3.10.9\x64\python.exe`,
+		`C:\hostedtoolcache\windows\Python\3.10.11\x64\python.exe`, `C:\hostedtoolcache\windows\Python\3.9.13\x64\python.exe`,
+		`C:\hostedtoolcache\windows\Python\3.10.12\x86\python.exe`}
+	py, err := delugePickPython(tc)
+	check("the Windows source route takes the newest x64 3.10, not the runner's 3.12", err == nil && py == tc[2])
+	py, err = delugePickPython([]string{tc[0], tc[3]})
+	check("and 3.9 when there is no 3.10", err == nil && py == tc[3])
+	_, err = delugePickPython([]string{tc[0], `C:\t\Python\3.10.x\x64\python.exe`})
+	check("a tool cache with no 3.10 or 3.9 is refused", err != nil)
 	check("the import check reaches the console, which imports curses", strings.Contains(delugeImportCheck, "deluge.ui.console.main"))
-	wl := delugeWingetInstallArgs(`C:\Program Files\Deluge`, `C:\w\winget.log`)
-	wj := strings.Join(wl, " ")
-	check("the winget line asks for no scope the manifest does not declare", delugeWingetApplicable(wl, delugeWingetScope) == nil &&
-		!strings.Contains(wj, "--scope"))
-	check("the winget line names the x64 installer and the location", strings.Contains(wj, "--architecture x64") &&
-		strings.Contains(wj, `--location C:\Program Files\Deluge`) && wl[0] == "install")
-	old := []string{"install", "--id", delugeWingetID, "--exact", "--source", "winget", "--scope", "machine", "--silent"}
-	check("run 39588980862's line, --scope machine, is refused", delugeWingetApplicable(old, delugeWingetScope) != nil)
-	check("a scope the manifest declares is accepted", delugeWingetApplicable(old, "machine") == nil)
-	check("the routes pin setuptools below 81, which still carries pkg_resources", delugePins[1] == "setuptools<81")
+	check("the routes pin setuptools below 81, which still carries pkg_resources", len(delugePins) == 5 && delugePins[2] == "setuptools<81")
 	check("the import check loads the daemon and the console", strings.Contains(delugeImportCheck, "deluge.core.daemon") &&
 		strings.Contains(delugeImportCheck, "deluge.ui.console.main") && strings.Contains(delugeImportCheck, "libtorrent"))
 
@@ -633,13 +678,33 @@ func delugeSelftest(args []string) int {
 	_, _, _, err = delugePipReport([]byte("not json"), "deluge")
 	check("a report that is not JSON is refused", err != nil)
 	show := "Found Deluge BitTorrent Client [DelugeTeam.Deluge]\r\nVersion: 2.2.0\r\nInstaller:\r\n  Installer Type: nullsoft\r\n" +
-		"  Installer Url: http://download.deluge-torrent.org/windows/deluge-2.2.0-win64-setup.exe\r\n"
-	o, err := delugeWingetOrigin(show)
-	check("winget's http installer URL is the origin", err == nil && o == "http://download.deluge-torrent.org/windows/deluge-2.2.0-win64-setup.exe")
+		"  Installer Url: http://download.deluge-torrent.org/windows/deluge-2.2.0-win64-setup.exe\r\n" +
+		"  Installer SHA256: " + strings.Repeat("B2", 32) + "\r\n"
 	_, err = wingetInstallerURL(show)
-	check("and every other winget route still refuses http", err != nil)
-	_, err = delugeWingetOrigin("Installer Url: ftp://x/y.exe\n")
-	check("an installer URL that is neither http nor https is refused", err != nil)
+	check("winget's http installer URL is refused as an origin, as Url::parse refuses it", err != nil)
+	idx, err := delugeWingetField(show, "Installer Url")
+	mirror, file, merr := delugeMirrorURL(idx)
+	check("the index's http URL maps to the vendor's https mirror", err == nil && merr == nil && file == "deluge-2.2.0-win64-setup.exe" &&
+		mirror == "https://ftp.osuosl.org/pub/deluge/windows/deluge-2.2.0-win64-setup.exe")
+	check("the route records an https origin", strings.HasPrefix(mirror, "https://"))
+	for _, bad := range []string{"http://download.deluge-torrent.org/windows/deluge-2.2.0-win32-setup.exe",
+		"http://evil.example/windows/deluge-2.2.0-win64-setup.exe", "http://download.deluge-torrent.org/windows/../x-win64-setup.exe",
+		"http://download.deluge-torrent.org/windows/deluge-2.2.0-win64-setup.exe?x"} {
+		_, _, err := delugeMirrorURL(bad)
+		check("the index URL ["+bad+"] is refused rather than mapped", err != nil)
+	}
+	sha, err := delugeIndexSHA256(show)
+	check("the index's InstallerSha256 is read in lower case", err == nil && sha == strings.Repeat("b2", 32))
+	_, err = delugeIndexSHA256(strings.Replace(show, strings.Repeat("B2", 32), "b2e4", 1))
+	check("a short InstallerSha256 is refused", err != nil)
+	_, err = delugeIndexSHA256(show + "  Installer SHA256: " + strings.Repeat("c3", 32) + "\n")
+	check("two InstallerSha256 values are refused", err != nil)
+	cl, err := delugeNSISCmdLine(`C:\w\deluge-2.2.0-win64-setup.exe`, `C:\Program Files\Deluge`)
+	check("the installer runs silently into the location, /D= unquoted and last",
+		err == nil && cl == `"C:\w\deluge-2.2.0-win64-setup.exe" /S /D=C:\Program Files\Deluge`)
+	_, err = delugeNSISCmdLine(`C:\w\s.exe`, `C:\a"b`)
+	check("a location holding a double quote is refused", err != nil)
+	check("the delivery is named, and is a slug", delugeDelivery == "https-vendor-mirror-nsis")
 	wv, err := trWinWingetVersion(show)
 	check("winget's index version is read", err == nil && wv == "2.2.0")
 
@@ -766,4 +831,43 @@ func delugeGNUTimeout(git string) string {
 		return ""
 	}
 	return filepath.Join(filepath.Dir(filepath.Dir(git)), "usr", "bin", "timeout.exe")
+}
+
+// delugeWinPythonMinors are the Python versions the Windows source route may
+// run on, in preference order: those libtorrent 1.2.19 publishes win_amd64
+// wheels for, newest first. See delugePins.
+var delugeWinPythonMinors = []string{"3.10", "3.9"}
+
+// delugePickPython chooses the interpreter the Windows source route makes its
+// venv from, out of the runner tool cache's `Python\<version>\x64\python.exe`
+// paths: the newest patch of the first minor in delugeWinPythonMinors that
+// any path carries.
+//
+// ⛔ NOT THE RUNNER'S DEFAULT `python`, which run 39616084687 measured at
+// 3.12.10 and for which libtorrent 1.2.19 publishes no wheel. ⚠ A path whose
+// version cannot be read is passed over, and finding none is a refusal that
+// names what was wanted.
+func delugePickPython(paths []string) (string, error) {
+	for _, minor := range delugeWinPythonMinors {
+		best, bestPatch := "", -1
+		for _, p := range paths {
+			parts := strings.FieldsFunc(p, func(r rune) bool { return r == '/' || r == '\\' })
+			if len(parts) < 3 || !strings.EqualFold(parts[len(parts)-1], "python.exe") || parts[len(parts)-2] != "x64" {
+				continue
+			}
+			patch, ok := strings.CutPrefix(parts[len(parts)-3], minor+".")
+			n, err := strconv.Atoi(patch)
+			if !ok || err != nil || strconv.Itoa(n) != patch {
+				continue
+			}
+			if n > bestPatch {
+				best, bestPatch = p, n
+			}
+		}
+		if best != "" {
+			return best, nil
+		}
+	}
+	return "", fmt.Errorf("the tool cache carries no x64 Python %s, the versions libtorrent 1.2.19 has Windows wheels for",
+		strings.Join(delugeWinPythonMinors, " or "))
 }

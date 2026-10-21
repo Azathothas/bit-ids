@@ -9,8 +9,8 @@
 //
 // ⚠ THE MECHANICS ARE qBittorrent's AND Transmission's WINDOWS HALVES',
 // REUSED AND NOT COPIED: qbtWinRun, qbtWinLaunch, qbtWinWaiter, the exit type,
-// trWinSystemTool and trWinWingetVersion. They carry no decision of those
-// products.
+// trWinSystemTool, trWinRunCmdLine and trWinWingetVersion. They carry no
+// decision of those products.
 //
 // -- ⭐ WHAT IS THE SAME AS LINUX ------------------------------------------------
 //
@@ -40,10 +40,13 @@
 //
 // -- the routes ---------------------------------------------------------------
 //
-// ⛔ `package`: winget's `DelugeTeam.Deluge`, the vendor's
-// `deluge-2.2.0-win64-setup.exe` (libtorrent 1.2.19, Python 3.9), installed
-// with `--location` so the build lands where this looks. Scoop's extras bucket
-// names the same installer, Chocolatey stops at 2.1.1.
+// ⛔ `package`: winget's `DelugeTeam.Deluge` resolves the version and pins the
+// vendor's `deluge-2.2.0-win64-setup.exe` (libtorrent 1.2.19, Python 3.9) by
+// its InstallerSha256. The index's URL is http, which no record may name, so
+// the route fetches the same file over https from the vendor's
+// ftp.osuosl.org mirror, holds it to that digest and to the vendor's
+// `.sha256`, and runs it as winget would, `/S /D=%ProgramFiles%\Deluge`.
+// Scoop's extras bucket names the same http URL; Chocolatey stops at 2.1.1.
 // ⛔ `source`: the `deluge-2.2.0` tag, cloned behind Git for Windows' own
 // `timeout` and pip-installed into a venv on the runner's Python with the Linux
 // half's pins, libtorrent 2.0.15 among them. ⚠ So the two Windows routes
@@ -262,30 +265,78 @@ func dlWinInstallPackage(workdir, log string) error {
 	if err != nil {
 		return qbtRefuse("%v", err)
 	}
-	origin, err := delugeWingetOrigin(string(shown))
+	indexURL, err := delugeWingetField(string(shown), "Installer Url")
 	if err != nil {
 		return qbtRefuse("%v", err)
 	}
-	if err := writePackageIndex(workdir, "winget", delugeWingetID, indexVersion, origin); err != nil {
+	indexSHA, err := delugeIndexSHA256(string(shown))
+	if err != nil {
+		return qbtRefuse("%v", err)
+	}
+	// ⛔ THE INDEX RESOLVES AND PINS; THE BYTES ARRIVE OVER https. See
+	// delugeMirrorURL: the index's own URL is http, which no record may name.
+	origin, file, err := delugeMirrorURL(indexURL)
+	if err != nil {
+		return qbtRefuse("%v", err)
+	}
+	if err := writePackageIndexVia(workdir, "winget", delugeWingetID, indexVersion, origin, delugeDelivery); err != nil {
 		return qbtRefuse("the route could not record what the index named")
 	}
 	dir := dlWinPackageDir()
 	if dir == "" {
 		return qbtCannot("%%ProgramFiles%% is not set, so there is no install location to name")
 	}
-	// ⛔ NO `--version`: the index is this route's resolver. The rest of the
-	// line, and why it carries no `--scope`, is delugeWingetInstallArgs.
-	rc := qbtWinRun(log, winget, delugeWingetInstallArgs(dir, filepath.Join(workdir, "winget.log"))...)
+	self, err := os.Executable()
+	if err != nil {
+		return qbtCannot("cannot find this binary to run install-rootless with")
+	}
+	// ⛔ THE FETCHES AND THE DIGESTS ARE install-rootless's. The vendor's
+	// `.sha256` first, which publishes no digest of itself, then the installer,
+	// held to the index's InstallerSha256 AND to that document, so two parties'
+	// statements about one file both have to hold.
+	sums := filepath.Join(workdir, file+".sha256")
+	switch rc := qbtWinRun(log, self, "install-rootless", "--fetch", "--url", origin+".sha256", "--into", sums,
+		"--digest-unpublished", "the vendor's .sha256 beside its installer publishes no digest of itself"); rc {
+	case 0:
+	case 1:
+		return qbtRefuse("the vendor's .sha256 for %s could not be fetched over https", file)
+	default:
+		return qbtCannot("the rootless installer could not run for the .sha256 (exit %d)", rc)
+	}
+	setup := filepath.Join(workdir, file)
+	switch rc := qbtWinRun(log, self, "install-rootless", "--fetch", "--url", origin, "--into", setup,
+		"--sha256", indexSHA, "--sums", sums, "--sums-name", file,
+		"--report", filepath.Join(workdir, "rootless-install.txt")); rc {
+	case 0:
+	case 1:
+		return qbtRefuse("the vendor's installer could not be fetched over https, or its bytes are not the ones winget's index and the vendor's .sha256 name")
+	default:
+		return qbtCannot("the rootless installer could not run for the installer (exit %d)", rc)
+	}
+	// ⚠ The vendor's installer, run as winget runs a `nullsoft` installer with
+	// `--silent --location`: `/S /D=<dir>`, into Program Files, for the
+	// machine, on the runner's administrator account.
+	cmdLine, err := delugeNSISCmdLine(setup, dir)
+	if err != nil {
+		return qbtCannot("%v", err)
+	}
+	rc := trWinRunCmdLine(log, setup, cmdLine)
+	sum, _ := fileSHA256(setup)
+	installNote := fmt.Sprintf("installer=%s\ninstaller_sha256=%s\nindex_sha256=%s\norigin=%s\nindex_url=%s\ncommand=%s\nexit=%d\n",
+		file, sum, indexSHA, origin, indexURL, cmdLine, rc)
+	if err := os.WriteFile(filepath.Join(workdir, "nsis-install.txt"), []byte(installNote), 0o644); err != nil {
+		return qbtRefuse("the route could not record how it ran the installer")
+	}
 	if rc != 0 {
-		return qbtRefuse("the package route did not install %s (winget exit %d)", delugeWingetID, rc)
+		return qbtRefuse("the vendor's installer exited %d", rc)
 	}
 	daemon, console := filepath.Join(dir, dlWinDaemon), filepath.Join(dir, dlWinConsole)
 	if !isRegular(daemon) || !isRegular(console) {
-		return qbtRefuse("winget reported success and left no %s with %s beside it in %s", dlWinDaemon, dlWinConsole, dir)
+		return qbtRefuse("the installer reported success and left no %s with %s beside it in %s", dlWinDaemon, dlWinConsole, dir)
 	}
 	answer, err := dlWinAsk(daemon)
 	if err != nil {
-		return qbtRefuse("the build winget installed could not be asked its version: %v", err)
+		return qbtRefuse("the build the installer placed could not be asked its version: %v", err)
 	}
 	built, engine, err := delugeParseVersion(answer)
 	if err != nil {
@@ -321,10 +372,20 @@ func dlWinInstallSource(workdir, log string) error {
 	if !isRegular(gnuTimeout) {
 		return qbtCannot("the clone is bounded by Git for Windows' own timeout and %s is not there", gnuTimeout)
 	}
+	// ⛔ A PYTHON libtorrent 1.2.19 HAS WHEELS FOR, out of the runner's tool
+	// cache, so this route runs the vendor installer's engine. See
+	// delugePickPython and delugePins.
 	python := os.Getenv("BIT_IDS_DELUGE_PYTHON")
 	if python == "" {
-		if python, err = exec.LookPath("python"); err != nil {
-			return qbtCannot("the source route makes a venv and python is not on this host")
+		var found []string
+		for _, env := range []string{"RUNNER_TOOL_CACHE", "AGENT_TOOLSDIRECTORY"} {
+			if root := os.Getenv(env); root != "" {
+				m, _ := filepath.Glob(filepath.Join(root, "Python", "*", "x64", "python.exe"))
+				found = append(found, m...)
+			}
+		}
+		if python, err = delugePickPython(found); err != nil {
+			return qbtCannot("%v", err)
 		}
 	}
 	src := filepath.Join(workdir, "src")

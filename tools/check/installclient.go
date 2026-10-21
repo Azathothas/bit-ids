@@ -433,12 +433,18 @@ func runInstallClient(args []string) error {
 	// source identity. Optional here, so a route that writes none records as it
 	// did; a record with none is refused when it is assembled, which is where
 	// the identity is needed. `CI-11`.
-	var pkgIndex, pkgName, pkgVersion, pkgOrigin string
+	var pkgIndex, pkgName, pkgVersion, pkgOrigin, pkgDelivery string
 	if route == "package" && isRegular(wd("package-index.txt")) {
 		ib, _ := os.ReadFile(wd("package-index.txt"))
 		pkgIndex, pkgName, pkgVersion, pkgOrigin = keyField(ib, "index"), keyField(ib, "package"), keyField(ib, "version"), keyField(ib, "origin")
 		if pkgIndex == "" || pkgName == "" || pkgVersion == "" || pkgOrigin == "" {
 			return refuse("the package route's package-index.txt names no index, package, version or origin")
+		}
+		// ⚠ And, optionally, what delivered the bytes when the package manager
+		// did not: `deluge`'s Windows route. A slug, or refused. `CLIENT-07`.
+		pkgDelivery = keyField(ib, "delivery")
+		if pkgDelivery != "" && (!packageSlug.MatchString(pkgDelivery) || strings.HasPrefix(pkgDelivery, "-") || strings.HasSuffix(pkgDelivery, "-")) {
+			return refuse("the package route's package-index.txt names delivery [%s], which is not a slug", pkgDelivery)
 		}
 	}
 	if route == "source" {
@@ -486,6 +492,9 @@ func runInstallClient(args []string) error {
 		}
 		if pkgIndex != "" {
 			fmt.Fprintf(&b, "package_index=%s\npackage_name=%s\npackage_version=%s\npackage_origin=%s\n", pkgIndex, pkgName, pkgVersion, pkgOrigin)
+			if pkgDelivery != "" {
+				fmt.Fprintf(&b, "package_delivery=%s\n", pkgDelivery)
+			}
 		}
 		if err := os.WriteFile(record, []byte(b.String()), 0o644); err != nil {
 			return cannot("the install record could not be written to %s", record)

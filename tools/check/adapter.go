@@ -139,7 +139,18 @@ func adapterDigest(ref string) string {
 // ⭐ The origin is the URL the index pins the installer at, which is where the
 // route's bytes came from.
 func writePackageIndex(workdir, index, pkg, version, origin string) error {
+	return writePackageIndexVia(workdir, index, pkg, version, origin, "")
+}
+
+// writePackageIndexVia is writePackageIndex for a route whose package manager
+// resolved the build and did not fetch it, naming what did. ⚠ Only `deluge`'s
+// Windows route: winget's index pins an `http` URL, so the route fetches the
+// same bytes over https itself. The origin is then the URL really fetched.
+func writePackageIndexVia(workdir, index, pkg, version, origin, delivery string) error {
 	body := fmt.Sprintf("index=%s\npackage=%s\nversion=%s\norigin=%s\n", index, pkg, version, origin)
+	if delivery != "" {
+		body += "delivery=" + delivery + "\n"
+	}
 	return os.WriteFile(filepath.Join(workdir, "package-index.txt"), []byte(body), 0o644)
 }
 
@@ -147,13 +158,6 @@ func writePackageIndex(workdir, index, pkg, version, origin string) error {
 // `Installer:`. ⛔ Two different ones is a refusal: the route would not know
 // which the install fetched.
 func wingetInstallerURL(show string) (string, error) {
-	return wingetInstallerURLWith(show, "https://")
-}
-
-// wingetInstallerURLWith is wingetInstallerURL over the schemes a route
-// accepts. ⚠ Only `deluge` passes `http://`, because the index's own manifest
-// names one; it says why.
-func wingetInstallerURLWith(show string, schemes ...string) (string, error) {
 	found := ""
 	for _, l := range strings.Split(show, "\n") {
 		l = strings.TrimSpace(strings.TrimRight(l, "\r"))
@@ -167,10 +171,8 @@ func wingetInstallerURLWith(show string, schemes ...string) (string, error) {
 		}
 		found = v
 	}
-	for _, s := range schemes {
-		if strings.HasPrefix(found, s) && len(found) > len(s) {
-			return found, nil
-		}
+	if !strings.HasPrefix(found, "https://") {
+		return "", fmt.Errorf("winget's index named no https installer URL: [%s]", found)
 	}
-	return "", fmt.Errorf("winget's index named no %s installer URL: [%s]", strings.Join(schemes, " or "), found)
+	return found, nil
 }

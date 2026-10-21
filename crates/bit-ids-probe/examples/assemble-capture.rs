@@ -244,11 +244,23 @@ impl Lane {
     }
 
     /// The slug identifying what delivered this route's bytes.
+    ///
+    /// ⛔ **A package route that did not let its package manager fetch says so.**
+    /// `deluge`'s Windows route takes its version and digest from winget's index
+    /// and fetches the vendor's installer over https itself, because the index
+    /// pins an `http` URL no record may name. Its `package-index.txt` carries
+    /// `delivery=`, `install-client` copies it into `package_delivery`, and it
+    /// is read here. `install-client` refuses one that is not a slug, and a
+    /// record with none is what every other package route is. `CLIENT-07`.
     fn delivery(&self) -> Slug {
         match self.route.as_str() {
             "release" => slug("https-release-asset"),
             "source" => slug("git-clone-and-local-build"),
-            _ => slug("host-package-manager"),
+            _ => self
+                .install
+                .get("package_delivery")
+                .and_then(|value| Slug::parse(value).ok())
+                .unwrap_or_else(|| slug("host-package-manager")),
         }
     }
 

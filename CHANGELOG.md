@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-21T14:51:16Z
+
+- **Deluge's Windows pair can be filed.** The package route still takes its
+  version and digest from winget's index, but it now fetches the vendor's
+  installer over https from ftp.osuosl.org, checked against both the index's
+  digest and the vendor's `.sha256`. It records that https URL, where it had
+  recorded winget's http one, which assemble-bundle run 39617383153 refused. A
+  package route can now name its own delivery.
+- The Windows source route now runs the vendor installer's libtorrent, 1.2.19,
+  on the tool cache's Python 3.10, because the two Windows routes had disagreed
+  on the wire. Linux keeps 2.0.15.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-07`. No version bump and
+  no deploy.
+
 ### 2026-10-21T14:50:00Z
 
 - ⭐ **aria2 1.37.0 is published** on Linux's `release` and `source` routes,

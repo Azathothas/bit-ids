@@ -2088,6 +2088,100 @@ dropped. `pip install --dry-run` with the marked requirement on Linux leaves
 3. Then the rest of the earlier list from item 5: the console add, `halt`, the
    firewall list over the launcher chain, and the captures.
 
+### ⛔ Runs 39616084687 and 39617383153: both Windows lanes capture, and the pair cannot be filed. 2026-10-21
+
+⭐ **The Linux pair is published.** The `python-wheel` and `python-source`
+records are on the `data` branch, from run 39588980862.
+
+⭐ **`capture-client` run 39616084687 on `539ecde` is green on all four lanes.**
+Both Windows lanes now install and capture:
+
+| lane | install | capture |
+| --- | --- | --- |
+| Windows `package` | 2.2.0, `libtorrent=1.2.19.0` in `winget-version.txt` | 3 sessions, 6 announces, 6 peer streams, `-DE220s-`, every `stop` a `halt` |
+| Windows `source` | 2.2.0, commit `e9777eaa`, `windows-curses` installed, import check passed | the same, every `stop` a `halt` |
+
+⛔ **`assemble-bundle` run 39617383153 refused the Windows pair:** `origin:
+url-scheme: a retrieval location is https`, on both lanes, because each record
+carries both routes' acquisitions. The package lane recorded winget's
+installer URL, `http://download.deluge-torrent.org/...`, as its origin.
+`Url::parse` refuses a plain http retrieval, because it cannot support a claim
+about which bytes arrived, and that rule stands. Scoop's extras manifest names
+the same http URL. So no package manager hands this route an https origin.
+
+⭐ **The fix: winget resolves, the vendor's https mirror delivers.**
+
+- The route reads three things from `winget show`: the version, the installer
+  URL and `Installer SHA256`.
+- It fetches the same file from `https://ftp.osuosl.org/pub/deluge/windows/`
+  with `install-rootless --fetch`. It holds the file to the index's digest and
+  to the vendor's own `.sha256` beside it.
+- It runs the installer as winget runs a `nullsoft` one, `/S
+  /D=%ProgramFiles%\Deluge`.
+- `package-index.txt` names the https URL as the origin, because that is what
+  was really fetched. It names `delivery=https-vendor-mirror-nsis`.
+  `install-client` carries that as `package_delivery`, and `assemble-capture`
+  uses it in place of `host-package-manager`.
+
+It stays a `package` route because winget's index is what resolved it. Only a
+URL of the index's measured shape is mapped; any other is refused. The http
+allowance and its decision row are reverted.
+
+⚠ Measured through `AGENTS.md` rule 9's route on 2026-10-21, because this
+host's proxy cannot verify TLS to either host:
+
+- `ftp.osuosl.org` answered 200 over https. Its `.sha256` reads
+  `b2e414dd...8f4e889  deluge-2.2.0-win64-setup.exe`, and the installer it
+  serves digests to the same value, which is the index's InstallerSha256.
+- `https://download.deluge-torrent.org` answered 526, an invalid certificate at
+  the origin.
+
+A runner fetches osuosl directly.
+
+⛔ **And the patched pair is `divergent`, which is the second finding.** A copy
+of the run's real artifacts was patched to the https origin and the delivery,
+and `assemble-dispatch` then wrote two valid records. Neither is publishable:
+`peer_wire/reserved` and `tracker_http/user_agent` disagree. The vendor's
+installer runs libtorrent 1.2.19 and the source route ran 2.0.15, and routes
+on one host must run one engine. So the Windows source route now pins
+`libtorrent==1.2.19`, under a `sys_platform == "win32"` marker, while Linux
+keeps 2.0.15. That library's Windows wheels stop at cp310, and the runner's
+`python` is 3.12.10. So the route takes the tool cache's newest x64 Python
+3.10, else 3.9, from `RUNNER_TOOL_CACHE` or `AGENT_TOOLSDIRECTORY`, and is
+could-not-run without one.
+
+Driven on this host with CPython 3.10.20 and the Windows pins:
+
+- the install and the import check passed;
+- `--version` answered `libtorrent: 1.2.19.0`;
+- the console printed `Torrent added!`;
+- the daemon logged *shutdown successfully* on SIGTERM.
+
+⚠ Linux records 2.0.15 and Windows 1.2.19. A field that differs by platform
+is platform-scoped under the operator's settled rule.
+
+| held before commit | result |
+| --- | --- |
+| `bit-check deluge --selftest` | 96 of 96 |
+| plants: the index's http URL recorded as the origin, any `download.deluge-torrent.org` file mapped, `/D=` quoted, the digest taken as written, `windows-curses` dropped, Windows back on libtorrent 2.0.15, the runner's Python 3.12 preferred | each refused |
+| `assemble-dispatch` over run 39616084687's real Windows artifacts, the package lane's record patched to the https origin and the delivery | the origin refusal is gone, and two valid records are written. They are `divergent` on `reserved` and `user_agent`, which the engine pin above addresses |
+| `install-rootless --fetch` of osuosl from this host | could not run: the proxy cannot verify that TLS; a runner proves it |
+
+⛔ **What the re-dispatch must prove** (`adapters: []`, `windows_adapters:
+["deluge"]`, `windows_routes: ["package","source"]`), in reading order:
+
+1. The package lane's `install.log` shows both `install-rootless` fetches from
+   `ftp.osuosl.org` succeeding. `rootless-install.txt` records the digest, and
+   `nsis-install.txt` records `exit=0`.
+2. Its install record carries an https `package_origin` and
+   `package_delivery=https-vendor-mirror-nsis`.
+3. The source lane's `build-deps.txt` names a Python 3.10 (or 3.9) from the
+   tool cache, `pip-freeze.txt` carries `libtorrent==1.2.19`, and
+   `version.err` reads `libtorrent: 1.2.19.0`.
+4. Both lanes capture, then `assemble-bundle` makes the Windows pair
+   `publishable` and `build_equivalent`, with `reserved` and `user_agent`
+   agreeing.
+
 ## CLIENT-08: BitTorrent capture adapter
 
 Source: operator scope and August 2026 priority sample
