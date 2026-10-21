@@ -1,0 +1,5 @@
+deluge reported:
+deluged 2.2.0
+libtorrent: 2.0.15.0
+Python: 3.12.3
+OS: Linux 6.17.0-1022-azure
