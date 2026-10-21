@@ -34,7 +34,7 @@ Sources:
 | id | platforms | licence class | candidate route A | candidate route B | entry |
 | --- | --- | --- | --- | --- | --- |
 | `qbittorrent` | Linux, Windows | open source | vendor/GitHub-linked release artifact | distro/WinGet/Flatpak package | `CLIENT-01` |
-| `qbittorrent-enhanced` | Linux, Windows | open source fork | GitHub release | community package registry | `CLIENT-02` |
+| `qbittorrent-enhanced` | Linux, Windows | open source fork | its own GitHub release ⭐ | source build at the matching tag (Linux), Scoop `extras` (Windows) ⭐ | `CLIENT-02` |
 | `utorrent` | Windows | proprietary | vendor installer | WinGet/community package | `CLIENT-03` |
 | `bitcomet` | Windows | proprietary | vendor installer | package registry | `CLIENT-04` |
 | `aria2` | Linux, Windows | open source | GitHub release | distro/WinGet package | `CLIENT-05` |

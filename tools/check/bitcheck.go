@@ -2095,9 +2095,43 @@ func (b *bitcheck) plantedSelfCorroboration() {
 	b.plantedSelftest("the self-corroboration guard, removed,", "FAILED aria2 is refused as the connector of aria2")
 }
 
+// plantedEnhancedSwitch writes one of Enhanced's own switches ON into the
+// profile both halves of `qbittorrent-enhanced` write, in a scratch copy,
+// builds that copy and asks its selftest, which must refuse the profile it now
+// makes. `CLIENT-02`.
+//
+// ⛔ `Session\ShadowBan` is the plant because it is the fork's and not the
+// parent's: a profile check that knew only the three contract surfaces would
+// pass it.
+func (b *bitcheck) plantedEnhancedSwitch() {
+	const qe = "tools/check/qbtenhanced.go"
+	const line = "\tline(`Session\\ShadowBan=false`)"
+	b.save(qe, "qbtenhanced.orig")
+	defer b.put("qbtenhanced.orig", qe)
+	landed := false
+	b.rewrite("qbtenhanced.orig", qe, func(l string) (string, bool) {
+		if l == line && !landed {
+			landed = true
+			return "\tline(`Session\\ShadowBan=true`)", true
+		}
+		return l, true
+	})
+	if !landed {
+		b.h.bad("adapters Enhanced's shadow-ban switch could not be planted: qbtenhanced.go no longer has [" + strings.TrimSpace(line) + "]")
+		return
+	}
+	b.plantedSelftestOf("Enhanced's shadow-ban switch, planted on,", []string{"qbittorrent-enhanced", "--selftest"},
+		"FAILED the Linux profile is held")
+}
+
 // plantedSelftest builds the scratch tree's planted copy and asks its
 // capture-client selftest, which must exit 1 naming the case `named` ends.
 func (b *bitcheck) plantedSelftest(what, named string) {
+	b.plantedSelftestOf(what, []string{"capture-client", "--selftest"}, named)
+}
+
+// plantedSelftestOf is plantedSelftest over any selftest command.
+func (b *bitcheck) plantedSelftestOf(what string, selftest []string, named string) {
 	goTool, err := exec.LookPath("go")
 	if err != nil {
 		b.h.bad("adapters " + what + " cannot be built: go is not on PATH")
@@ -2113,7 +2147,7 @@ func (b *bitcheck) plantedSelftest(what, named string) {
 		b.h.bad("adapters " + what + " did not build: " + strings.TrimSpace(string(out)))
 		return
 	}
-	cmd := exec.Command(planted, "capture-client", "--selftest")
+	cmd := exec.Command(planted, selftest...)
 	cmd.Dir = b.tree
 	out, err := cmd.CombinedOutput()
 	rc := exitOf(err)
@@ -2172,6 +2206,15 @@ func (b *bitcheck) adapters() {
 	} else {
 		b.h.bad(fmt.Sprintf("adapters the deluge adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
 	}
+	// ⭐ AND qbittorrent-enhanced's, ONE SELFTEST FOR BOTH HALVES: the scheme, the
+	// profile and its refusal, the version reading, the zip, Scoop's manifest
+	// and Scoop's tree are qbtenhanced.go, untagged. `CLIENT-02`.
+	if rc, out := b.run("qbittorrent-enhanced", "--selftest"); rc == 0 && strings.Contains(out, `"failed":0}`) {
+		b.h.ok("adapters the qbittorrent-enhanced adapter's selftest holds: go (exit 0)")
+	} else {
+		b.h.bad(fmt.Sprintf("adapters the qbittorrent-enhanced adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
+	}
+	b.plantedEnhancedSwitch()
 
 	// ⛔ A RELEASE FETCH WITH NO TIME LIMIT. ⚠ Planted in the installer, because
 	// `ACQ-06` moved every release retrieval there, and in its Go file since

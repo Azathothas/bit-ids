@@ -14,8 +14,9 @@ their contract.** Each is a `bit-check` command, `bit-check adapter <name>
 | `qbittorrent` | [`../../../tools/check/adapter_qbittorrent.go`](../../../tools/check/adapter_qbittorrent.go), with a Windows half registered under the same name |
 | `transmission` | [`../../../tools/check/adapter_transmission.go`](../../../tools/check/adapter_transmission.go), with a Windows half registered under the same name |
 | `deluge` | [`../../../tools/check/adapter_deluge.go`](../../../tools/check/adapter_deluge.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/deluge.go`](../../../tools/check/deluge.go) |
+| `qbittorrent-enhanced` | [`../../../tools/check/adapter_qbittorrent-enhanced.go`](../../../tools/check/adapter_qbittorrent-enhanced.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/qbtenhanced.go`](../../../tools/check/qbtenhanced.go) |
 
-The five Linux adapters share their mechanics, and none of their decisions, in
+The six Linux adapters share their mechanics, and none of their decisions, in
 [`../../../tools/check/adapterkit.go`](../../../tools/check/adapterkit.go). The
 door every caller reaches an adapter through is
 [`../../../tools/check/adapter.go`](../../../tools/check/adapter.go): a
@@ -222,6 +223,22 @@ vendor's ftp.osuosl.org mirror, and holds it to both digests. Its
 `install-client` and `assemble-capture` carry in place of
 `host-package-manager`. A package route that writes no `delivery=` records as
 before.
+
+⭐ **`qbittorrent-enhanced` is its own target, not a flavour of `qbittorrent`.**
+It resolves the fork's own releases and tags with its own scheme: four
+components and a floor of 4, so the 167 tags the fork inherited from upstream
+are released below the floor and a three-component upstream tag at the
+current major blocks. It installs under its own name,
+`qbittorrent-enhanced-nox`, and looks nowhere on PATH. On Linux both routes run
+the headless `qbittorrent-nox`: the release route takes it out of the vendor's
+static zip, and the source route builds the tag with the vendor's own
+`-DGUI=OFF` against libtorrent 1.2.20, the engine every vendor build carries.
+On Windows the release route extracts the vendor's installer with 7-Zip, and
+the package route is Scoop's `extras/qbittorrent-enhanced`, because winget and
+Chocolatey stop at 5.2.3.10. The profile writes the fork's ban and
+tracker-list switches at their defaults and refuses itself if one is on.
+`CLIENT-02` in [`../../../TODO/clients.md`](../../../TODO/clients.md) carries
+the measurements.
 
 ## ⛔ The workdir IS the evidence bundle
 

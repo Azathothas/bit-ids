@@ -472,6 +472,173 @@ comparing observations only after both profiles exist.
 Prove: two-route live runs either publish a distinct corroborated profile or
 prove byte-for-byte observable equivalence without copying source-derived data.
 
+### ⭐ What Enhanced publishes, and which routes exist. 2026-10-21
+
+Read through `AGENTS.md` rule 8's route, from the vendor's listing, its tag
+and the package indexes. Each asset was fetched by the URL the listing names
+and checked against the digest the listing states. Each was then read without
+being run.
+
+| source | what it carries |
+| --- | --- |
+| GitHub `c0re100/qBittorrent-Enhanced-Edition` releases | `release-5.2.4.10`, 2026-10-03, the newest of 100 release objects, no prerelease among them. 13 assets, **no checksums document and no signatures**; the listing states a sha256 for every asset |
+| the x86-64 AppImage, `qBittorrent-Enhanced-Edition-x86_64.AppImage` | the GUI build only, Qt 6.12.0, `libtorrent-rasterbar.so.10`, libtorrent **1.2.20** (`-LT12K0-`), platform plugins for xcb and wayland |
+| `qbittorrent-enhanced-nox_x86_64-linux-musl_static.zip` | one file, `qbittorrent-nox`, 35877040 bytes, static, libtorrent **1.2.20**. It answers `qBittorrent v5.2.4.10` |
+| `qbittorrent_enhanced_5.2.4.10_x64_setup.exe` | NSIS. One static `qbittorrent.exe` and its `.pdb`, libtorrent **1.2.20**, no DLLs |
+| the vendor's build scripts | the AppImage and the static nox take libtorrent from the moving `RC_1_2` branch. The static nox is built with `-DGUI=off -DSTACKTRACE=off` |
+| the tags | 273 refs. The fork's own 106 releases have four components, `release-5.2.4.10` at commit `ec66016a...`. 167 three-component tags are inherited from upstream and stop at `release-3.3.11`. One bare tag is `3.3.13.1` |
+
+| index | at 5.2.4.10? |
+| --- | --- |
+| winget `c0re100.qBittorrent-Enhanced-Edition` | no: 5.2.3.10. The 5.2.4.10 pull request, #449896, was closed unmerged on 2026-10-12 |
+| Chocolatey `qbittorrent-enhanced` | no: the latest approved package is 5.2.3.10 |
+| Scoop `extras/qbittorrent-enhanced` | **yes**, since commit `c4049da8` on 2026-10-03. Its URL is the vendor's https GitHub asset with Scoop's `#/dl.7z`, and its hash `d76fe0df...0d27dc2` is the digest the listing states |
+| Ubuntu 24.04 apt | no Enhanced at all, and an apt route is privileged, which `ACQ-06` keeps off the capture path |
+| AUR | not a route this project can use |
+
+⭐ **The routes, every origin https:**
+
+| platform | route | what it does | `package` |
+| --- | --- | --- | --- |
+| Linux | `release` | the static nox zip, fetched by `install-rootless --fetch` under the listing's digest. Its one `qbittorrent-nox` is taken out by Go's zip reader and placed at `<prefix>/bin/qbittorrent-enhanced-nox` | `elf-binary-static` |
+| Linux | `source` | the `release-5.2.4.10` tag from `resolve-source`, built `-DGUI=OFF -DSTACKTRACE=OFF`, the vendor's nox switches. It builds against Qt 6.11.2's archives, as `CLIENT-01` does, and against libtorrent `v1.2.20` built static from its own tag | `elf-binary` |
+| Windows | `release` | the vendor's installer, fetched the same way and extracted by the runner's 7-Zip into `<prefix>\opt\qbittorrent-enhanced`. No installer code runs | `nsis-payload` |
+| Windows | `package` | Scoop, installed by its own installer, adds its `extras` bucket and runs `scoop install extras/qbittorrent-enhanced` with no version. Scoop checks the manifest's hash and extracts with its own 7-Zip | `nsis-payload` |
+
+Why these:
+
+- **The headless build on Linux, not the AppImage.** Both carry libtorrent
+  1.2.20. Only the GUI needs Xvfb and the graphics runtime set that
+  `CLIENT-01` had to measure twice. The two assets come from one listing and one
+  delivery, so they are one route under `E-ACQ-07` and `E-ACQ-08`, and the
+  second Linux route has to be the tag.
+- **libtorrent 1.2.20 on the source route**, because routes on one host must
+  run one engine. `CLIENT-07`'s Windows pair assembled `divergent` over exactly
+  this. ⚠ The tag `v1.2.20` is commit `2e537ee7...`, and the vendor's branch
+  was ahead of it, at `c5ff6c31...`, when read. Both report 1.2.20. The bytes
+  on the wire agreed, below.
+- **Scoop on Windows**, because it is the one index at the newest stable.
+  ⚠ **Its pair shares an origin**, as `aria2-next`'s does. Scoop's URL is the
+  release route's own GitHub asset, so the resolvers differ, and so do the
+  downloaders and their checks, but the host serving the bytes does not.
+  winget would have had SourceForge, and it is a version behind.
+
+⛔ **The slug is the catalogue's `qbittorrent-enhanced`.** `E-COR-20` refuses a
+connector whose identifier contains the target's or is contained in it.
+`qbittorrent` beside `qbittorrent-enhanced` would be refused as a connector,
+which is the pessimistic side `CLIENT-05` chose, and nothing here declares
+either as a connector of the other. The connectors are `bit-ids-probe` and
+`cpython-stdlib`.
+
+### ⭐ The adapter is built, and both Linux routes captured on the session host. 2026-10-21
+
+[`../tools/check/adapter_qbittorrent-enhanced.go`](../tools/check/adapter_qbittorrent-enhanced.go)
+and
+[`../tools/check/adapter_qbittorrent-enhanced_windows.go`](../tools/check/adapter_qbittorrent-enhanced_windows.go)
+register `qbittorrent-enhanced`. Their pure decisions are one untagged file,
+[`../tools/check/qbtenhanced.go`](../tools/check/qbtenhanced.go), and
+`bit-check qbittorrent-enhanced --selftest` asks them on any host: 88 cases,
+all held. `check-bitcheck` runs it.
+
+⛔ **Independent of `qbittorrent` by construction, not by intent:**
+
+- **Its own scheme.** `release-`, exactly four components, floor 4. The 123
+  inherited tags it cannot order all lead with 3 or less, so they are
+  `below_scheme_floor`. ⛔ A three-component upstream tag at the current major,
+  such as `release-5.3.0` pushed into the fork, is `unorderable` and blocks. It
+  is never read as Enhanced's `5.3.0.0`. Under the parent's three-or-four
+  scheme it would be selected.
+- **Its own name.** It installs `qbittorrent-enhanced-nox`, never
+  `qbittorrent-nox`, and looks for the build in its prefix only, never on
+  PATH. On Windows it looks in the release prefix and Scoop's version directory.
+- **Its own version shape.** Windows refuses an answer that is not four
+  components.
+- **Shared mechanics only.** It shares mechanics and no decisions with the
+  parent's adapter: the private apt unpack, the Qt archive fetch with its
+  sidecar check, the Windows Web UI calls, the throwaway hash and its scrub,
+  and aria2-next's Scoop bootstrap.
+
+⭐ **What Enhanced changes, read from `release-5.2.4.10` against upstream
+`release-5.2.4` with `diff -r`.** `src/app/`, `cmdoptions.cpp`, `webui.cpp` and
+`password.cpp` are identical, so the profile layout, `--version` and the Web
+UI calls are upstream's. `sessionimpl.cpp` adds session keys, and the profile
+writes each **at the build's own default** and refuses itself if one is on:
+
+| key | default | what it would change |
+| --- | --- | --- |
+| `Session\AutoBanUnknownPeer` | false | drops unknown clients GeoIP places in CN, and two offline-downloader peer IDs |
+| `Session\AutoBanBTPlayerPeer` | false | drops media-player peers |
+| `Session\ShadowBan` | false | a shadow-ban list |
+| `Session\AddTrackersFromURLEnabled`, `Session\AutoUpdateTrackersEnabled` | false | fetches a public tracker list and adds it to every torrent: announces to hosts that are not the lab |
+
+⚠ **One filter no setting turns off, recorded and not changed.**
+`create_drop_bad_peers_plugin` drops a peer whose first eight peer-ID bytes
+match `-(XL|SD|XF|QD|BN|DL|TS|DT|HP)\d+-`, or whose client name is four
+dot-separated numbers. The observer presents `bit-ids-fixture-NNNN`, which
+matches neither. The plugin's country branch needs GeoIP, and
+`Connection\ResolvePeerCountries=false` keeps that database unloaded. The peer
+filter files `peer_blacklist.txt` and `peer_whitelist.txt` are read from the
+profile's data directory, and a fresh profile has neither. The peer ID and
+user agent have no setting in this fork, so nothing here sets them.
+
+⛔ **The Linux nox prints a temporary Web UI password at start unless its Web UI
+is off** (`application.cpp`). The Linux profile writes `WebUI\Enabled=false`,
+so it prints *The WebUI is disabled!* and no password. `stop` sends SIGTERM,
+and the build logs *Catching signal: SIGTERM* and *Exiting cleanly*. The
+Windows half keeps the parent's arrangement: a loopback Web UI with a
+throwaway hash, scrubbed by `stop`.
+
+⭐ **Driven on the session host on 2026-10-21, as `ubuntu`, each lane with its
+own `HOME`, prefix, claim and `RUNNER_TEMP`, through `bit-check install-step`:**
+
+| step | release | source |
+| --- | --- | --- |
+| resolve | `resolve-release`: 100 candidates, 1 selected, 99 superseded; the zip, 19359658 bytes, `digest_source=source-listing` | `resolve-source`: 273 refs, `release-5.2.4.10` selected, 104 superseded, 123 `below_scheme_floor`, 44 `prerelease_by_version`, 1 `foreign_tag` |
+| `install-step` | exit 0 in 3 seconds, `acquired=yes`, `package=elf-binary-static` | exit 0 in 532 seconds, under the 1500-second bound, `acquired=yes`, `package=elf-binary`, commit `ec66016a...` |
+| the build's answer | `qBittorrent v5.2.4.10` | `qBittorrent v5.2.4.10` |
+| the executable | 35877040 bytes, sha256 `4b291578...`, the zip's own entry | 18655688 bytes, sha256 `3dd2357c...`, linked against Qt 6.11.2 |
+| capture, 45 s, 3 sessions, in `bit-check contained` | exit 0: 6 announces, 6 peer streams, 30 segments, verified by `sha256sum` | the same |
+| tracker `peer_id` | `-qB524A-` and a new twelve-byte tail per session | the same |
+| tracker `user_agent` | `qBittorrent Enhanced/5.2.4.10` | the same |
+| peer-wire `reserved` | `0000000000180005` on all six connections | the same |
+| `stop` | exit 0, stopped after 40 s with 5 s margin | the same |
+| `assemble-capture`, by hand | both records `publishable`, `classify_across` `build_equivalent`, 4 fields agreeing; refused only for the run manifests a dispatch writes | |
+
+⚠ The captures ran as root inside the namespace, as `CLIENT-05`'s did. The
+installs and prefixes were `ubuntu`'s. The observer was this tree's
+`client-capture`, built locally.
+
+⭐ **So Enhanced's identity is its own, and observed rather than inherited.**
+Both routes present `-qB524A-` and `qBittorrent Enhanced/5.2.4.10`. The
+published qBittorrent 5.2.4 profile observed `-qB5240-`. ⚠ This compares two
+observations, as the *Approach* asks, and the record is built from the bytes
+alone. That the source spells the user agent
+`"qBittorrent Enhanced/" QBT_VERSION_2` explains the observation. It is not
+evidence for it.
+
+⛔ **What only a runner can prove.** Dispatch `capture-client` with `adapters:
+["qbittorrent-enhanced"]`, `routes: ["release","source"]`, `windows_adapters:
+["qbittorrent-enhanced"]` and `windows_routes: ["release","package"]`. The
+workflow needs no change: the Linux source lane reads `compiles=source` and
+gets the build bounds, and the Windows lane runs no source route. Check, in
+reading order:
+
+1. whether the Linux source lane finds glib and krb5 on `ubuntu-24.04`. Qt's
+   archives load them from the host, as the `CLIENT-01` source lane's did
+   there;
+2. whether Scoop installs under the runner's administrator account with
+   `-RunAsAdmin`, and whether `scoop bucket add extras` clones the bucket.
+   `install.log` and `scoop-index.txt` show it. `scoop-index.txt` names the
+   bucket commit, the manifest's version, URL and hash, and the
+   `qbittorrent.exe` Scoop placed, with its digest;
+3. whether the two Windows payloads digest alike. Each lane's `extract.txt` or
+   `scoop-index.txt` names the sha256 of the `qbittorrent.exe` it placed;
+4. whether the GUI build answers `/api/v2/app/version` with `v5.2.4.10`, and
+   whether `buildInfo` names libtorrent 1.2.20. `version.err` beside the install
+   record carries both;
+5. the four captures, then `assemble-bundle`: Linux and Windows records
+   `publishable` and `build_equivalent` within each platform.
+
 ## CLIENT-03: uTorrent capture adapter
 
 Source: operator scope and August 2026 priority sample

@@ -5,6 +5,25 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-21T19:53:00Z
+
+- ⭐ **qBittorrent Enhanced Edition has its own adapter**,
+  `qbittorrent-enhanced`, on Linux and Windows. It resolves the fork's own
+  releases and tags with a four-component scheme and a floor of 4, so the fork's
+  inherited upstream tags cannot select a version, and it never finds a build
+  on PATH.
+- Linux runs the headless build on two rootless routes: the vendor's static
+  `qbittorrent-nox` zip, and the `release-5.2.4.10` tag built against
+  libtorrent 1.2.20, the engine every vendor build carries. Windows pairs the
+  vendor's installer, extracted with 7-Zip, with Scoop's `extras` bucket, the
+  one index at 5.2.4.10.
+- The profile writes the fork's peer-ban and tracker-list switches at their
+  defaults and refuses itself if one is on. Driven on the session host, both
+  Linux routes answered 5.2.4.10 and captured `-qB524A-` and
+  `qBittorrent Enhanced/5.2.4.10`, `build_equivalent` across them.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-02`. No version bump and
+  no deploy.
+
 ### 2026-10-21T15:40:00Z
 
 - **Workflow acceptance runs on six shards**: shard 4 of five reached the

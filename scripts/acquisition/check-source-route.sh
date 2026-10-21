@@ -424,4 +424,116 @@ for _beta in deluge-2.0.0b1 deluge-2.0b1; do
   fi
 done
 
+# -- ⭐ qBittorrent ENHANCED'S OWN TAGS: FOUR COMPONENTS, AND A FLOOR OF 4 ------
+#
+# The 273 tag names `git ls-remote --tags --refs` answered for
+# `c0re100/qBittorrent-Enhanced-Edition` on 2026-10-21. The fork tags its own
+# releases with four components, `release-5.2.4.10`, and carries the 167
+# three-component tags it inherited from upstream, every one leading with 3 or
+# less, plus one bare `3.3.13.1`. `CLIENT-02`.
+QBE_TAGS='3.3.13.1 release-0.9.2 release-0.9.3 release-1.0.0 release-1.0.0rc10
+release-1.0.0rc11 release-1.0.0rc3 release-1.0.0rc4 release-1.0.0rc5
+release-1.0.0rc6 release-1.0.0rc7 release-1.0.0rc8 release-1.0.0rc9
+release-1.1.0 release-1.1.0beta2 release-1.1.0beta3 release-1.1.0rc1
+release-1.1.0rc2 release-1.1.1 release-1.1.2 release-1.1.3 release-1.1.4
+release-1.2.0beta1 release-1.2.0beta2 release-1.2.0beta3 release-1.2.0beta5
+release-1.2.0beta6 release-1.2.0rc1 release-1.2.1 release-1.3.0 release-1.3.1
+release-1.3.3 release-1.3.4 release-1.3.5 release-1.4.0 release-1.4.0beta3
+release-1.4.0rc1 release-1.4.0rc2 release-1.4.1 release-1.5.0
+release-1.5.0beta1 release-1.5.0beta2 release-1.5.0beta3 release-1.5.0beta4
+release-1.5.0rc1 release-1.5.0rc3 release-1.5.0rc4 release-1.5.0rc5
+release-1.5.3 release-1.5.4 release-1.5.6 release-2.0.0 release-2.0.0rc2
+release-2.0.0rc6 release-2.0.2 release-2.0.3 release-2.0.5 release-2.0.6
+release-2.0.7 release-2.1.0 release-2.1.1 release-2.1.2 release-2.1.4
+release-2.1.6 release-2.2.0 release-2.2.1 release-2.2.10 release-2.2.11
+release-2.2.2 release-2.2.3 release-2.2.5 release-2.2.6 release-2.2.8
+release-2.2.9 release-2.3.0 release-2.3.0rc5 release-2.3.0rc6 release-2.3.1
+release-2.4.0 release-2.4.0beta1 release-2.4.0beta3 release-2.4.0rc1
+release-2.4.0rc3 release-2.4.10 release-2.4.11 release-2.4.2 release-2.4.4
+release-2.4.6 release-2.4.8 release-2.5.0 release-2.5.0beta1
+release-2.5.0beta2 release-2.5.0beta3 release-2.5.0beta5 release-2.5.0beta6
+release-2.5.0rc1 release-2.5.2 release-2.5.3 release-2.5.4 release-2.5.5
+release-2.6.0 release-2.6.1 release-2.6.2 release-2.6.3 release-2.6.4
+release-2.6.5 release-2.6.7 release-2.6.8 release-2.6.9 release-2.7.0
+release-2.7.1 release-2.8.2 release-2.8.3 release-2.8.4 release-2.8.5
+release-2.9.0 release-2.9.10 release-2.9.11 release-2.9.3 release-2.9.4
+release-2.9.5 release-2.9.6 release-2.9.7 release-2.9.8 release-2.9.9
+release-3.0.0 release-3.0.1 release-3.0.10 release-3.0.11 release-3.0.2
+release-3.0.3 release-3.0.4 release-3.0.5 release-3.0.6 release-3.0.7
+release-3.0.8 release-3.0.9 release-3.1.0 release-3.1.1 release-3.1.10
+release-3.1.11 release-3.1.12 release-3.1.2 release-3.1.3 release-3.1.4
+release-3.1.5 release-3.1.6 release-3.1.7 release-3.1.8 release-3.1.9
+release-3.1.9.1 release-3.1.9.2 release-3.2.0 release-3.2.1 release-3.2.2
+release-3.2.3 release-3.2.4 release-3.2.5 release-3.3.0 release-3.3.1
+release-3.3.10 release-3.3.11 release-3.3.11.1 release-3.3.11.2
+release-3.3.11.3 release-3.3.11.4 release-3.3.11.5 release-3.3.12.1
+release-3.3.12.2 release-3.3.13.1 release-3.3.14.1 release-3.3.15.1
+release-3.3.16.1 release-3.3.16.2 release-3.3.16.3 release-3.3.16.4
+release-3.3.16.5 release-3.3.16.6 release-3.3.2 release-3.3.3 release-3.3.4
+release-3.3.5 release-3.3.6 release-3.3.7 release-3.3.8 release-3.3.9
+release-4.0.1.1 release-4.0.1.2 release-4.0.3.1 release-4.0.3.2
+release-4.0.4.1 release-4.0.4.2 release-4.0.4.3 release-4.0.4.4
+release-4.1.0.1 release-4.1.0.2 release-4.1.1.1 release-4.1.1.2
+release-4.1.1.3 release-4.1.2.1 release-4.1.3.1 release-4.1.4.1
+release-4.1.4.2 release-4.1.5.1 release-4.1.6.1 release-4.1.7.1
+release-4.1.8.1 release-4.1.8.2 release-4.1.8.3 release-4.1.8.4
+release-4.1.9.1 release-4.1.9.15 release-4.1.9.16 release-4.1.9.17
+release-4.1.9.3 release-4.1.9.4 release-4.2.1.10 release-4.2.2.10
+release-4.2.3.10 release-4.2.5.10 release-4.2.5.11 release-4.2.5.12
+release-4.2.5.13 release-4.2.5.14 release-4.2.5.15 release-4.2.5.16
+release-4.3.0.10 release-4.3.1.10 release-4.3.1.11 release-4.3.2.10
+release-4.3.3.10 release-4.3.4.10 release-4.3.4.11 release-4.3.5.10
+release-4.3.6.10 release-4.3.7.10 release-4.3.8.10 release-4.3.9.10
+release-4.4.0.10 release-4.4.1.10 release-4.4.2.10 release-4.4.3.10
+release-4.4.3.11 release-4.4.3.12 release-4.4.4.10 release-4.4.5.10
+release-4.5.0.10 release-4.5.1.10 release-4.5.2.10 release-4.5.3.10
+release-4.5.4.10 release-4.5.5.10 release-4.6.0.10 release-4.6.1.10
+release-4.6.2.10 release-4.6.3.10 release-4.6.4.10 release-4.6.5.10
+release-4.6.6.10 release-4.6.7.10 release-5.0.0.10 release-5.0.2.10
+release-5.0.3.10 release-5.0.4.10 release-5.0.5.10 release-5.1.0.10
+release-5.1.0.11 release-5.1.1.10 release-5.1.2.10 release-5.1.3.10
+release-5.2.1.10 release-5.2.3.10 release-5.2.4.10'
+for _t in $QBE_TAGS; do
+  ref_line "$_t"
+done >"$WORK/refs-qbe.txt"
+_count=$(wc -l <"$WORK/refs-qbe.txt" | tr -d ' ')
+if [ "$_count" = 273 ]; then
+  pass "the replayed qbittorrent-enhanced listing carries the 273 refs measured"
+else
+  fail "the replayed qbittorrent-enhanced listing carries the 273 refs measured (got $_count)"
+fi
+BIT_IDS_STUB_PREFIX=release- BIT_IDS_STUB_MINC=4 BIT_IDS_STUB_MAXC=4 BIT_IDS_STUB_FLOOR=4 case_is 0 "" \
+  "with four components and a floor of 4, qbittorrent-enhanced's refs resolve" qbefloor "$WORK/refs-qbe.txt"
+if [ "$(cat "$WORK/qbefloor.out" 2>/dev/null)" = "release-5.2.4.10" ]; then
+  pass "and select release-5.2.4.10, the newest stable on 2026-10-21"
+else
+  fail "and select release-5.2.4.10 (got [$(cat "$WORK/qbefloor.out" 2>/dev/null)])"
+fi
+_below=$(grep -c -F -e '"verdict": "below_scheme_floor"' "$WORK/qbefloor.work/resolution.json" 2>/dev/null)
+if [ "$_below" = 123 ]; then
+  pass "and release the 123 inherited tags the scheme cannot order as below its floor"
+else
+  fail "and release the 123 inherited tags as below its floor (got [$_below])"
+fi
+# ⛔ WITHOUT THE FLOOR THE INHERITED TAGS BLOCK, which is the resolver failing
+# closed rather than guessing.
+BIT_IDS_STUB_PREFIX=release- BIT_IDS_STUB_MINC=4 BIT_IDS_STUB_MAXC=4 case_is 1 "failed closed" \
+  "with no floor, qbittorrent-enhanced's refs fail closed" qbenofloor "$WORK/refs-qbe.txt"
+# ⛔ AND THE PARENT'S VERSION IS NEVER ENHANCED'S. Upstream's next tag pushed into
+# the fork, planted here as `release-5.3.0`, blocks under Enhanced's scheme. The
+# parent's own scheme, three or four components, would select it.
+{
+  cat "$WORK/refs-qbe.txt"
+  ref_line release-5.3.0
+} >"$WORK/refs-qbe-upstream.txt"
+BIT_IDS_STUB_PREFIX=release- BIT_IDS_STUB_MINC=4 BIT_IDS_STUB_MAXC=4 BIT_IDS_STUB_FLOOR=4 case_is 1 "failed closed" \
+  "an upstream three-component tag at the current major blocks qbittorrent-enhanced" qbeup "$WORK/refs-qbe-upstream.txt"
+BIT_IDS_STUB_PREFIX=release- BIT_IDS_STUB_MINC=3 BIT_IDS_STUB_MAXC=4 case_is 0 "" \
+  "the parent's three-or-four scheme reads the same refs" qbeparent "$WORK/refs-qbe-upstream.txt"
+if [ "$(cat "$WORK/qbeparent.out" 2>/dev/null)" = "release-5.3.0" ]; then
+  pass "and would select the parent's release-5.3.0, which is why Enhanced has its own scheme"
+else
+  fail "and would select the parent's release-5.3.0 (got [$(cat "$WORK/qbeparent.out" 2>/dev/null)])"
+fi
+
 store_report check-source-route/1 cases "$JSON"
