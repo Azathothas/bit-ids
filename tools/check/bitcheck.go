@@ -2016,8 +2016,73 @@ func (b *bitcheck) ignores() {
 // The Go adapter's bounded clone, and its argument list to the end of the line.
 var timeoutAfter = regexp.MustCompile(`exec\.Command\("timeout", "600", "git", "clone", (.*),$`)
 
+// plantedPeerIDSelftest plants the defect `capture-client` run 39577251480
+// found - the peer ID's hex looked for as a substring of the transcript file -
+// into a scratch copy of the guard, builds that copy and asks its selftest,
+// which must refuse. `CLIENT-05`.
+//
+// ⛔ A SELFTEST NOTHING HAS SEEN FAIL MAY BE ASKING NOTHING. The plant is the
+// old line itself, put first in transcriptCarriesPeerID so the rest of the
+// function is never reached, and the case that has to fail is named: aria2's
+// percent-encoded peer ID. ⚠ The planted copy is BUILT, because the selftest
+// is in this binary; the tree is put back before anything else runs.
+func (b *bitcheck) plantedPeerIDSelftest() {
+	const tp = "tools/check/transcriptpeer.go"
+	const line = "\tids, err := transcriptPeerIDs(doc)"
+	b.save(tp, "transcriptpeer.orig")
+	defer b.put("transcriptpeer.orig", tp)
+	landed := false
+	b.rewrite("transcriptpeer.orig", tp, func(l string) (string, bool) {
+		if l == line && !landed {
+			landed = true
+			return "\treturn strings.Contains(string(doc), peerHex), nil\n" + l, true
+		}
+		return l, true
+	})
+	if !landed {
+		b.h.bad("adapters the old substring test could not be planted: transcriptpeer.go no longer has [" + strings.TrimSpace(line) + "]")
+		return
+	}
+	goTool, err := exec.LookPath("go")
+	if err != nil {
+		b.h.bad("adapters the planted peer-ID guard cannot be built: go is not on PATH")
+		return
+	}
+	planted := b.w("planted-bit-check")
+	if runtime.GOOS == "windows" {
+		planted += ".exe"
+	}
+	build := exec.Command(goTool, "build", "-o", planted, ".")
+	build.Dir = b.p("tools/check")
+	if out, err := build.CombinedOutput(); err != nil {
+		b.h.bad("adapters the planted peer-ID guard did not build: " + strings.TrimSpace(string(out)))
+		return
+	}
+	cmd := exec.Command(planted, "capture-client", "--selftest")
+	cmd.Dir = b.tree
+	out, err := cmd.CombinedOutput()
+	rc := exitOf(err)
+	const named = "FAILED a percent-encoded raw-byte peer ID, aria2's, is found"
+	if rc == 1 && strings.Contains(string(out), named) {
+		b.h.ok("adapters the old substring test, planted, is refused by the selftest on aria2's peer ID: go (exit 1)")
+	} else {
+		b.h.bad(fmt.Sprintf("adapters the old substring test, planted, was not refused on aria2's peer ID: exit %d: %s",
+			rc, strings.TrimSpace(string(out))))
+	}
+}
+
 func (b *bitcheck) adapters() {
 	b.agree("adapters clean tree", "check-adapters", 0)
+
+	// ⭐ capture-client's PEER-ID GUARD, ASKED ON THIS HOST: the transcript is
+	// read as JSON, each announce's `peer_id` percent-decoded and compared as
+	// bytes. transcriptpeer.go, `CLIENT-05`.
+	if rc, out := b.run("capture-client", "--selftest"); rc == 0 && strings.Contains(out, `"failed":0}`) {
+		b.h.ok("adapters capture-client's peer-ID selftest holds: go (exit 0)")
+	} else {
+		b.h.bad(fmt.Sprintf("adapters capture-client's peer-ID selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
+	}
+	b.plantedPeerIDSelftest()
 
 	// ⭐ THE WINDOWS ADAPTER'S DECISIONS, ASKED ON THIS HOST. The adapter builds
 	// for Windows alone; what it decides without Windows in it - the profile, the

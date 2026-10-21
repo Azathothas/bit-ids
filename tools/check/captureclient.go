@@ -86,6 +86,7 @@ const captureClientUsage = `usage: bit-check capture-client --run-id <id> --out 
                                [--route-table <path>]
        bit-check capture-client --programs --observer <path> --adapter <path>
                                --connector <path>
+       bit-check capture-client --selftest
 
 Exit codes: 0 the capture ran and its evidence verifies, 1 a guard refuses,
 2 could not run.
@@ -337,6 +338,11 @@ func verifyBundleSums(out, log string) (bool, string) {
 }
 
 func captureClient(args []string) int {
+	// ⭐ THE PEER-ID GUARD, ASKED ON ANY HOST with no observer and no build:
+	// transcriptpeer.go. `CLIENT-05`.
+	if len(args) == 1 && args[0] == "--selftest" {
+		return captureClientSelftest()
+	}
 	err := runCaptureClient(args)
 	if err == nil {
 		return 0
@@ -804,7 +810,20 @@ func runCaptureClient(args []string) error {
 	if peerHex == "" {
 		return refuse("no announce carried a readable peer ID; no build was identified")
 	}
-	if tb, err := os.ReadFile(filepath.Join(bundle, "tracker-http.transcript.json")); err != nil || !bytes.Contains(tb, []byte(peerHex)) {
+	// ⛔ READ AS THE REQUEST WAS SENT, NOT AS A SUBSTRING OF THE FILE. This was
+	// `bytes.Contains(transcript, peerHex)`, which holds only when every byte of
+	// the peer ID is URL-unreserved: the transcript keeps the request's bytes, in
+	// which `peer_id` is percent-encoded. aria2 1.37.0's ten random raw bytes
+	// refused `capture-client` run 39577251480 over a capture that was sound.
+	// transcriptpeer.go decodes it; `capture-client --selftest` proves it.
+	// `CLIENT-05`.
+	tb, err := os.ReadFile(filepath.Join(bundle, "tracker-http.transcript.json"))
+	if err != nil {
+		return refuse("the transcript does not carry the peer ID the observer reported: %v", err)
+	}
+	if carried, err := transcriptCarriesPeerID(tb, peerHex); err != nil {
+		return refuse("the transcript does not carry the peer ID the observer reported: %v", err)
+	} else if !carried {
 		return refuse("the transcript does not carry the peer ID the observer reported")
 	}
 

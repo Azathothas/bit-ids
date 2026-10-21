@@ -720,6 +720,159 @@ under `sudo -E`, which for the `package` route is an `apt-get update` and an
 nothing. ⛔ Do not record a seventh reading without something that separates it
 from the sixth, which looked stronger than any of them and was still wrong.
 
+### ⛔ Run 39577251480: the package lane cannot run, and the release lane was refused by a guard. 2026-10-21
+
+`capture-client` run 39577251480 on `e33b476` dispatched `adapters: ["aria2"]`
+and `routes: ["package","release"]`. It read as follows:
+
+| lane | where it ended | why |
+| --- | --- | --- |
+| `package` | *Install the client* | `apt-get update` answered *Could not open lock file /var/lib/apt/lists/lock - open (13: Permission denied)* |
+| `release` | *Capture*, refused | aria2 1.37.0 installed from the vendor's tarball and captured: 3 announces, 6 peer streams, the bundle verified. Then *the transcript does not carry the peer ID the observer reported* |
+
+⛔ **The package lane is `ACQ-06` working as designed.** Installs are rootless,
+and a package route is privileged by construction, so it is kept off the
+capture path. aria2 needed a second route that is not privileged, and the
+next section adds one.
+
+⛔ **The release lane's refusal was a defect in `capture-client`, not in the
+capture.** aria2 1.37.0's peer ID is `A2-1-37-0-` followed by ten **random raw
+bytes**, for example `A2-1-37-0-` and hex `a87ccb024e613d485817`. The tracker
+transcript stores the request's bytes, and in them `peer_id` is
+percent-encoded: `peer_id=A2-1-37-0-%A8%7C%CB%02Na%3DHX%17`. The guard asked
+`bytes.Contains(transcript, hex(peer ID))`. That works only when every byte of
+the peer ID is URL-unreserved and travels verbatim, which held for every
+client before this one.
+
+### ⭐ The guard reads the request, and the old test is planted. 2026-10-21
+
+[`../tools/check/transcriptpeer.go`](../tools/check/transcriptpeer.go) is the
+guard now, and `capture-client` calls it:
+
+1. It reads the transcript as JSON, schema `bit-ids/transcript/1`.
+2. It takes each `from_target` segment and requires lowercase hex.
+3. It decodes the segment and takes the request line's query.
+4. It percent-decodes the `peer_id` field. ⛔ `+` stays the byte 0x2b and is
+   never read as a space: that is form encoding, and a peer ID is opaque bytes.
+5. It compares the decoded bytes, as hex, with the observer's peer ID.
+
+⚠ No Go reader of transcripts existed to reuse. `assemble.go`'s `transcript`
+and `segmentsAt` are fixture writers, closures inside a harness. The connector
+does this decoding in Python with `urllib.parse`, and this is a third reading
+with its own code.
+
+⭐ **`bit-check capture-client --selftest`: 15 cases, all held.** They include:
+
+- aria2's percent-encoded raw-byte peer ID is found, in either hex case;
+- an unreserved-ASCII peer ID is still found, sent verbatim or fully escaped;
+- a peer ID the transcript does not carry is refused, and so is one a byte away;
+- a literal `+` is 0x2b and is not decoded as a space;
+- a peer ID that is only in a `to_target` segment, or only in a field other
+  than `peer_id`, is refused. The old test accepted both, because it read the
+  whole file;
+- a truncated escape is not read as a peer ID;
+- a document that is not JSON, has another schema, or holds uppercase hex is
+  an error, not an absence.
+
+⛔ **The old defect is planted and refused.** `check-bitcheck` writes the old
+substring test into the first line of `transcriptCarriesPeerID` in its scratch
+tree, builds that copy and runs its selftest. The selftest must exit 1 and must
+name aria2's case. Measured: *the old substring test, planted, is refused by
+the selftest on aria2's peer ID: go (exit 1)*.
+
+⚠ **`capture-run`'s token check has the same shape and is not affected.** It
+asks `bytes.Contains(transcript, hex("key=" + run id))`. The run ID is refused
+unless it is `[a-z0-9-]`, which is all URL-unreserved, and `curl` sends the URL
+it is given unencoded. So the bytes on the wire are the bytes compared. It is
+left as it is, and the same reasoning sits beside it here.
+
+### ⭐ aria2 has a `source` route, and both rootless routes captured on the session host. 2026-10-21
+
+`bit-check adapter aria2 install source` clones the tag `resolve-source`
+selects from `github.com/aria2/aria2`'s refs, and builds it into the same
+prefix as the release route, with the same configure line. That is the shape
+Transmission's and aria2-next's source routes have.
+
+⛔ **The resolver failed closed first.** `git ls-remote --tags --refs` answers
+152 tags, all `release-`. Eleven of them are spellings the three-component
+scheme cannot order: `0.4.0a`, and ten package revisions such as `0.10.0+1`.
+All eleven lead with 0, and no 1.x tag is unorderable. So the adapter now
+declares `release_floor_major=1`, the lowest floor that releases them. The
+release listing still selects 1.37.0. `check-source-route` replays the 152 tag
+names: no floor fails closed, a floor of 1 selects `release-1.37.0` with exactly
+11 released, and a floor of 2 releases nothing. 32 of 32.
+
+⛔ **A tag carries no `configure`, and a runner has no `autopoint`.** The tag
+is built with `autoreconf -i`, and its `configure.ac` calls
+`AM_GNU_GETTEXT_VERSION`, so `autoreconf` runs `autopoint`. Measured on
+2026-10-21:
+
+| host | autoconf | automake | libtool | m4, pkg-config | gettext or autopoint |
+| --- | --- | --- | --- | --- | --- |
+| `ubuntu-24.04` image 20261012.334.1, its README read directly | 2.71-3 | 1.16.5 | 2.4.7 | yes | not listed |
+| the session host | 2.71-3 | 1.16.5 | 2.4.7 | yes | no `autopoint`, no gettext m4 |
+
+⭐ **So the route fetches `autopoint` rootless**, the way Transmission's build
+fetches libcurl's headers. It runs `apt-get update` and `apt-get download
+autopoint` with the index and cache in the workdir, then `dpkg-deb -x`.
+`autoreconf` gets `AUTOPOINT=<that script>` and
+`gettext_datadir=<its share/gettext>`. `autopoint` 0.21-14ubuntu2 depends only
+on `xz-utils`, which the runner lists. `build-deps.txt` records the package,
+version and digest.
+
+⚠ **Why this and not the alternatives:**
+
+- Root-installing `gettext` is what `ACQ-06` forbids.
+- Generating `configure` from the release tarball would merge the two routes.
+- Stubbing the gettext macros would build something the vendor does not
+  document.
+
+A host where the private index cannot be read gets a refusal naming it.
+
+⭐ **The `package` slug is `elf-binary-git`.** The two routes install one form,
+a self-contained executable from one configure line. They differ in delivery:
+the release tarball carries a `configure` the vendor generated, and the tag's
+build system is generated on the host. ⚠ aria2-next and Transmission call
+both of their compiled routes `elf-binary`, so this is a decision rather than
+the house rule, and it is listed under *Decided unattended*.
+
+⭐ **Driven on the session host on 2026-10-21.** Each lane ran as `ubuntu`,
+with its own `HOME`, prefix, claim and `RUNNER_TEMP`, through `bit-check
+install-step`:
+
+| step | release | source |
+| --- | --- | --- |
+| resolve | `resolve-release`: `aria2-1.37.0.tar.bz2`, `digest_source=unpublished`, 1 second | `resolve-source`: `release-1.37.0`, live refs, under a second |
+| `install-step` | exit 0 in 255 seconds, `acquired=yes`, `package=elf-binary` | exit 0 in 241 seconds, `acquired=yes`, `package=elf-binary-git`, commit `02f2d0d8...` |
+| the build's answer | `aria2 version 1.37.0`; BitTorrent, GZip, HTTPS, Message Digest; zlib/1.3, OpenSSL/3.0.0m; gcc 13.3.0 | the same features, libraries and compiler |
+| the executable | 85039600 bytes, sha256 `aa2cd83b...` | 85039576 bytes, sha256 `d1b46956...` |
+| capture, 45 s, 3 sessions, in `bit-check contained` | exit 0: 3 announces, 6 peer streams, 28 segments, verified by `sha256sum` | the same |
+| peer ID | `A2-1-37-0-` and a raw ten-byte tail, new per session | the same |
+| user agent | `aria2/1.37.0` | `aria2/1.37.0` |
+| `stop` | exit 0, stopped after 40 s with 5 s margin | the same |
+
+⚠ The capture ran as root, inside the namespace. `ubuntu` has no
+passwordless `sudo` on this host, and `contained` asks for it, whereas a
+runner's user has it. The install and the prefix were `ubuntu`'s.
+
+⭐ The source capture's first peer ID was `A2-1-37-0-` and hex
+`f23eaa6bd6e407869e2c`. Its hex occurs **zero** times in the transcript file,
+so the old guard would have refused this capture too. The new guard passed it,
+and the connector reported the same three peer IDs. ⚠ Each announce's `key=`
+equals the last eight bytes of that session's peer ID tail. That is an
+observation for `SCHEMA-04`, not a field.
+
+⛔ **What only a runner can prove.** Dispatch `capture-client` with `adapters:
+["aria2"]` and `routes: ["release","source"]`. The workflow needs no change:
+both lanes read `compiles`, so each gets the build bounds. Then check:
+
+1. whether the source lane's private `apt-get update` reaches the archive from
+   a runner, and whether `autoreconf -i` and the build finish inside the
+   1500-second bound;
+2. whether both captures pass the new guard on a runner;
+3. whether `assemble-bundle` makes two `publishable` records with
+   `build_equivalent` across them. It was not run by hand here.
+
 ## CLIENT-06: Transmission capture adapter
 
 Source: operator scope and bit-cli source-profile generator study

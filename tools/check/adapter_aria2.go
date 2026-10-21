@@ -32,13 +32,20 @@
 //   - the release route builds: 19 seconds to configure, 126 seconds to
 //     `make -j4`, and the result answers with BitTorrent enabled.
 //
-// ⛔ STILL NOT MEASURED, because each needs a capture:
+// ⭐ MEASURED on 2026-10-21, by capturing both rootless routes in `bit-check
+// contained` on the session host, and by `capture-client` run 39577251480's
+// release lane before that:
 //
-//   - `--enable-dht`, `--enable-dht6`, `--bt-enable-lpd` and
-//     `--enable-peer-exchange` are the switches for the three adjacent surfaces;
-//   - `--listen-port` refuses zero, which is why an unset peer port drops it;
 //   - a torrent as a positional argument makes it announce to the tracker named
-//     inside, needing no other control.
+//     inside, needing no other control: three announces and six peer streams
+//     in three sessions;
+//   - its peer ID is `A2-1-37-0-` and ten RANDOM RAW BYTES, new per session,
+//     which the announce percent-encodes. `capture-client`'s peer-ID guard read
+//     the transcript as a substring until this target refused it.
+//
+// ⛔ STILL NOT MEASURED: that `--enable-dht`, `--enable-dht6`, `--bt-enable-lpd`
+// and `--enable-peer-exchange` turn off every adjacent surface, and that
+// `--listen-port` refuses zero, which is why an unset peer port drops it.
 //
 // ⚠ A claim here that turns out to be wrong shows up as a capture that refuses
 // rather than as one that lies: `capture-client` will not attest to a build it
@@ -52,6 +59,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 func init() { registerAdapter("aria2", shAdapter("aria2", aria2Adapter)) }
@@ -70,16 +78,27 @@ func aria2Binary(k *adapterKit) (string, bool) {
 
 // aria2PackageFormat is what each route delivers, as `Build.package` spells it.
 //
-// ⚠ The two differ, which is the point: the package route installs Ubuntu's
+// ⚠ The three differ, which is the point: the package route installs Ubuntu's
 // `.deb`, whose `/usr/bin/aria2c` is a 14-kilobyte shim over `libaria2.so.0`,
 // and the release route compiles the vendor's source tarball into a
 // self-contained executable. `ACQ-03` measured both on 2026-09-08.
+//
+// ⛔ AND THE SOURCE ROUTE IS NOT `elf-binary`, decided on 2026-10-21. Both
+// compile one executable with one configure line, and they arrive differently:
+// the release tarball is the vendor's DISTRIBUTION, carrying a `configure` the
+// vendor generated, and the tag is the vendor's REPOSITORY, whose build system
+// this host generates with `autoreconf -i` and an `autopoint` it fetched. So
+// `elf-binary-git` names the same installed form by the delivery that differs,
+// and a reader of two aria2 records can tell them apart by `package` alone.
+// `CLIENT-05`.
 func aria2PackageFormat(route string) (string, bool) {
 	switch route {
 	case "package":
 		return "deb", true
 	case "release":
 		return "elf-binary", true
+	case "source":
+		return "elf-binary-git", true
 	}
 	return "", false
 }
@@ -122,7 +141,15 @@ func aria2Adapter(k *adapterKit, sub string, args []string) {
 		fmt.Print("release_tag_prefix=release-\n")
 		fmt.Print("release_min_components=3\n")
 		fmt.Print("release_max_components=3\n")
-		fmt.Print("release_floor_major=-\n")
+		// ⭐ A FLOOR OF 1, BECAUSE THE SOURCE ROUTE READS REFS AND REFS CARRY THE
+		// 0.x HISTORY. Measured on 2026-10-21: `git ls-remote --tags --refs` answers
+		// 152 tags, every one `release-`, and eleven of them the three-component
+		// scheme cannot order - `0.4.0a` and ten package revisions such as
+		// `0.10.0+1` - so with no floor `resolve-source` failed closed over its own
+		// history. All eleven lead with 0 and no 1.x tag is unorderable, so 1 is the
+		// lowest floor that releases them. ⚠ The release listing's selection does
+		// not move: 1.37.0 stands above it. `CLIENT-05`.
+		fmt.Print("release_floor_major=1\n")
 		fmt.Print("release_asset=aria2-{version}.tar.bz2\n")
 		// ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE, AND IT IS
 		// ABOUT THE VENDOR'S OWN CHECKSUMS DOCUMENT. ⚠ That is a narrower sentence
@@ -137,9 +164,11 @@ func aria2Adapter(k *adapterKit, sub string, args []string) {
 		// archives, no checksums asset, and `digest` is null on every one of the six
 		// - the only one of this project's four targets for which that is true.
 		fmt.Print("release_digest_unpublished=this release publishes six archives and no checksums asset\n")
-		// ⛔ THE ROUTE THAT COMPILES, SO THE WORKFLOW BOUNDS IT AS A BUILD. 145
-		// seconds measured here, under the 420 a download gets, and a build still.
-		fmt.Print("compiles=release\n")
+		// ⛔ THE ROUTES THAT COMPILE, SO THE WORKFLOW BOUNDS THEM AS BUILDS. 145
+		// seconds measured here for the release route, under the 420 a download
+		// gets, and a build still; the source route adds a clone, a private index
+		// read and `autoreconf` to the same build.
+		fmt.Print("compiles=release,source\n")
 
 	case "install":
 		route, workdir, format := k.installArgs(args, aria2PackageFormat)
@@ -151,6 +180,8 @@ func aria2Adapter(k *adapterKit, sub string, args []string) {
 			k.aptPackageRoute(workdir, "the package route did not install aria2", "aria2")
 		case "release":
 			aria2Release(k, workdir)
+		case "source":
+			aria2Source(k, workdir)
 		default:
 			k.cannot("unknown route: " + route)
 		}
@@ -322,17 +353,49 @@ func aria2Release(k *adapterKit, workdir string) {
 	if srcdir == "" {
 		k.refuse("the release tarball unpacked no source directory")
 	}
-	// ⚠ THE CONFIGURE OPTIONS ARE PART OF WHAT THIS ROUTE INSTALLS. The same
-	// source configured differently is a build with different features, which
-	// `ACQ-03` measured: two 1.37.0 builds reporting one version and enabling
-	// different things. BitTorrent is the surface this project measures and it is
-	// on by default; the rest are dependencies a capture does not need.
-	// ⛔ `--prefix` puts the result ahead of the system one on PATH, which is what
-	// makes the lookup find THIS build rather than a package.
-	c = exec.Command("./configure", "--prefix="+prefix, "--without-libxml2", "--without-libexpat",
-		"--without-sqlite3", "--without-libcares", "--without-libssh2", "--with-openssl", "--disable-nls")
+	aria2Build(k, workdir, srcdir, prefix, "release")
+}
+
+// aria2ConfigureFlags is the one configure line both compiling routes run.
+//
+// ⚠ THE CONFIGURE OPTIONS ARE PART OF WHAT A ROUTE INSTALLS. The same source
+// configured differently is a build with different features, which `ACQ-03`
+// measured: two 1.37.0 builds reporting one version and enabling different
+// things. BitTorrent is the surface this project measures and it is on by
+// default; the rest are dependencies a capture does not need.
+// ⛔ ONE LIST FOR BOTH ROUTES, so the release and source builds differ in what
+// they were built from and in nothing this file chose. `CLIENT-05`.
+// ⛔ `--prefix` puts the result ahead of the system one on PATH, which is what
+// makes the lookup find THIS build rather than a package.
+func aria2ConfigureFlags(prefix string) []string {
+	return []string{"--prefix=" + prefix, "--without-libxml2", "--without-libexpat",
+		"--without-sqlite3", "--without-libcares", "--without-libssh2", "--with-openssl", "--disable-nls"}
+}
+
+// aria2Build configures, builds and installs one source tree into the prefix,
+// for the release route and the source route alike.
+//
+// ⭐ The configure line and the host's own flags go to `build-configure.txt`
+// beside the install, as Transmission's and aria2-next's builds write theirs,
+// so the install artifact says how the build was configured.
+func aria2Build(k *adapterKit, workdir, srcdir, prefix, route string) {
+	log := filepath.Join(workdir, "install.log")
+	flags := aria2ConfigureFlags(prefix)
+	var b strings.Builder
+	fmt.Fprintf(&b, "./configure")
+	for _, a := range flags {
+		fmt.Fprintf(&b, " '%s'", a)
+	}
+	fmt.Fprintf(&b, "\nhost CFLAGS=%s\n", hostFlag("CFLAGS"))
+	fmt.Fprintf(&b, "host CXXFLAGS=%s\n", hostFlag("CXXFLAGS"))
+	fmt.Fprintf(&b, "host CPPFLAGS=%s\n", hostFlag("CPPFLAGS"))
+	fmt.Fprintf(&b, "host LDFLAGS=%s\n", hostFlag("LDFLAGS"))
+	if writeText(filepath.Join(workdir, "build-configure.txt"), b.String()) != nil {
+		k.refuse("the " + route + " route could not record how it configured the build")
+	}
+	c := exec.Command("./configure", flags...)
 	if run(c, stdio{in: os.DevNull, out: log, outAppend: true, err: "&1", dir: srcdir}) != 0 {
-		k.refuse("the release route could not configure a build")
+		k.refuse("the " + route + " route could not configure a build")
 	}
 	c = exec.Command("getconf", "_NPROCESSORS_ONLN")
 	jobs, rc := capture(c, stdio{err: os.DevNull})
@@ -341,13 +404,129 @@ func aria2Release(k *adapterKit, workdir string) {
 	}
 	c = exec.Command("make", "-j"+jobs)
 	if run(c, stdio{in: os.DevNull, out: log, outAppend: true, err: "&1", dir: srcdir}) != 0 {
-		k.refuse("the release route could not build aria2")
+		k.refuse("the " + route + " route could not build aria2")
 	}
 	c = exec.Command("make", "install")
 	if run(c, stdio{in: os.DevNull, out: log, outAppend: true, err: "&1", dir: srcdir}) != 0 {
-		k.refuse("the release route built aria2 and could not install it")
+		k.refuse("the " + route + " route built aria2 and could not install it")
 	}
 	if !isExec(filepath.Join(prefix, "bin", "aria2c")) {
-		k.refuse("the release route reported an install and left no aria2c in " + prefix + "/bin")
+		k.refuse("the " + route + " route reported an install and left no aria2c in " + prefix + "/bin")
 	}
+}
+
+// aria2Source is the source route.
+//
+// ⭐ THE SECOND ROOTLESS ROUTE, AND IT EXISTS BECAUSE THE FIRST ONE CANNOT RUN
+// ON THE CAPTURE PATH. Measured on `capture-client` run 39577251480, 2026-10-21:
+// the package lane's `apt-get update` answered *Could not open lock file
+// /var/lib/apt/lists/lock - open (13: Permission denied)*, which is `ACQ-06`
+// working as designed - installs are rootless and a package route is privileged
+// by construction. So the pair is the release tarball and the repository's own
+// tag, resolved through `resolve-source` from refs rather than from the release
+// listing, and cloned rather than fetched, which is the shape Transmission and
+// aria2-next measured. ⚠ Whoever controls the repository controls both.
+func aria2Source(k *adapterKit, workdir string) {
+	tag := os.Getenv("BIT_IDS_SOURCE_TAG")
+	if tag == "" {
+		k.cannot("the source route needs BIT_IDS_SOURCE_TAG, resolved from this repository's own refs before the route was cut")
+	}
+	k.need(func(n string) string { return "the source route builds a checkout and " + n + " is not on this host" },
+		"git", "autoreconf", "autoconf", "automake", "aclocal", "libtoolize", "m4", "xz", "make", "cc", "c++")
+	repo := k.describeField("release_repo")
+	if repo == "" {
+		k.cannot("this adapter declares no release_repo to clone from")
+	}
+	prefix, ok := k.prefix(false)
+	if !ok {
+		k.cannot("the rootless prefix could not be derived")
+	}
+	log := filepath.Join(workdir, "install.log")
+	// ⛔ BOUNDED, SHALLOW AND ONE TAG, as `aria2-next`'s clone is and for its
+	// reasons. aria2 carries no submodules.
+	src := filepath.Join(workdir, "src")
+	c := exec.Command("timeout", "600", "git", "clone", "--depth", "1", "--branch", tag,
+		"https://github.com/"+repo+".git", src)
+	if rc := run(c, stdio{in: os.DevNull, out: log, err: "&1"}); rc != 0 {
+		if rc == 124 {
+			k.refuse("the source route's clone of " + tag + " did not finish within 600s")
+		}
+		k.refuse("the source route could not clone " + tag)
+	}
+	k.cloneCommit(workdir, tag)
+	// ⛔ A TAG IS NOT A DISTRIBUTION: IT CARRIES NO `configure`. The vendor's
+	// README says a checkout is built with `autoreconf -i`, and its
+	// `configure.ac` calls `AM_GNU_GETTEXT_VERSION`, so `autoreconf` runs
+	// `autopoint` - which a runner does not have. ⚠ Measured on 2026-10-21:
+	// `ubuntu-24.04` image 20261012.334.1 lists autoconf 2.71, automake 1.16.5,
+	// libtool 2.4.7, m4 and pkg-config and no gettext or autopoint, and the
+	// session host, on the same versions, had no `autopoint` and no gettext m4
+	// either. So `autopoint` comes from the distribution's signed index into the
+	// workdir, rootless, as Transmission's libcurl headers do.
+	autopoint, datadir := aria2Autopoint(k, workdir)
+	c = exec.Command("autoreconf", "-i")
+	if run(c, stdio{in: os.DevNull, out: log, outAppend: true, err: "&1", dir: src,
+		env: []string{"AUTOPOINT=" + autopoint, "gettext_datadir=" + datadir}}) != 0 {
+		k.refuse("the source route could not generate the build system with autoreconf -i")
+	}
+	if !isExec(filepath.Join(src, "configure")) {
+		k.refuse("autoreconf -i reported success and left no configure in the checkout")
+	}
+	aria2Build(k, workdir, src, prefix, "source")
+}
+
+// aria2Autopoint fetches the distribution's `autopoint` into the workdir and
+// answers the script and the data directory it reads its archive from. What it
+// took is written to `build-deps.txt`.
+//
+// ⛔ ROOTLESS AND WITHOUT CHANGING THE HOST, because `ACQ-06` forbids
+// escalating. `apt-get` with its index and cache in the workdir runs as an
+// unprivileged user and downloads through the distribution's signed index;
+// `dpkg-deb -x` unpacks the package there. ⚠ `autopoint` is a shell script
+// whose data directory is compiled in as `/usr/share/gettext` and overridable
+// through `gettext_datadir`, which is how the unpacked copy finds its own
+// `archive.dir.tar.xz` rather than a host's.
+func aria2Autopoint(k *adapterKit, workdir string) (string, string) {
+	deps := filepath.Join(workdir, "deps")
+	if !mkdirP(deps+"/apt/lists/partial", deps+"/apt/cache/archives/partial", deps+"/deb", deps+"/root") {
+		k.cannot("cannot create " + deps)
+	}
+	k.need(func(n string) string { return "the source route needs autopoint and " + n + " is not on this host" },
+		"apt-get", "dpkg-deb")
+	apt := aptPrivate(deps + "/apt")
+	log := filepath.Join(workdir, "deps.log")
+	c := exec.Command("timeout", append(append([]string{"300", "apt-get"}, apt...), "update")...)
+	if run(c, stdio{in: os.DevNull, out: log, err: "&1"}) != 0 {
+		k.refuse("a private package index could not be fetched for autopoint")
+	}
+	c = exec.Command("timeout", append(append([]string{"120", "apt-get"}, apt...), "download", "autopoint")...)
+	if run(c, stdio{in: os.DevNull, out: log, outAppend: true, err: "&1", dir: deps + "/deb"}) != 0 {
+		k.refuse("autopoint could not be downloaded")
+	}
+	debs := shGlob(deps + "/deb/autopoint_*.deb")
+	if len(debs) != 1 || !isFile(debs[0]) {
+		k.refuse("the download left no single autopoint package")
+	}
+	deb := debs[0]
+	c = exec.Command("dpkg-deb", "-x", deb, deps+"/root")
+	if run(c, stdio{out: log, outAppend: true, err: "&1"}) != 0 {
+		k.refuse("autopoint could not be unpacked")
+	}
+	script := deps + "/root/usr/bin/autopoint"
+	datadir := deps + "/root/usr/share/gettext"
+	if !isExec(script) || !isFile(datadir+"/archive.dir.tar.xz") {
+		k.refuse("the autopoint package carried no usr/bin/autopoint beside usr/share/gettext/archive.dir.tar.xz")
+	}
+	field := func(name string) string {
+		c := exec.Command("dpkg-deb", "-f", deb, name)
+		v, _ := capture(c, stdio{})
+		return v
+	}
+	digest, _ := fileSHA256(deb)
+	record := "package=" + field("Package") + "\n" + "version=" + field("Version") + "\n" +
+		"sha256=" + digest + "\n"
+	if writeText(filepath.Join(workdir, "build-deps.txt"), record) != nil {
+		k.refuse("the build could not record its dependency")
+	}
+	return script, datadir
 }

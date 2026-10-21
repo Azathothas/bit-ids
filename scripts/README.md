@@ -166,7 +166,12 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   attestation about a containment into one about a product. ⭐ Two guards say a
   build was measured rather than assumed: an announce must carry a peer ID this
   observer did not generate, and the raw transcript on disk must hold those
-  exact bytes.
+  exact bytes. ⛔ The second reads the transcript as JSON and percent-decodes
+  each announce's `peer_id` before comparing bytes, in
+  [`../tools/check/transcriptpeer.go`](../tools/check/transcriptpeer.go), since
+  2026-10-21: a substring test of the peer ID's hex refused aria2, whose peer ID
+  carries raw bytes the request escapes. `capture-client --selftest` proves it,
+  and `check-bitcheck` plants the old test. `CLIENT-05`.
 - `bit-check scan-bundle`, in
   [`../tools/check/scanbundle.go`](../tools/check/scanbundle.go), is rule 12
   over a directory about to be uploaded: a file whose name says it holds a credential,
@@ -242,7 +247,9 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   [`acquisition/check-source-route.sh`](acquisition/check-source-route.sh) proves
   it: the newest tag is selected with `1.2.10` beating `1.2.9`, and a peeled ref,
   a branch ref, an abbreviated object name, a line with no tab and an empty
-  listing are each refused. ⚠ Its listings are generated rather than recorded,
+  listing are each refused. ⭐ It also replays aria2's and Transmission's own
+  tag names, each failing closed with no floor and resolving with the floor its
+  adapter declares. ⚠ Its listings are generated rather than recorded,
   because an object name is forty hex digits and `check-no-secrets --public`
   refuses that shape.
 - `bit-check check-assemble`, in

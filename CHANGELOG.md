@@ -5,6 +5,21 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-21T10:48:14Z
+
+- ⭐ **aria2 has a second rootless route.** `source` builds the `release-1.37.0`
+  tag that `resolve-source` selects, with `autopoint` fetched rootless for
+  `autoreconf -i`. The adapter declares a scheme floor of 1, because aria2's
+  refs carry eleven 0.x tags no scheme orders. The `package` route stays off
+  the capture path, as `ACQ-06` intends.
+- ⛔ **`capture-client` no longer refuses a peer ID that holds raw bytes.** Its
+  transcript guard percent-decodes each announce's `peer_id` instead of
+  looking for the ID's hex as a substring. `capture-client --selftest` proves
+  it (15 cases), and `check-bitcheck` plants the old test.
+- Both aria2 routes installed as an unprivileged user and captured in a
+  namespace on the session host: 3 announces and 6 peer streams each.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-05`. No version bump and
+  no deploy.
 ### 2026-10-21T09:45:00Z
 
 - **Every rule reads a file git would quote the name of**: `check-project`

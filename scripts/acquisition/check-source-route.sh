@@ -264,6 +264,55 @@ BIT_IDS_STUB_FLOOR='' case_is 2 "no release_floor_major" \
 BIT_IDS_STUB_FLOOR=4x case_is 2 "non-numeric release_floor_major" \
   "a non-numeric scheme floor cannot run" badfloor "$WORK/refs-good.txt"
 
+# -- ⭐ aria2'S OWN TAGS, AND THE FLOOR ITS SOURCE ROUTE NEEDS ----------------
+#
+# The 152 tags `git ls-remote --tags --refs` answered for `aria2/aria2` on
+# 2026-10-21, every one `release-` and written here without it. Eleven are
+# spellings the three-component scheme cannot order, `0.4.0a` and ten package
+# revisions such as `0.10.0+1`, all under major 0, so without a floor the source
+# route fails closed on its own history. `CLIENT-05`.
+ARIA2_TAGS='0.1.0 0.2.0 0.2.1 0.2.2 0.3.0 0.3.1 0.3.2 0.3.3 0.4.0 0.4.0a 0.4.1
+0.5.0 0.5.1 0.5.2 0.6.0 0.6.0+1 0.7.0 0.7.1 0.7.2 0.7.3 0.8.0 0.8.1 0.9.0
+0.10.0 0.10.0+1 0.10.1 0.10.2 0.10.2+1 0.11.0 0.11.1 0.11.1+1 0.11.2 0.11.3
+0.11.4 0.11.5 0.12.0 0.12.1 0.13.0 0.13.0+1 0.13.1 0.13.1+1 0.13.2 0.13.2+1
+0.14.0 0.14.0+1 0.15.0 0.15.1 0.15.1+1 0.15.1+2 0.15.2 0.15.3 0.16.0 0.16.1
+0.16.2 1.0.0 1.0.1 1.1.0 1.1.1 1.1.2 1.2.0 1.3.0 1.3.1 1.3.2 1.3.3 1.4.0 1.4.1
+1.5.0 1.5.1 1.5.2 1.6.0 1.6.1 1.6.2 1.6.3 1.7.0 1.7.1 1.7.2 1.8.0 1.8.1 1.8.2
+1.8.3 1.9.0 1.9.1 1.9.2 1.9.3 1.9.4 1.9.5 1.10.0 1.10.1 1.10.2 1.10.3 1.10.4
+1.10.5 1.10.6 1.10.7 1.10.8 1.10.9 1.11.0 1.11.1 1.11.2 1.12.0 1.12.1 1.13.0
+1.14.0 1.14.1 1.14.2 1.15.0 1.15.1 1.15.2 1.16.0 1.16.1 1.16.2 1.16.3 1.16.4
+1.16.5 1.17.0 1.17.1 1.18.0 1.18.1 1.18.2 1.18.3 1.18.4 1.18.5 1.18.6 1.18.7
+1.18.8 1.18.9 1.18.10 1.19.0 1.19.1 1.19.2 1.19.3 1.20.0 1.21.0 1.22.0 1.23.0
+1.24.0 1.25.0 1.26.0 1.26.1 1.27.0 1.27.1 1.28.0 1.29.0 1.30.0 1.31.0 1.32.0
+1.33.0 1.33.1 1.34.0 1.35.0 1.36.0 1.37.0'
+for _t in $ARIA2_TAGS; do
+  ref_line "release-$_t"
+done >"$WORK/refs-aria2.txt"
+_count=$(wc -l <"$WORK/refs-aria2.txt" | tr -d ' ')
+if [ "$_count" = 152 ]; then
+  pass "the replayed aria2 listing carries the 152 refs measured"
+else
+  fail "the replayed aria2 listing carries the 152 refs measured (got $_count)"
+fi
+BIT_IDS_STUB_PREFIX=release- case_is 1 "failed closed" \
+  "with no floor, aria2's refs fail closed on their 0.x history" \
+  a2nofloor "$WORK/refs-aria2.txt"
+BIT_IDS_STUB_PREFIX=release- BIT_IDS_STUB_FLOOR=1 case_is 0 "" \
+  "with a floor of 1, aria2's refs resolve" a2floor "$WORK/refs-aria2.txt"
+if [ "$(cat "$WORK/a2floor.out" 2>/dev/null)" = "release-1.37.0" ]; then
+  pass "and select release-1.37.0, the release route's answer on 2026-10-21"
+else
+  fail "and select release-1.37.0 (got [$(cat "$WORK/a2floor.out" 2>/dev/null)])"
+fi
+_released=$(grep -c -F -e '"verdict": "below_scheme_floor"' "$WORK/a2floor.work/resolution.json" 2>/dev/null)
+if [ "$_released" = 11 ]; then
+  pass "the floor released exactly the 11 tags the scheme could not order"
+else
+  fail "the floor released exactly the 11 tags the scheme could not order (got [$_released])"
+fi
+BIT_IDS_STUB_PREFIX=release- BIT_IDS_STUB_FLOOR=2 case_is 1 "failed closed" \
+  "a floor of 2 is above aria2's winner and releases nothing" a2high "$WORK/refs-aria2.txt"
+
 # -- ⭐ TRANSMISSION'S OWN TAGS, AND THE FLOOR THAT LETS THEM RESOLVE ---------
 #
 # The 132 tag names `git ls-remote --tags --refs` answered for
