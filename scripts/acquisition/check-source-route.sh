@@ -304,11 +304,20 @@ if [ "$(cat "$WORK/trfloor.out" 2>/dev/null)" = "4.1.3" ]; then
 else
   fail "and select 4.1.3 (got [$(cat "$WORK/trfloor.out" 2>/dev/null)])"
 fi
+# ⚠ 99 AND NOT 112 SINCE 2026-10-16: thirteen of the 112, `1.80b5` to
+# `2.50b1`, are PEP 440 betas the prerelease reader now reads as such, so they
+# never reach the floor. `CLIENT-07`.
 _released=$(grep -c -F -e '"verdict": "below_scheme_floor"' "$WORK/trfloor.work/resolution.json" 2>/dev/null)
-if [ "$_released" = 112 ]; then
-  pass "the floor released exactly the 112 tags the scheme could not order"
+if [ "$_released" = 99 ]; then
+  pass "the floor released exactly the 99 tags the scheme could not order and no marker reads"
 else
-  fail "the floor released exactly the 112 tags the scheme could not order (got [$_released])"
+  fail "the floor released exactly the 99 tags the scheme could not order and no marker reads (got [$_released])"
+fi
+_betas=$(grep -c -F -e '"verdict": "prerelease_by_version"' "$WORK/trfloor.work/resolution.json" 2>/dev/null)
+if [ "$_betas" = 21 ]; then
+  pass "and the 13 lettered betas are prereleases beside the 8 dashed ones"
+else
+  fail "and the 13 lettered betas are prereleases beside the 8 dashed ones (got [$_betas])"
 fi
 # ⛔ A FLOOR ABOVE THE WINNER RELEASES NOTHING, and `3.00` sitting AT a floor of
 # 3 still blocks: the floor speaks only for what is strictly below it.
@@ -316,5 +325,54 @@ BIT_IDS_STUB_PREFIX=- BIT_IDS_STUB_FLOOR=5 case_is 1 "failed closed" \
   "a floor above the winner releases nothing" trhigh "$WORK/refs-transmission.txt"
 BIT_IDS_STUB_PREFIX=- BIT_IDS_STUB_FLOOR=3 case_is 1 "failed closed" \
   "a tag at the floor still blocks" trat "$WORK/refs-transmission.txt"
+
+# -- ⭐ DELUGE'S OWN TAGS, AND THE PEP 440 BETAS THAT FAILED THEM CLOSED -----
+#
+# The 85 tag names `git ls-remote --tags --refs` answered for
+# `deluge-torrent/deluge` on 2026-10-16. `deluge-2.0.0b1` and `deluge-2.0b1`
+# are betas in PEP 440's one-letter spelling, which the reader did not know, so
+# the scheme could not order them and the source route failed closed at the
+# current major. `CLIENT-07`.
+DELUGE_TAGS='archive/0.5-stable archive/1.0-stable archive/1.1-stable
+archive/1.2-stable archive/1.3-stable deluge-0.5.0 deluge-0.5.1 deluge-0.5.1.1
+deluge-0.5.2 deluge-0.5.3 deluge-0.5.4 deluge-0.5.4.1 deluge-0.5.5
+deluge-0.5.5.95 deluge-0.5.5_RC1 deluge-0.5.6 deluge-0.5.6.1 deluge-0.5.6.2
+deluge-0.5.6.95 deluge-0.5.6.96 deluge-0.5.7 deluge-0.5.7.1 deluge-0.5.8.1
+deluge-0.5.8.4 deluge-0.5.8.5 deluge-0.5.8.7 deluge-1.0.0 deluge-1.0.1
+deluge-1.0.3 deluge-1.0.4 deluge-1.0.6 deluge-1.0.7 deluge-1.1.0 deluge-1.1.1
+deluge-1.1.2 deluge-1.1.3 deluge-1.1.4 deluge-1.1.5 deluge-1.1.6 deluge-1.1.7
+deluge-1.1.8 deluge-1.1.9 deluge-1.2.0 deluge-1.2.0_rc1 deluge-1.2.0_rc2
+deluge-1.2.0_rc3 deluge-1.2.0_rc4 deluge-1.2.0_rc5 deluge-1.2.1 deluge-1.2.2
+deluge-1.2.3 deluge-1.3.0 deluge-1.3.0_rc1 deluge-1.3.0_rc2 deluge-1.3.1
+deluge-1.3.10 deluge-1.3.11 deluge-1.3.12 deluge-1.3.13 deluge-1.3.14
+deluge-1.3.15 deluge-1.3.2 deluge-1.3.3 deluge-1.3.4 deluge-1.3.5 deluge-1.3.6
+deluge-1.3.7 deluge-1.3.8 deluge-1.3.9 deluge-2.0.0 deluge-2.0.0.dev0
+deluge-2.0.0b1 deluge-2.0.1 deluge-2.0.2 deluge-2.0.3 deluge-2.0.4 deluge-2.0.5
+deluge-2.0b1 deluge-2.1.0 deluge-2.1.0.dev0 deluge-2.1.1 deluge-2.1.1.dev0
+deluge-2.1.2.dev0 deluge-2.2.0 deluge-2.2.1.dev0'
+for _t in $DELUGE_TAGS; do
+  ref_line "$_t"
+done >"$WORK/refs-deluge.txt"
+_count=$(wc -l <"$WORK/refs-deluge.txt" | tr -d ' ')
+if [ "$_count" = 85 ]; then
+  pass "the replayed deluge listing carries the 85 refs measured"
+else
+  fail "the replayed deluge listing carries the 85 refs measured (got $_count)"
+fi
+BIT_IDS_STUB_PREFIX=deluge- BIT_IDS_STUB_FLOOR=2 case_is 0 "" \
+  "with a floor of 2, deluge's refs resolve" dlfloor "$WORK/refs-deluge.txt"
+if [ "$(cat "$WORK/dlfloor.out" 2>/dev/null)" = "deluge-2.2.0" ]; then
+  pass "and select deluge-2.2.0, the newest stable on 2026-10-16"
+else
+  fail "and select deluge-2.2.0 (got [$(cat "$WORK/dlfloor.out" 2>/dev/null)])"
+fi
+for _beta in deluge-2.0.0b1 deluge-2.0b1; do
+  if grep -A5 -F -e "\"tag\": \"$_beta\"" "$WORK/dlfloor.work/resolution.json" 2>/dev/null |
+    grep -q -F -e '"verdict": "prerelease_by_version"'; then
+    pass "$_beta is read as the beta it is"
+  else
+    fail "$_beta is read as the beta it is"
+  fi
+done
 
 store_report check-source-route/1 cases "$JSON"

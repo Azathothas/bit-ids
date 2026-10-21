@@ -66,18 +66,19 @@ on:
       windows_adapters:
         description: >-
           Which adapters to run on Windows, as a JSON array, of qbittorrent,
-          transmission and aria2-next, e.g. ["qbittorrent"]. [] runs no
-          Windows lane.
+          transmission, aria2-next and deluge, e.g. ["qbittorrent"]. [] runs
+          no Windows lane.
         required: true
         default: '[]'
         type: string
       # ⚠ ITS OWN ROUTES TOO: the Windows half's second route is a package
       # manager, winget or (for `aria2-next`) Scoop, where Linux's is a
-      # source build.
+      # source build. ⚠ `deluge` has no release route on either platform, so
+      # it runs `["package","source"]` here. `CLIENT-07`.
       windows_routes:
         description: >-
           Which acquisition routes the Windows lane runs, as a JSON array, of
-          package and release.
+          package, release and source.
         required: true
         default: '["release","package"]'
         type: string
@@ -689,6 +690,26 @@ jobs:
           Get-Content -LiteralPath (Join-Path $dir 'resolution.txt')
           exit 0
 
+      # ⭐ THE SOURCE LANE'S OWN RESOLUTION, FROM THE REPOSITORY'S OWN REFS, as
+      # the Linux job's step of the same name: `deluge`'s second Windows route
+      # is its tag, built on the runner's Python. `CLIENT-07`. ⚠ The tag is
+      # written with a bare `\n` for the reason the step above gives.
+      - name: Resolve the source tag
+        if: matrix.route == 'source'
+        shell: pwsh
+        env:
+          ADAPTER: ${{ matrix.adapter }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $dir = Join-Path $env:RUNNER_TEMP 'source'
+          $null = New-Item -ItemType Directory -Force -Path $dir
+          $tag = & $env:BIT_CHECK resolve-source --adapter $env:ADAPTER --workdir $dir --record (Join-Path $dir 'resolution.txt')
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          [System.IO.File]::WriteAllText((Join-Path $dir 'tag.txt'), ((@($tag) -join '') + "`n"))
+          Get-Content -LiteralPath (Join-Path $dir 'resolution.txt')
+          exit 0
+
       # ⭐ THE INSTALL, BOUNDED, WITH ITS OUTPUT IN FILES. `bit-check
       # install-step` runs the install in a JOB OBJECT, so everything the route
       # starts is swept when it ends. ⛔ AND THIS STEP BOUNDS THAT PROCESS FROM
@@ -916,6 +937,9 @@ jobs:
             ${{ runner.temp }}/release/*.txt
             ${{ runner.temp }}/release/*.json
             ${{ runner.temp }}/release/*.err
+            ${{ runner.temp }}/source/*.txt
+            ${{ runner.temp }}/source/*.json
+            ${{ runner.temp }}/source/*.err
           if-no-files-found: warn
           retention-days: 30
 

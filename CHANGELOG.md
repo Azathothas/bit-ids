@@ -5,6 +5,23 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-21T09:33:31Z
+
+- ⭐ **A Deluge capture adapter, `bit-check adapter deluge`, on Linux and
+  Windows**, for Deluge 2.2.0, the newest stable. Linux installs PyPI's wheel
+  or builds the `deluge-2.2.0` tag, each into a venv. Windows installs winget's
+  `DelugeTeam.Deluge` or builds the same tag. Deluge publishes no GitHub
+  release, so neither platform has a `release` route. Both Linux routes were
+  installed and captured in a network namespace on the session host: 6
+  announces and 6 peer streams each, as `-DE220s-`.
+- **The prerelease reader knows PEP 440's one-letter markers** (`2.0.0b1`).
+  Deluge's two 2.0 betas had failed its source route closed. No target's
+  selection changes; Transmission's thirteen lettered betas are now read as
+  prereleases rather than released by the floor.
+- `capture-client.yml`'s Windows job can run a `source` route: it gains
+  *Resolve the source tag* and uploads the source resolution.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-07`. No version bump and
+  no deploy.
 ### 2026-10-21T09:25:00Z
 
 - **Dependencies:** `serde_json` 1.0.154 and `sha2` 0.11.1, each still

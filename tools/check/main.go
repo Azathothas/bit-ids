@@ -63,6 +63,7 @@
 //	bit-check qbittorrent-windows --selftest
 //	bit-check transmission-windows --selftest
 //	bit-check aria2-next-windows --selftest
+//	bit-check deluge --selftest
 //	bit-check contained -- <command> [args...]
 //	GH_TOKEN=... bit-check flight-recorder <label> <log-dir>
 //	bit-check --rows
@@ -235,6 +236,11 @@ func main() {
 	}
 	if args[0] == "aria2-next-windows" {
 		os.Exit(aria2NextWindows(args[1:]))
+	}
+	// ⚠ One selftest for both halves of `deluge`: its pure decisions are one
+	// untagged file. `CLIENT-07`.
+	if args[0] == "deluge" {
+		os.Exit(delugeSelftest(args[1:]))
 	}
 	// ⭐ And the two the Linux capture path ran as `sh` last: the namespace a
 	// capture runs in, and the recorder that posts the host's state off it.

@@ -147,6 +147,13 @@ func writePackageIndex(workdir, index, pkg, version, origin string) error {
 // `Installer:`. ⛔ Two different ones is a refusal: the route would not know
 // which the install fetched.
 func wingetInstallerURL(show string) (string, error) {
+	return wingetInstallerURLWith(show, "https://")
+}
+
+// wingetInstallerURLWith is wingetInstallerURL over the schemes a route
+// accepts. ⚠ Only `deluge` passes `http://`, because the index's own manifest
+// names one; it says why.
+func wingetInstallerURLWith(show string, schemes ...string) (string, error) {
 	found := ""
 	for _, l := range strings.Split(show, "\n") {
 		l = strings.TrimSpace(strings.TrimRight(l, "\r"))
@@ -160,8 +167,10 @@ func wingetInstallerURL(show string) (string, error) {
 		}
 		found = v
 	}
-	if !strings.HasPrefix(found, "https://") {
-		return "", fmt.Errorf("winget's index named no https installer URL: [%s]", found)
+	for _, s := range schemes {
+		if strings.HasPrefix(found, s) && len(found) > len(s) {
+			return found, nil
+		}
 	}
-	return found, nil
+	return "", fmt.Errorf("winget's index named no %s installer URL: [%s]", strings.Join(schemes, " or "), found)
 }

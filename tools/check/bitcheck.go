@@ -2045,6 +2045,14 @@ func (b *bitcheck) adapters() {
 	} else {
 		b.h.bad(fmt.Sprintf("adapters the Windows aria2-next adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
 	}
+	// ⭐ AND deluge's, ONE SELFTEST FOR BOTH HALVES: the settings, the command
+	// lines, the version reading, pip's and winget's statements, the pins and
+	// the credential scrub are deluge.go, untagged. `CLIENT-07`.
+	if rc, out := b.run("deluge", "--selftest"); rc == 0 && strings.Contains(out, `"failed":0}`) {
+		b.h.ok("adapters the deluge adapter's selftest holds: go (exit 0)")
+	} else {
+		b.h.bad(fmt.Sprintf("adapters the deluge adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
+	}
 
 	// ⛔ A RELEASE FETCH WITH NO TIME LIMIT. ⚠ Planted in the installer, because
 	// `ACQ-06` moved every release retrieval there, and in its Go file since
@@ -2100,6 +2108,17 @@ func (b *bitcheck) adapters() {
 	})
 	b.agree("adapters a curl that loses its timeout wrapper is refused", "check-adapters", 1)
 	b.put("qbittorrent.orig", qb)
+
+	// ⛔ AND A WINDOWS CLONE IS READ AS ONE: deluge's Windows half bounds its
+	// clone with Git for Windows' coreutils `timeout`, named as the program, and
+	// taking that name off is refused like any other. `CLIENT-07`.
+	const dw = "tools/check/adapter_deluge_windows.go"
+	b.save(dw, "deluge.orig")
+	b.rewrite("deluge.orig", dw, func(l string) (string, bool) {
+		return strings.Replace(l, `exec.Command("timeout", "600", "git", "clone"`, `exec.Command("git", "clone"`, 1), true
+	})
+	b.agree("adapters a Windows clone with no timeout wrapper is refused", "check-adapters", 1)
+	b.put("deluge.orig", dw)
 
 	// ⭐ AND THE ACCEPTING HALF THAT MATTERS MOST: a curl that only ASKS is out of
 	// scope.

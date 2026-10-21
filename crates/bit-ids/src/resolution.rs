@@ -231,6 +231,16 @@ impl VersionScheme {
 /// change moves those 59 and nothing else. `CLIENT-01`.
 /// ⚠ Pessimistic by design, as the module says: `rc1a` is a prerelease here.
 /// Being wrong that way costs a skipped release.
+///
+/// ⛔ **And PEP 440's one-letter markers, `a`, `b` and `c`, between two
+/// digits, since 2026-10-16.** `2.0.0b1` is Python's own spelling of a beta,
+/// and a single letter is asked only where a digit stands on both sides of it,
+/// so `x86`, `1.0b` and `b1.0` carry none. Measured that day over every
+/// target's live refs: Deluge's `deluge-2.0.0b1` and `deluge-2.0b1` were
+/// `unorderable` and failed its source route closed, and they move to a
+/// prerelease. Transmission's thirteen `1.80b5` to `2.50b1` betas move from
+/// `below_scheme_floor` to a prerelease, which is what they are. Nothing else
+/// moves anywhere and no selection changes. `CLIENT-07`.
 #[must_use]
 pub fn text_marks_prerelease(text: &str) -> bool {
     let lowered = text.to_ascii_lowercase();
@@ -240,6 +250,16 @@ pub fn text_marks_prerelease(text: &str) -> bool {
             .split(|c: char| !c.is_ascii_alphabetic())
             .filter(|letters| !letters.is_empty())
             .any(|letters| PRERELEASE_TOKENS.contains(&letters))
+            || pep440_letter(token)
+    })
+}
+
+/// Whether a token carries one of PEP 440's one-letter prerelease markers with
+/// a digit on each side of it, as `0b1`, `0a2` and `1c1` do.
+fn pep440_letter(token: &str) -> bool {
+    let bytes = token.as_bytes();
+    bytes.windows(3).any(|w| {
+        w[0].is_ascii_digit() && matches!(w[1], b'a' | b'b' | b'c') && w[2].is_ascii_digit()
     })
 }
 
@@ -1455,18 +1475,28 @@ mod tests {
             "5.3.0beta1",
             "1.0.0rc10",
             "4.0.0dev",
+            // ⛔ PEP 440's one-letter markers between digits, as Deluge and
+            // Transmission's old betas tag. `CLIENT-07`.
+            "2.0.0b1",
+            "2.0b1",
+            "2.20b1",
+            "1.80b5",
+            "1.0a2",
+            "3.1c1",
         ] {
             assert!(text_marks_prerelease(text), "{text} is a prerelease");
         }
-        // ⚠ Transmission's old lettered tags carry `b`, which is no marker.
+        // ⚠ A single letter with no digit on one side of it is no marker.
         for text in [
             "4.1.3",
             "5.2.3.10",
             "1.2.3-final",
             "2.0.0-march",
-            "2.20b1",
-            "1.80b5",
             "x86",
+            "1.0b",
+            "b1.0",
+            "2.0.0-b",
+            "1.0ab1",
         ] {
             assert!(
                 !text_marks_prerelease(text),

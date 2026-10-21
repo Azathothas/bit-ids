@@ -300,11 +300,14 @@ fn resolution_lets_a_scheme_floor_release_a_targets_older_spelling() {
         !blocked.resolved(),
         "with no floor, refs have no second signal"
     );
-    assert_eq!(blocked.with_verdict(Verdict::Unorderable).len(), 5);
+    assert_eq!(blocked.with_verdict(Verdict::Unorderable).len(), 3);
+    // ⭐ The two lettered betas are PEP 440's spelling of a prerelease and are
+    // read as one, so they never reach the floor. `CLIENT-07`.
+    assert_eq!(blocked.with_verdict(Verdict::PrereleaseByVersion).len(), 2);
 
     let found = run(floored(4), transmission_refs());
     assert_eq!(found.selected.as_ref().map(Version::as_str), Some("4.1.3"));
-    assert_eq!(found.with_verdict(Verdict::BelowSchemeFloor).len(), 5);
+    assert_eq!(found.with_verdict(Verdict::BelowSchemeFloor).len(), 3);
     assert!(found.with_verdict(Verdict::Unorderable).is_empty());
     let text = found.to_json().expect("a floored decision validates");
     assert_eq!(
@@ -342,7 +345,7 @@ fn resolution_still_fails_closed_when_the_floor_is_above_the_winner() {
     // ⛔ A floor of 5 over a winner of 4.1.3 says nothing about `3.00`.
     let found = run(floored(5), transmission_refs());
     assert!(!found.resolved());
-    assert_eq!(found.with_verdict(Verdict::Unorderable).len(), 5);
+    assert_eq!(found.with_verdict(Verdict::Unorderable).len(), 3);
     assert!(found.with_verdict(Verdict::BelowSchemeFloor).is_empty());
 }
 
@@ -353,7 +356,7 @@ fn resolution_still_fails_closed_on_an_unreadable_tag_at_or_over_the_floor() {
     let found = run(floored(3), transmission_refs());
     assert!(!found.resolved(), "3.00 is at the floor, not below it");
     assert_eq!(verdicts(&found)[4], ("3.00", Verdict::Unorderable));
-    assert_eq!(found.with_verdict(Verdict::BelowSchemeFloor).len(), 4);
+    assert_eq!(found.with_verdict(Verdict::BelowSchemeFloor).len(), 2);
     found.to_json().expect("the fail-closed record validates");
 
     for tag in ["4.1", "03.1", "3x.1", "2026.autumn"] {
@@ -363,6 +366,35 @@ fn resolution_still_fails_closed_on_an_unreadable_tag_at_or_over_the_floor() {
         assert!(!found.resolved(), "{tag} is not below the floor");
         assert_eq!(found.with_verdict(Verdict::Unorderable).len(), 1, "{tag}");
     }
+}
+
+/// ⭐ `deluge`'s own shape, measured on 2026-10-16: `deluge-` tags of three
+/// components, four-component ones before 1.0, PEP 440 betas and `.dev0`
+/// markers in the current series, and `archive/` branches' tags beside them.
+#[test]
+fn resolution_reads_deluges_pep440_betas_as_prereleases() {
+    let tags = [
+        "archive/1.3-stable",
+        "deluge-0.5.1.1",
+        "deluge-1.3.15",
+        "deluge-2.0.0b1",
+        "deluge-2.0b1",
+        "deluge-2.1.1",
+        "deluge-2.2.0",
+        "deluge-2.2.1.dev0",
+    ];
+    let scheme = VersionScheme {
+        tag_prefix: Some(Label::parse("deluge-").expect("label")),
+        floor_major: Some(2),
+        ..bare_scheme()
+    };
+    let found = run(scheme, tags.into_iter().map(undated).collect());
+    assert_eq!(found.selected.as_ref().map(Version::as_str), Some("2.2.0"));
+    assert_eq!(found.with_verdict(Verdict::PrereleaseByVersion).len(), 3);
+    assert_eq!(found.with_verdict(Verdict::BelowSchemeFloor).len(), 1);
+    assert_eq!(found.with_verdict(Verdict::ForeignTag).len(), 1);
+    assert!(found.with_verdict(Verdict::Unorderable).is_empty());
+    found.to_json().expect("the decision validates");
 }
 
 /// A tag that is not this target's release at all does not block. A repository

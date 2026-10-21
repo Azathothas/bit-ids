@@ -13,8 +13,9 @@ their contract.** Each is a `bit-check` command, `bit-check adapter <name>
 | `aria2-next` | [`../../../tools/check/adapter_aria2-next.go`](../../../tools/check/adapter_aria2-next.go), with a Windows half registered under the same name |
 | `qbittorrent` | [`../../../tools/check/adapter_qbittorrent.go`](../../../tools/check/adapter_qbittorrent.go), with a Windows half registered under the same name |
 | `transmission` | [`../../../tools/check/adapter_transmission.go`](../../../tools/check/adapter_transmission.go), with a Windows half registered under the same name |
+| `deluge` | [`../../../tools/check/adapter_deluge.go`](../../../tools/check/adapter_deluge.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/deluge.go`](../../../tools/check/deluge.go) |
 
-The four Linux adapters share their mechanics, and none of their decisions, in
+The five Linux adapters share their mechanics, and none of their decisions, in
 [`../../../tools/check/adapterkit.go`](../../../tools/check/adapterkit.go). The
 door every caller reaches an adapter through is
 [`../../../tools/check/adapter.go`](../../../tools/check/adapter.go): a
@@ -195,6 +196,20 @@ answer. Its release route places the vendor's
 `-windows-x86_64.exe` with `install-rootless --install`. Its package route is
 Scoop's `main/aria2-next`, because winget's index stops at 2.8.3 and
 Chocolatey's has no such package. `CLIENT-14` in
+[`../../../TODO/clients.md`](../../../TODO/clients.md) carries the
+measurements.
+
+⭐ **`deluge` is the one target with no `release` route on either platform**,
+because its repository publishes tags and no release objects. Each platform
+pairs a package manager with the `deluge-2.2.0` tag: PyPI's wheel on Linux and
+winget's NSIS installer on Windows, each beside the tag pip-installed into a
+venv. `describe` declares the release repository's scheme for
+`resolve-source` and no `release_asset`, so `resolve-release` says there is
+nothing to fetch. The daemon is driven by its own `deluge-console` over the
+daemon's RPC on loopback. Windows runs `deluged-debug.exe`, because the vendor's
+`deluged.exe` is windowed and prints no `--version`. `stop` scrubs the
+daemon's `auth` credential and its TLS key, neither of which the bundle scan
+recognises. `CLIENT-07` in
 [`../../../TODO/clients.md`](../../../TODO/clients.md) carries the
 measurements.
 

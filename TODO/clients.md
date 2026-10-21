@@ -1610,6 +1610,167 @@ engine identity, and compare official packaging with host package routes.
 Prove: live Linux and Windows records prove product and embedded-engine
 versions plus agreeing observed surfaces.
 
+### ⭐ The adapter is built, and both Linux routes captured on the session host. 2026-10-21
+
+[`../tools/check/adapter_deluge.go`](../tools/check/adapter_deluge.go) and
+[`../tools/check/adapter_deluge_windows.go`](../tools/check/adapter_deluge_windows.go)
+register `deluge` on each platform. Their pure decisions are one untagged file,
+[`../tools/check/deluge.go`](../tools/check/deluge.go), and `bit-check deluge
+--selftest` asks them on any host: 80 cases, all held. `check-bitcheck` runs it.
+
+⭐ **What Deluge publishes, read on 2026-10-16** through `AGENTS.md` rule 8's
+route and the vendors' own pages:
+
+| source | what it carries |
+| --- | --- |
+| PyPI `deluge` | 2.2.0, 2025-04-28, the newest stable: `deluge-2.2.0-py3-none-any.whl` (sha256 `5ac4ce73...`) and an sdist. It declares no libtorrent dependency |
+| ftp.osuosl.org (download.deluge-torrent.org) | `source/2.2/deluge-2.2.0.tar.xz` with a `.sha256`. In `windows/`: `deluge-2.2.0-win64-setup.exe` and `-win64-lt2.0-setup.exe`, plus the two win32 builds, each with a `.sha256` |
+| GitHub `deluge-torrent/deluge` | 85 tags and **no release objects**, so `resolve-release` has nothing to read. `deluge-2.2.0` is commit `e9777eaa...`. `deluge-2.2.1.dev0` is the newest tag |
+| the win64 installer, read with 7-Zip | NSIS. A PyInstaller tree on Python 3.9 with **libtorrent 1.2.19** (`-LT12J0-`), Twisted 22.8.0, pyOpenSSL 25.0.0, setuptools 68.2.2. `deluged.exe` is windowed; `deluged-debug.exe` is the same program with a console |
+
+| index | at 2.2.0? |
+| --- | --- |
+| Ubuntu 24.04 apt | no: `deluged` is `2.1.2~dev0+20240121-1` |
+| PyPI | yes |
+| winget `DelugeTeam.Deluge` | yes. Its x64 installer is `http://download.deluge-torrent.org/windows/deluge-2.2.0-win64-setup.exe`, InstallerSha256 `B2E414DD...8F4E889`, the vendor's own `.sha256` |
+| Scoop extras `deluge` | yes, the same installer, extracted with 7-Zip |
+| Chocolatey `deluge` | no: 2.1.1 |
+
+⭐ **The routes, under the operator's rule that the second route is a package
+manager at the same version:**
+
+| platform | route | what it does | `package` |
+| --- | --- | --- | --- |
+| Linux | `package` | `pip install --only-binary :all: deluge` with no version into a venv at `<prefix>/opt/deluge`. PyPI is the resolver; `package-index.txt` names `pypi`, `deluge`, the version pip reported and the wheel's URL | `python-wheel` |
+| Linux | `source` | the `deluge-2.2.0` tag from `resolve-source`, cloned and pip-installed into the same venv path | `python-source` |
+| Windows | `package` | `winget install --id DelugeTeam.Deluge --location %ProgramFiles%\Deluge`, no version | `nsis-installer` |
+| Windows | `source` | the same tag, cloned behind Git for Windows' coreutils `timeout` and pip-installed into a venv on the runner's Python | `python-source` |
+
+Why these:
+
+- **No `release` route anywhere.** The repository has no release objects, and
+  a resolver for the vendor's download directory would be a new source kind
+  and route kind. So the second route is the tag, as for `aria2-next`.
+- **PyPI beside the tag on Linux** differs in resolver (PyPI's index against
+  git refs), delivery (a wheel from files.pythonhosted.org against a clone) and
+  origin. ⚠ Both take Deluge's dependencies from PyPI, so the pair is
+  independent in how Deluge arrived and not in how Twisted did.
+  `pip-freeze.txt` beside each install says what each got.
+- **winget on Windows** carries the vendor's own build. Scoop names the same
+  installer and would be a second `package` route on a host that runs one.
+- ⚠ **So the two Windows routes measure one Deluge on two engines**: the
+  vendor's installer carries libtorrent 1.2.19 and the source route 2.0.15.
+  The two Linux routes carry 2.0.15. A field that differs by platform is
+  published as platform-scoped, under the operator's settled rule.
+
+⛔ **Three pins, each measured.** The pip routes name exactly these and no
+other version:
+
+- `libtorrent==2.0.15`. Deluge declares no libtorrent, and PyPI's newest is
+  2.1.1, a series newer than Deluge 2.2.0. 2.0.15 is the newest 2.0 release and
+  the libtorrent the published qBittorrent pair measured.
+- `setuptools<81`. PyPI's setuptools 84.0.0 carries no `pkg_resources`, which
+  2.2.0's `pluginmanagerbase.py` imports. The first capture's daemon died at
+  start with `ModuleNotFoundError` while `--version` still answered. 81.0.0
+  carries it and 82.0.0 does not.
+- `pyOpenSSL<26.3`. 2.2.0's `rpcserver.py` makes its certificate with
+  `OpenSSL.crypto.X509Req`. 26.2.0 carries it and 26.3.0 does not. The second
+  capture's daemon logged *Unable to start deluged* with its RPC already bound.
+
+⛔ Both failures passed `--version`, so a pip route now also runs
+`python -I -c "import libtorrent, deluge.core.daemon, deluge.ui.console.main;
+from OpenSSL.crypto import X509Req"` in the venv and refuses if it fails.
+
+⛔ **The source route's resolver failed closed, and the fix is in the shared
+reader.** `deluge-2.0.0b1` and `deluge-2.0b1` are PEP 440 betas. The scheme
+could not order them, and their major is the floor's, so they blocked.
+`text_marks_prerelease` now reads a lone `a`, `b` or `c` between two digits
+as a marker. Over every target's live refs on 2026-10-16, only two sets of
+verdicts move: Deluge's two betas, so its route selects `deluge-2.2.0`, and
+Transmission's thirteen `1.80b5` to `2.50b1`. Those thirteen move from
+`below_scheme_floor` to `prerelease_by_version`, and 4.1.3 is still selected.
+qBittorrent, aria2 and aria2-next do not move. `check-source-route` replays
+Deluge's 85 refs: 32 of 32. Its Transmission count is now 99 released by the
+floor plus 13 betas.
+
+⭐ **How the build is driven.** `deluged` runs in the foreground with `core.conf`
+written whole in a fresh config directory per session. Its RPC is on a free
+loopback port, and the torrent is added by `deluge-console "connect
+127.0.0.1:<port>; add '<torrent>'"`. With no user and a `127.0.0.1` host, the
+console reads the daemon's `localclient` credential from the shared config
+directory, so the adapter never holds it.
+
+| knob | value | mirrors |
+| --- | --- | --- |
+| `dht`, `lsd`, `upnp`, `natpmp`, `utpex` | `false`, and read-only to RPC | every adapter's three surfaces plus the port mapping `aria2-next` measured |
+| `new_release_check`, `send_info`, `allow_remote` | `false` | the first defaults to true and asks deluge-torrent.org at start |
+| `enc_in_policy`, `enc_out_policy`, `enc_level` | 1, 1, 2 | qBittorrent's `Session\Encryption=0`: libtorrent's `pe_enabled` both ways, either handshake |
+| uTP | not set: 2.2.0 has no switch | qBittorrent, which leaves it at libtorrent's default |
+| `listen_ports`, `random_port` | the peer port twice, `false`; neither for port 0 | the others' "port 0 leaves the port to the build" |
+
+`stop` sends SIGTERM on Linux. Twisted catches it and 2.2.0's `daemon.py`
+shuts the core down, so the build announces `stopped`. It sends KILL after
+eight seconds. On Windows `stop` sends `halt` through the console, waits ten
+seconds, then runs `taskkill /T`. `stop.txt` records which.
+
+⛔ **Rule 12, which the bundle scan alone would miss twice.** The daemon writes:
+
+- `config/auth` with `localclient:<40 hex>:10`, and `auth.bak` beside it;
+- `config/ssl/daemon.pkey`, a PEM private key.
+
+`scan-bundle` calls neither name a credential. So `stop` scrubs on every path
+out:
+
+- every `auth`, `auth.*` and `hostlist.conf*`;
+- everything under `ssl/`;
+- any file anywhere in the workdir that holds the auth password.
+
+The key was found by the first green drive, reading its bundle by hand.
+
+⭐ **Driven on the session host on 2026-10-21, as `ubuntu`, each lane with its
+own `HOME`, prefix and claim:**
+
+| step | package | source |
+| --- | --- | --- |
+| `install-step` | 2.2.0, `acquired=yes`, 45 to 70 seconds; `package_origin` the PyPI wheel | `resolve-source` selected `deluge-2.2.0` live; 2.2.0, `acquired=yes`, commit `e9777eaa...`, about 40 seconds |
+| `--version` | `deluged 2.2.0`, `libtorrent: 2.0.15.0`, `Python: 3.12.3`; it left no config directory in `HOME` | the same |
+| capture, 45 s, 3 sessions, in `bit-check contained` | 6 announces, 6 peer streams, every peer ID `-DE220s-` with a new tail per session, user agent `Deluge/2.2.0 libtorrent/2.0.15.0` | the same |
+| `stop` | `sigterm` in every session | `sigterm` in every session |
+| bundle | `scan-bundle` clean; no `auth`, no `ssl/` key, no file holding the password | the same |
+| `assemble-dispatch`, by hand | both records `publishable`, `classify_across` `build_equivalent`, 4 fields agreeing; refused only for the run manifests a dispatch's barrier and runner claim write | |
+
+⚠ The two routes' Deluge Python files are byte-identical. They differ in the
+plugin eggs: the wheel ships `py3.10` and `py3.12` eggs, and the tag builds
+`py3.12` only. `installed-files.txt` beside each install digests every file.
+
+⚠ **The executable `binary=` names on Linux is pip's launcher**, about 300
+bytes fixed by the venv's path and the entry point. On two runners with one
+`HOME`, the two launchers may digest alike whatever Deluge they start, so
+`ACQ-03`'s strength over a Deluge pair speaks for the launcher.
+`installed-files.txt` is the digest of the install.
+
+⛔ **What needs a runner, in the order to read a dispatch** (`adapters:
+["deluge"]`, `routes: ["package","source"]`, `windows_adapters: ["deluge"]`,
+`windows_routes: ["package","source"]`):
+
+1. Whether the Linux lanes repeat the session host on `ubuntu-24.04`'s own
+   `python3`, 3.12, with `python3 -m venv` working there.
+2. Whether `winget install --location` places `deluged-debug.exe` and
+   `deluge-console.exe` in `%ProgramFiles%\Deluge`. The package lane's
+   `install.log`, `winget.log` and `winget-version.txt` show it.
+3. Whether the frozen `deluged-debug.exe --version` prints on the runner and
+   names libtorrent 1.2.19. `version.err` beside the install record has it.
+4. Whether the Windows source lane finds `usr\bin\timeout.exe` beside Git for
+   Windows, clones, and pip-installs on the runner's `python`, whose version
+   must have libtorrent 2.0.15 wheels (cp39 to cp313).
+5. Whether the console adds the torrent on both Windows routes, and whether
+   `halt` ends the daemon in ten seconds. `client/stop.txt` says `halt` or
+   `killed`.
+6. Whether the firewall list covers the source route's launcher chain:
+   `helpers=` names the venv's `python.exe` and the interpreter its
+   `pyvenv.cfg` names.
+7. The captures themselves, then `assemble-bundle`.
+
 ## CLIENT-08: BitTorrent capture adapter
 
 Source: operator scope and August 2026 priority sample

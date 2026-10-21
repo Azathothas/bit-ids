@@ -1,6 +1,6 @@
 //go:build !windows
 
-// adapterkit - what the four Linux capture adapters share, and nothing they
+// adapterkit - what the five Linux capture adapters share, and nothing they
 // decide.
 //
 // CI-11. The adapters were POSIX `sh` files under scripts/capture/adapters/,

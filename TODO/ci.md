@@ -6528,3 +6528,23 @@ the last two, `contained.sh` and `flight-recorder.sh`, are `bit-check` since
 `554dd1d`. `capture` run 38862043177 and CI run 38862031879 on the same commit
 are green too.
 
+
+### ⚠ The Windows job can run a `source` route, for Deluge. 2026-10-21
+
+Added after closure, because `CLIENT-07`'s Windows pair is winget beside the
+`deluge-2.2.0` tag: Deluge publishes no GitHub release, so the Windows lane has
+no `release` route to pair with its package route. `capture-client.yml`
+changed in three places:
+
+| where | change |
+| --- | --- |
+| Windows job | a *Resolve the source tag* step, `if: matrix.route == 'source'`, the Linux step's call in pwsh, writing `$RUNNER_TEMP/source/` |
+| Windows job, *Upload the install logs* | `source/*.txt`, `*.json` and `*.err`, as the Linux job uploads them |
+| `windows_routes`, `windows_adapters` | the descriptions name `source` and `deluge` |
+
+No default, bound or other step changed. `install-step` already reads
+`source/resolution.txt` on either platform. A Windows source lane is bounded
+as a download, and Deluge's pip install is one. ⚠ Dispatch `deluge` alone on
+Windows, with `windows_routes: ["package","source"]`: the matrix is a cross
+product, and the other Windows adapters have no `source` route.
+⛔ `check-workflow` was not run here; the operator runs it.
