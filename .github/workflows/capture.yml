@@ -293,4 +293,4 @@ jobs:
           [void]$body.Add('```')
           $body.AddRange(@(Get-Content -LiteralPath "$env:RUNNER_TEMP/capture/attestation.txt"))
           [void]$body.Add('```')
-          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value $body
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value $body -Encoding utf8NoBOM

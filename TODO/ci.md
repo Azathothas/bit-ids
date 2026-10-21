@@ -3443,6 +3443,53 @@ time put it all on `COLUMNS=20`:
 ⚠ **Still OPEN.** The driven pass now holds. A rule per stated default, as the
 Approach enumerates them, has not been audited in this pass.
 
+### ⭐ The per-default audit, 2026-10-21: two found, both rules now
+
+Each class the Approach names was read against `tools/check` and the tree.
+Two had no rule, and each was proved a defect by planting before it was fixed.
+
+| class | state | how |
+| --- | --- | --- |
+| shell options | stated | `set -u` first, a `check-project` rule since 2026-09-08 |
+| output encodings: source | stated | the `.ps1` BOM rule |
+| output encodings: console | stated | the `Write-Error` width rule, `ps -ww` |
+| output encodings: written files | ⭐ **stated now** | below |
+| locale | measured | `check-defaults` (`C`, `C.utf8`), the hostile pass (`tr_TR`) |
+| `$ErrorActionPreference` and its native rule | stated | in `.ps1` files and workflow blocks |
+| `git` defaults | ⭐ **stated now** | below |
+| `cargo` environment | stated | the `CARGO_TARGET_DIR` rule; every build passes `--locked` |
+| tool versions | stated or argued | below |
+
+⛔ **`git`'s `core.quotepath` hid files from every rule.** It is on by default,
+so `git ls-files` prints a non-ASCII name as a quoted escape that no file has.
+`check-project` could not open the result, and its rules skip a file they cannot
+read. Planted: a `.ps1` named `café.ps1` calling `Write-Error` **passed**, and the
+same file under an ASCII name was refused. ⭐ `gitLines`, `repo.files` and the
+line-ending rule now ask for `-z`, as `copyScratch` and `check-workflow.sh`
+already did, and `check-bitcheck` plants that name tracked and untracked.
+⚠ The other `git` calls parse no paths (`rev-parse`, `check-ignore`, `cat-file`)
+or only compare output (`status --porcelain`), and none runs a colouring or paged
+command, so `color.ui` and `core.pager` reach nothing.
+
+⛔ **A PowerShell file write took the host's encoding.** `Set-Content`,
+`Add-Content` and `Out-File` write UTF-8 with no BOM under PowerShell 7 and the
+ANSI code page under 5.1, and `$PSDefaultParameterValues` can move either. Six
+writes named none: three in `.ps1` files and three into `GITHUB_ENV` or the step
+summary. ⭐ Each now names `-Encoding utf8NoBOM`, which is what PowerShell 7
+writes today, so no byte changes. Under 5.1 that value fails to bind, a loud
+failure where the old line wrote ANSI silently. `check-project` refuses an
+unstated write in both doors, and `check-bitcheck` plants each.
+
+**Tool versions.**
+- Rust is `rust-toolchain.toml`'s.
+- `shfmt` and `pwsh` on a session host are `provision.sh`'s, and the `shfmt` pin
+  is a rule.
+- ⚠ Go and the runner's own `pwsh` are inherited from the image, and that is
+  argued rather than pinned. `go.mod`'s `go` line fixes the language and, since
+  Go 1.21, the `GODEBUG` defaults, so a newer Go keeps this module's behaviour. An
+  older one fails or fetches the named toolchain, and neither failure is silent.
+  `pwsh`'s known drift, the native-command default, is a rule.
+
 ## CI-09: The capture-to-publisher path, end to end
 
 Source: two workflows that have each never run, joined by an artifact

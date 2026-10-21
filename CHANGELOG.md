@@ -5,6 +5,19 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-21T09:45:00Z
+
+- **Every rule reads a file git would quote the name of**: `check-project`
+  listed files through `git ls-files` without `-z`, so `core.quotepath` turned a
+  non-ASCII name into a path no file has, and a planted `.ps1` with a defect
+  passed. Its three listings ask for `-z` now, and `check-bitcheck` plants the
+  name tracked and untracked.
+- **A PowerShell file write names its encoding**: six writes took the host's,
+  and each says `-Encoding utf8NoBOM` now, which is what PowerShell 7 already
+  wrote. `check-project` refuses an unstated write in a `.ps1` and in a workflow
+  block.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-08`. No version bump and no deploy.
+
 ### 2026-10-21T09:33:31Z
 
 - ⭐ **A Deluge capture adapter, `bit-check adapter deluge`, on Linux and

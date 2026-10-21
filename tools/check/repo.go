@@ -59,14 +59,15 @@ func openRepo() (*repo, error) {
 func (r *repo) files() []string {
 	seen := map[string]bool{}
 	for _, args := range [][]string{
-		{"ls-files"},
-		{"ls-files", "--others", "--exclude-standard"},
+		{"ls-files", "-z"},
+		{"ls-files", "-zo", "--exclude-standard"},
 	} {
+		// ⚠ `-z` for `gitLines`' reason: a quoted name is a path no file has.
 		out, err := exec.Command("git", args...).Output()
 		if err != nil {
 			continue
 		}
-		for _, line := range strings.Split(string(out), "\n") {
+		for _, line := range strings.Split(string(out), "\x00") {
 			if line != "" {
 				seen[line] = true
 			}

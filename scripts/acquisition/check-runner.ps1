@@ -119,7 +119,7 @@ try {
     function New-State([string[]]$Lines) {
         $script:stateN++
         $path = Join-Path $work "firewall-$script:stateN"
-        $Lines | Set-Content -LiteralPath $path
+        $Lines | Set-Content -LiteralPath $path -Encoding utf8NoBOM
         $path
     }
 

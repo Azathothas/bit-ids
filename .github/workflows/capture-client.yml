@@ -635,7 +635,7 @@ jobs:
           $rc = $LASTEXITCODE
           Pop-Location
           if ($rc -ne 0) { exit 1 }
-          Add-Content -LiteralPath $env:GITHUB_ENV -Value "BIT_CHECK=$out"
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "BIT_CHECK=$out" -Encoding utf8NoBOM
           exit 0
 
       # ⛔ FIRST, BEFORE ANYTHING ELSE WRITES TO THE HOST, and before anything is
@@ -966,6 +966,6 @@ jobs:
             if (Test-Path -LiteralPath $path) { $body.AddRange(@(Get-Content -LiteralPath $path)) } else { [void]$body.Add("no $file") }
             [void]$body.Add('```')
           }
-          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value $body
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value $body -Encoding utf8NoBOM
           if ($rc -ne 0) { Write-Output "the fingerprint could not be read (exit $rc)" }
           exit 0

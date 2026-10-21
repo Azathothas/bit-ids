@@ -57,17 +57,22 @@ func (f *projectFails) say(msg string) {
 
 // -- shelling out to git -------------------------------------------------------
 
-// gitLines runs one `git ls-files` and returns its lines.
+// gitLines runs one `git ls-files` and returns its paths.
 //
 // ⛔ ASKED OF git, NEVER RE-DERIVED, for `repo.go`'s reason: a second answer to
 // what is in the tree drifts, and it drifts towards staying green.
+// ⛔ `-z` IS ADDED HERE, NOT LEFT TO THE CALLER: without it `core.quotepath`, on
+// by default, prints a non-ASCII name as a quoted escape that no file has, and
+// every rule that skips a file it cannot read passed it unread. Measured
+// 2026-10-21: a `.ps1` named with an accented letter and calling `Write-Error`
+// passed `check-project`.
 func gitLines(args ...string) []string {
-	out, err := exec.Command("git", args...).Output()
+	out, err := exec.Command("git", append([]string{args[0], "-z"}, args[1:]...)...).Output()
 	if err != nil {
 		return nil
 	}
 	var lines []string
-	for _, line := range strings.Split(string(out), "\n") {
+	for _, line := range strings.Split(string(out), "\x00") {
 		if line != "" {
 			lines = append(lines, line)
 		}
@@ -1067,12 +1072,12 @@ func shellMatchClass(p string, c byte) (ok bool, rest string, matched bool) {
 var projEolAttrRe = regexp.MustCompile(`eol=[a-z]+`)
 
 func projectLineEndings(f *projectFails) {
-	out, err := exec.Command("git", "ls-files", "--eol").Output()
+	out, err := exec.Command("git", "ls-files", "-z", "--eol").Output()
 	if err != nil {
 		return
 	}
 	var found strings.Builder
-	for _, line := range strings.Split(string(out), "\n") {
+	for _, line := range strings.Split(string(out), "\x00") {
 		tab := strings.Index(line, "\t")
 		if tab < 0 {
 			continue
@@ -1428,8 +1433,19 @@ func projectGitDependency(f *projectFails) {
 var projWriteErrorRe = regexp.MustCompile(`(^|[|;{])[[:space:]]*Write-Error([[:space:]]|$)`)
 var projCommentAfterRe = regexp.MustCompile(`:[[:space:]]*#`)
 
+// projFileWriteRe is a cmdlet that writes a file in an encoding of its host's
+// choosing. ⛔ PowerShell 7 writes UTF-8 with no BOM and 5.1 writes the ANSI
+// code page or UTF-16, and `$PSDefaultParameterValues` can move either, so a
+// write that does not name `-Encoding` writes whatever the host says today.
+var projFileWriteRe = regexp.MustCompile(`(^|[|;{(])[[:space:]]*(Set-Content|Add-Content|Out-File)([[:space:]]|$)`)
+
+// projUnstatedWrite is a line that writes a file without naming its encoding.
+func projUnstatedWrite(line string) bool {
+	return projFileWriteRe.MatchString(line) && !strings.Contains(line, "-Encoding")
+}
+
 func projectPowerShell(f *projectFails) {
-	var bomless, native, writeError strings.Builder
+	var bomless, native, writeError, encoding strings.Builder
 	for _, ps1 := range gitScope("*.ps1") {
 		raw, err := os.ReadFile(ps1)
 		if err != nil {
@@ -1479,6 +1495,13 @@ func projectPowerShell(f *projectFails) {
 			fmt.Fprintf(&writeError, " %s", ps1)
 			break
 		}
+
+		for i, lineB := range splitLines(raw) {
+			line := string(lineB)
+			if projUnstatedWrite(line) && !projCommentAfterRe.MatchString(fmt.Sprintf("%d:%s", i+1, line)) {
+				fmt.Fprintf(&encoding, " %s:%d", ps1, i+1)
+			}
+		}
 	}
 	if bomless.Len() > 0 {
 		f.say("a .ps1 with non-ASCII and no UTF-8 BOM is mis-decoded by PowerShell 5.1:" + bomless.String())
@@ -1488,6 +1511,9 @@ func projectPowerShell(f *projectFails) {
 	}
 	if writeError.Len() > 0 {
 		f.say("a .ps1 reports through Write-Error, whose rendering wraps by host width:" + writeError.String())
+	}
+	if encoding.Len() > 0 {
+		f.say("a .ps1 writes a file without naming -Encoding, so the host chooses it:" + encoding.String())
 	}
 }
 
@@ -1585,11 +1611,11 @@ func projectPwshBlocks() []projPwshBlock {
 }
 
 func projectWorkflowPwsh(f *projectFails) {
-	var wfNative, wfWriteErr, wfResidue strings.Builder
+	var wfNative, wfWriteErr, wfResidue, wfEncoding strings.Builder
 	for _, block := range projectPwshBlocks() {
 		hasStop, hasNative, hasCode := false, false, false
 		last := ""
-		reported := false
+		reported, unstated := false, false
 		for _, body := range block.body {
 			bare := trimBlankLeft(body)
 			if strings.HasPrefix(bare, "#") {
@@ -1611,6 +1637,10 @@ func projectWorkflowPwsh(f *projectFails) {
 				fmt.Fprintf(&wfWriteErr, " [%s]", block.id)
 				reported = true
 			}
+			if !unstated && projUnstatedWrite(bare) {
+				fmt.Fprintf(&wfEncoding, " [%s]", block.id)
+				unstated = true
+			}
 		}
 		if hasStop && !hasNative {
 			fmt.Fprintf(&wfNative, " [%s]", block.id)
@@ -1629,5 +1659,8 @@ func projectWorkflowPwsh(f *projectFails) {
 	}
 	if wfResidue.Len() > 0 {
 		f.say("a workflow pwsh block reads $LASTEXITCODE and lets it fall through as the step's verdict:" + wfResidue.String())
+	}
+	if wfEncoding.Len() > 0 {
+		f.say("a workflow pwsh block writes a file without naming -Encoding, so the host chooses it:" + wfEncoding.String())
 	}
 }

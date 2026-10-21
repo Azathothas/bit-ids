@@ -298,7 +298,7 @@ try {
         $checked++
     }
     if ($checked -eq 0) { Deny 'the observer described no evidence' }
-    Set-Content -LiteralPath $sums -Value $rows
+    Set-Content -LiteralPath $sums -Value $rows -Encoding utf8NoBOM
 
     # ⛔ AND THE TRANSCRIPT MUST CARRY WHAT THE DRIVER SENT. Everything above is
     # satisfied by a bundle of empty artifacts that verify against their own
@@ -347,7 +347,7 @@ try {
     [void]$doc.Add("segments=$segments")
     [void]$doc.Add("evidence=$checked")
     [void]$doc.Add('evidence_verified_by=Get-FileHash')
-    Set-Content -LiteralPath $attest -Value $doc
+    Set-Content -LiteralPath $attest -Value $doc -Encoding utf8NoBOM
 
     # ⛔ READ BACK, NOT ASSUMED.
     $written = @(Get-Content -LiteralPath $attest -ErrorAction SilentlyContinue)

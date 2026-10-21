@@ -501,6 +501,11 @@ rather than warns, over every tracked text file.
   write, the parent blocks on the wait, and neither moves until the timeout.
 - ⚠ **`ConvertTo-Json` defaults to depth 2**, and renders anything deeper as
   the literal text `System.Collections.Hashtable`. Pass `-Depth`.
+- ⛔ **A file write names its encoding.** `Set-Content`, `Add-Content` and
+  `Out-File` otherwise write what the host chooses: UTF-8 with no BOM under
+  PowerShell 7 and the ANSI code page under 5.1. Pass `-Encoding utf8NoBOM`,
+  which fails loudly on 5.1 rather than writing ANSI. `check-project` refuses
+  an unstated write in a `.ps1` and in a workflow block (`CI-08`).
 - ⛔ **A `.ps1` containing any non-ASCII byte needs a UTF-8 BOM if Windows
   PowerShell 5.1 has to run it.** 5.1 decodes a BOM-less file as the system ANSI
   code page, so every non-ASCII character is mis-decoded. PowerShell 7 defaults

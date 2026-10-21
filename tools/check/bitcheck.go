@@ -2468,6 +2468,12 @@ func (b *bitcheck) project() {
 
 	b.write(pwf, job+pwsh+"          git status\n"+"          if ($LASTEXITCODE -ne 0) { Write-Output no }\n"+"          exit 0\n")
 	b.agree("project a pwsh block that ends in an explicit exit is accepted", pc, 0)
+
+	b.write(pwf, job+pwsh+"          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ok\n")
+	b.agree("project a workflow pwsh block writing with the host's encoding is refused", pc, 1)
+
+	b.write(pwf, job+pwsh+"          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ok -Encoding utf8NoBOM\n")
+	b.agree("project a workflow pwsh block naming its encoding is accepted", pc, 0)
 	b.unplant(pwf)
 
 	// -- 12. the working tree agrees with .gitattributes --------------------------
@@ -2582,7 +2588,26 @@ func (b *bitcheck) project() {
 	// anywhere fires on the file that describes it.
 	b.write(p1, "# Write-Error is what this comment is about\nWrite-Output ok\n")
 	b.agree("project a .ps1 that only mentions Write-Error is accepted", pc, 0)
+
+	b.write(p1, "$rows | Set-Content -LiteralPath out.txt\n")
+	b.agree("project a .ps1 writing with the host's encoding is refused", pc, 1)
+
+	b.write(p1, "$rows | Set-Content -LiteralPath out.txt -Encoding utf8NoBOM\n")
+	b.agree("project a .ps1 naming its encoding is accepted", pc, 0)
+
+	b.write(p1, "# Set-Content is what this comment is about\nWrite-Output ok\n")
+	b.agree("project a .ps1 that only mentions Set-Content is accepted", pc, 0)
 	b.unplant(p1)
+
+	// ⛔ A NAME GIT WOULD QUOTE is read under its own name, tracked or not:
+	// `core.quotepath` turned this one into a path no file has, and the rule
+	// skipped it unread.
+	const pq = "plant-caf\u00e9.ps1"
+	b.write(pq, "Write-Error 'plant'\n")
+	b.agree("project an untracked .ps1 git would quote the name of is read", pc, 1)
+	b.plantTracked(pq)
+	b.agree("project a tracked .ps1 git would quote the name of is read", pc, 1)
+	b.unplantTracked(pq)
 
 	b.agree("project clean tree again", pc, 0)
 }
