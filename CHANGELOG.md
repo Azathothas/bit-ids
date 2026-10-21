@@ -5,6 +5,16 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-21T14:50:00Z
+
+- ⭐ **aria2 1.37.0 is published** on Linux's `release` and `source` routes,
+  both `publishable` and `build_equivalent`, from capture-client run
+  39590380931. `data` holds 18 records.
+- `CLIENT-05` stays OPEN for the operator: the connector half of its title is
+  not built.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-05`. No version bump and
+  no deploy.
+
 ### 2026-10-21T14:23:41Z
 
 - ⛔ **A connector can no longer corroborate the build it is.** `E-COR-20`

@@ -938,6 +938,30 @@ stop this section from closing the entry:
 
 So the Status is left for the operator.
 
+### ⭐ Published: aria2 1.37.0 on two rootless routes. 2026-10-21
+
+capture-client run 39590380931 on `8474d52` captured aria2 1.37.0 on Linux's
+`release` and `source` routes, each in `bit-check contained`. Both lanes
+passed the install barrier and the decoded peer-ID guard. assemble-bundle run
+39594403593 found both records `publishable` and `classify_across` found them
+`build_equivalent`, and 18 of 18 records could enter a published view.
+publish-data run 39594611777 appended them to `data` as `5a3eb7a`:
+`profiles/v1/aria2/1.37.0/linux/x86-64/elf-binary/cap-release.json` and
+`.../elf-binary-git/cap-source.json`.
+
+⚠ An earlier assembly of the same capture, run 39593010968, was not published.
+It began 20 seconds before Deluge's records reached `data`, so its view held
+16 records without them. It was assembled again rather than published over
+the newer branch.
+
+⚠ **Still OPEN, decided unattended.** The Prove is met as written: the tests
+refuse aria2 corroborating aria2 (`E-COR-20`), and a live two-route capture is
+published, supported by the Rust observer plus `cpython-stdlib`'s decoding of
+the same bytes. But the title and the Approach also name aria2 as a
+*connector* for other targets, and nothing drives aria2 that way yet. The
+operator decides whether that half belongs to this entry. It is recorded in
+[`PROGRESS.md`](PROGRESS.md) beside `CLIENT-01` and `CLIENT-06`.
+
 ## CLIENT-06: Transmission capture adapter
 
 Source: operator scope and bit-cli source-profile generator study
