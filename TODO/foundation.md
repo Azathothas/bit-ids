@@ -97,6 +97,11 @@ item's rule requires, in all four workflows that use them. ⚠ Nothing here
 closes either pull request; dependabot closes its own once `main` carries the
 versions.
 
+⭐ **It did, two minutes after the push.** `c26db1a` reached `main` at 10:09
+on 2026-10-21. Dependabot closed pull request 3 at 10:11:19 and pull request 4
+at 10:11:25, both unmerged, read back through rule 8's route. CI run 245 on the
+same commit is green.
+
 ## FOUND-03: Deterministic protocol fixture suite
 
 Source: bit-cli peer, tracker, and loopback tests; reference sweep

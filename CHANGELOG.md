@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-21T11:05:00Z
+
+- Dependabot closed pull requests 3 and 4 itself, two minutes after `c26db1a`
+  carried their bumps to `main`.
+- Record: [`TODO/foundation.md`](TODO/foundation.md) `FOUND-02`. No version bump
+  and no deploy.
+
 ### 2026-10-21T10:48:14Z
 
 - ⭐ **aria2 has a second rootless route.** `source` builds the `release-1.37.0`
