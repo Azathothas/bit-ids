@@ -69,7 +69,56 @@ const (
 // `OpenSSL.crypto.X509Req`, which 26.2.0 carries and 26.3.0 does not, and the
 // daemon logged *Unable to start deluged* with its RPC already bound. The
 // vendor's Windows installer bundles 25.0.0.
-var delugePins = []string{"libtorrent==2.0.15", "setuptools<81", "pyOpenSSL<26.3"}
+// ⛔ windows-curses IS UPSTREAM'S OWN WINDOWS REQUIREMENT, WITH UPSTREAM'S
+// MARKER. capture-client run 39588980862's Windows source lane installed the
+// tag and its import check stopped on `import curses`: CPython on Windows has
+// no `_curses`, and the console's `widgets/sidebar.py` imports it. The tag's
+// `setup.py` does not declare it; its `requirements.txt` carries
+// `windows-curses; sys_platform == 'win32'`, so the requirement is passed in
+// that form and is nothing off Windows. Unpinned, as upstream leaves it:
+// 2.4.2 is the newest, with a cp312 win_amd64 wheel.
+// ⚠ The same file caps `twisted[tls]<23` on win32, and that cap is NOT taken:
+// Twisted 22.10's classifiers stop at Python 3.10 and the runner's is 3.12.
+var delugePins = []string{"libtorrent==2.0.15", "setuptools<81", "pyOpenSSL<26.3",
+	`windows-curses; sys_platform == "win32"`}
+
+// delugeWingetScope is the Scope `DelugeTeam.Deluge` 2.2.0's installer
+// manifest declares: none. Read through rule 8's route on 2026-10-21.
+const delugeWingetScope = ""
+
+// delugeWingetInstallArgs is the package route's `winget install` line after
+// the executable.
+//
+// ⛔ NO `--scope machine`, WHERE THE qBittorrent AND Transmission ROUTES PASS
+// ONE. Their manifests declare `Scope: machine`; Deluge's declares no Scope,
+// and winget treats a `--scope` the installer does not declare as a
+// requirement nothing meets: capture-client run 39588980862 answered *No
+// applicable installer found*, 0x8A150010, for exactly that line. The NSIS
+// installer still installs for the machine, because `--location` names
+// `%ProgramFiles%\Deluge` and the runner's account is an administrator.
+// ⚠ `--architecture x64` is named instead, because the manifest offers x86
+// and x64 and the record should not depend on winget's preference.
+// ⚠ `--location` is the NSIS installer's `/D=`, so the build lands where the
+// adapter looks.
+func delugeWingetInstallArgs(dir, log string) []string {
+	args := []string{"install", "--id", delugeWingetID, "--exact", "--source", "winget"}
+	if delugeWingetScope != "" {
+		args = append(args, "--scope", delugeWingetScope)
+	}
+	return append(args, "--architecture", "x64", "--silent", "--disable-interactivity", "--location", dir,
+		"--accept-package-agreements", "--accept-source-agreements", "--log", log)
+}
+
+// delugeWingetApplicable refuses an install line asking for a scope the
+// manifest does not declare, which is the line that found no installer.
+func delugeWingetApplicable(args []string, manifestScope string) error {
+	for i, a := range args {
+		if a == "--scope" && i+1 < len(args) && args[i+1] != manifestScope {
+			return fmt.Errorf("the line asks for scope %s and the manifest declares [%s]", args[i+1], manifestScope)
+		}
+	}
+	return nil
+}
 
 // delugeImportCheck is what a pip route asks the venv's interpreter after the
 // install: the engine, the daemon's modules and the console's, each of which
@@ -507,8 +556,20 @@ func delugeSelftest(args []string) int {
 	}
 
 	// The pins.
-	check("the routes pin libtorrent 2.0.15", len(delugePins) == 3 && delugePins[0] == "libtorrent==2.0.15")
-	check("the routes pin pyOpenSSL below 26.3, which still carries X509Req", len(delugePins) == 3 && delugePins[2] == "pyOpenSSL<26.3")
+	check("the routes pin libtorrent 2.0.15", len(delugePins) == 4 && delugePins[0] == "libtorrent==2.0.15")
+	check("the routes pin pyOpenSSL below 26.3, which still carries X509Req", len(delugePins) == 4 && delugePins[2] == "pyOpenSSL<26.3")
+	check("Windows gets windows-curses, upstream's marker and all", len(delugePins) == 4 &&
+		delugePins[3] == `windows-curses; sys_platform == "win32"`)
+	check("the import check reaches the console, which imports curses", strings.Contains(delugeImportCheck, "deluge.ui.console.main"))
+	wl := delugeWingetInstallArgs(`C:\Program Files\Deluge`, `C:\w\winget.log`)
+	wj := strings.Join(wl, " ")
+	check("the winget line asks for no scope the manifest does not declare", delugeWingetApplicable(wl, delugeWingetScope) == nil &&
+		!strings.Contains(wj, "--scope"))
+	check("the winget line names the x64 installer and the location", strings.Contains(wj, "--architecture x64") &&
+		strings.Contains(wj, `--location C:\Program Files\Deluge`) && wl[0] == "install")
+	old := []string{"install", "--id", delugeWingetID, "--exact", "--source", "winget", "--scope", "machine", "--silent"}
+	check("run 39588980862's line, --scope machine, is refused", delugeWingetApplicable(old, delugeWingetScope) != nil)
+	check("a scope the manifest declares is accepted", delugeWingetApplicable(old, "machine") == nil)
 	check("the routes pin setuptools below 81, which still carries pkg_resources", delugePins[1] == "setuptools<81")
 	check("the import check loads the daemon and the console", strings.Contains(delugeImportCheck, "deluge.core.daemon") &&
 		strings.Contains(delugeImportCheck, "deluge.ui.console.main") && strings.Contains(delugeImportCheck, "libtorrent"))

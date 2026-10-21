@@ -273,12 +273,9 @@ func dlWinInstallPackage(workdir, log string) error {
 	if dir == "" {
 		return qbtCannot("%%ProgramFiles%% is not set, so there is no install location to name")
 	}
-	// ⛔ NO `--version`: the index is this route's resolver. ⚠ `--location`
-	// is the NSIS installer's `/D=`, so the build lands where `dlWinExes` looks.
-	rc := qbtWinRun(log, winget, "install", "--id", delugeWingetID, "--exact", "--source", "winget",
-		"--scope", "machine", "--silent", "--disable-interactivity", "--location", dir,
-		"--accept-package-agreements", "--accept-source-agreements",
-		"--log", filepath.Join(workdir, "winget.log"))
+	// ⛔ NO `--version`: the index is this route's resolver. The rest of the
+	// line, and why it carries no `--scope`, is delugeWingetInstallArgs.
+	rc := qbtWinRun(log, winget, delugeWingetInstallArgs(dir, filepath.Join(workdir, "winget.log"))...)
 	if rc != 0 {
 		return qbtRefuse("the package route did not install %s (winget exit %d)", delugeWingetID, rc)
 	}

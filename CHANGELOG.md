@@ -14,6 +14,18 @@ Nothing is released yet. Entries accumulate here until the first
 - Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-06`. No version bump and
   no deploy.
 
+### 2026-10-21T11:28:25Z
+
+- **Deluge's two Windows routes, fixed after `capture-client` run
+  39588980862.** The winget line no longer asks for `--scope machine`, which
+  the `DelugeTeam.Deluge` manifest does not declare and winget therefore
+  matched no installer for. It names `--architecture x64` instead. The pip
+  routes add `windows-curses` under the `sys_platform == "win32"` marker
+  Deluge's own `requirements.txt` uses, because the console imports `curses`
+  and CPython on Windows has none.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-07`. No version bump and
+  no deploy.
+
 ### 2026-10-21T11:05:00Z
 
 - Dependabot closed pull requests 3 and 4 itself, two minutes after `c26db1a`

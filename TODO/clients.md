@@ -1947,6 +1947,58 @@ bytes fixed by the venv's path and the entry point. On two runners with one
    `pyvenv.cfg` names.
 7. The captures themselves, then `assemble-bundle`.
 
+### ⛔ Run 39588980862: both Windows lanes stopped in their install. 2026-10-21
+
+`capture-client` run 39588980862 on `a8016c2` dispatched `deluge` on both
+platforms with `["package","source"]`. Both Linux lanes installed 2.2.0, and
+the source lane has commit `e9777eaa`. They then waited at the install
+barrier for a reason outside this adapter. Both Windows lanes failed in
+*Install the client*, each on a defect of this adapter:
+
+1. **Package lane: `No applicable installer found`, winget exit 2316632080
+   (`0x8A150010`).** `DelugeTeam.Deluge` 2.2.0's installer manifest, read
+   through `AGENTS.md` rule 8's route on 2026-10-21, declares `InstallerType:
+   nullsoft` and x86 and x64 installers, and **no `Scope`**. The adapter passed
+   `--scope machine`, the convention of the qBittorrent and Transmission
+   routes, whose manifests both declare `Scope: machine` (qBittorrent's lt2
+   with `ElevationRequirement: elevatesSelf`). winget treats a `--scope` the
+   installer does not declare as a requirement nothing meets. The line now
+   carries no `--scope`. It names `--architecture x64`, because the manifest
+   offers both architectures. `--location %ProgramFiles%\Deluge` is unchanged,
+   so the NSIS installer still installs where the adapter looks, for the
+   machine, on an administrator's account.
+2. **Source lane: the import check refused.** pip installed the tag on the
+   runner's Python 3.12.10, and `deluge.ui.console.main` failed at
+   `widgets/sidebar.py`'s `import curses` with `No module named '_curses'`.
+   CPython on Windows has no curses. The tag's `setup.py` does not declare
+   `windows-curses`; its `requirements.txt` carries `windows-curses;
+   sys_platform == 'win32'`. So that requirement, with that marker, joins the
+   pins every pip route passes, and it is nothing off Windows. It is
+   unpinned, as upstream leaves it: 2.4.2 is the newest, and `pip download
+   --platform win_amd64 --python-version 3.12` resolved
+   `windows_curses-2.4.2-cp312-cp312-win_amd64.whl`.
+   ⚠ The same file caps `twisted[tls]<23` on win32, and that cap is not
+   taken: Twisted 22.10's classifiers stop at Python 3.10. Whether Twisted 26
+   runs the daemon on Windows is something the next dispatch shows.
+   ⚠ The lane's `pkg_resources is deprecated` warning shows the setuptools pin
+   applied. The warning comes from `pkg_resources`, which 82.0.0 and later do
+   not carry, and the Windows pip line passes the same `delugePins`.
+
+The selftest is 86 of 86, with three new cases planted back and each refused:
+`--scope machine` restored, `windows-curses` dropped, and `--architecture x64`
+dropped. `pip install --dry-run` with the marked requirement on Linux leaves
+`windows-curses` out.
+
+⛔ **What the re-dispatch must prove,** in reading order:
+
+1. The Windows package lane's `install.log` shows winget choosing the x64
+   installer. `winget-version.txt` names 2.2.0, and `version.err` names
+   libtorrent 1.2.19.
+2. The Windows source lane's `pip-freeze.txt` carries `windows-curses` and a
+   setuptools below 81, and the import check passes.
+3. Then the rest of the earlier list from item 5: the console add, `halt`, the
+   firewall list over the launcher chain, and the captures.
+
 ## CLIENT-08: BitTorrent capture adapter
 
 Source: operator scope and August 2026 priority sample
