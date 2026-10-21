@@ -5,6 +5,15 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-21T11:55:00Z
+
+- **The install barrier survives a refused arrival**: an arrival is posted up
+  to four times and prints what GitHub answered. A single refused post had
+  sent both of capture-client run 39588980862's Linux lanes to the full
+  1500-second timeout.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-06`. No version bump and
+  no deploy.
+
 ### 2026-10-21T11:05:00Z
 
 - Dependabot closed pull requests 3 and 4 itself, two minutes after `c26db1a`

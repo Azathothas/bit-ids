@@ -953,6 +953,13 @@ done
 mkdir -p "$STUB_BARRIER_DB"
 case "$method" in
   POST)
+    # STUB_BARRIER_REFUSE posts are refused first, as GitHub refuses one.
+    refused=$(cat "$STUB_BARRIER_DB/.refused" 2>/dev/null || echo 0)
+    if [ "$refused" -lt "${STUB_BARRIER_REFUSE:-0}" ]; then
+      echo $((refused + 1)) >"$STUB_BARRIER_DB/.refused"
+      printf '{"message": "You have exceeded a secondary rate limit"}\n'
+      exit 0
+    fi
     name=$(jq -r '.name' "$body")
     key=$(printf '%s' "$name" | sha256sum | cut -d' ' -f1)
     cp "$body" "$STUB_BARRIER_DB/$key.json"
@@ -1031,6 +1038,21 @@ if lift "$CLIENT_WF" linux "Arrive at the install barrier" "$WORK/bar-arrive.sh"
     pass "sh       a route that never arrives is a timeout, named, and fails nothing"
   else
     fail "sh       a route that never arrives is a timeout, named, and fails nothing (exit $BODY_RC, verdict [$_v])"
+  fi
+
+  # ⛔ A REFUSED POST IS TRIED AGAIN. capture-client run 39588980862 lost its
+  # Linux source lane to one post that came back without an `id`, and both
+  # lanes then waited out the bound. The retry also says what GitHub answered.
+  rm -rf "$BARDB"
+  STUB_BARRIER_REFUSE=1 BIT_IDS_BARRIER_RETRY_WAIT=1 arrive 11-1 release success
+  _said="$WORK/bar-refused.out"
+  cp "$BODY_OUT" "$_said"
+  arrive 11-1 source success
+  _v=$(verdict 11-1)
+  if [ "$_v" = passed ] && grep -q 'secondary rate limit' "$_said"; then
+    pass "sh       an arrival GitHub refuses once is posted again, and says why"
+  else
+    fail "sh       an arrival GitHub refuses once is posted again, and says why (verdict [$_v])"
   fi
 
   # ⛔ AND AN EARLIER DISPATCH OF THE SAME COMMIT IS NOT THIS ONE. Check runs

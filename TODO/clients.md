@@ -1749,6 +1749,29 @@ at `4221e28`.
 two runs, and this Prove also asks that source expectations be labelled as
 non-authoritative notes, which nothing has yet checked.
 
+### ⛔ One refused arrival cost a whole run its barrier. 2026-10-21
+
+capture-client run 39588980862 dispatched Deluge on Linux's `package` and
+`source` routes. Both installed by 11:03:36, but the source lane's arrival
+came back from GitHub with no `id`. `install-barrier arrive` tried once,
+printed *the check run for deluge source was not created*, and gave up.
+Both lanes then waited the whole 1500 seconds and recorded `timeout` with
+`missing_routes=source`. Both captures afterwards verified, and
+`assemble-capture` only warns on a barrier that did not pass, so the run
+was not lost. But the order the barrier exists to prove went unproven, and
+the job spent 25 minutes on it.
+
+⭐ **An arrival is now posted up to four times, 2, 4 and 8 seconds apart, and
+each refusal prints GitHub's own `message`.** The old line printed nothing
+GitHub had said, which is why this run cannot say what the refusal was.
+`check-step-bodies` gained a case where the stub refuses the first post the
+way GitHub refuses one: the barrier passes, and the job log names the
+refusal. With the retry reverted, the same case reads `verdict [timeout]`
+and fails; 58 of 58 pass with it.
+
+⚠ A retry after a post that landed but lost its answer posts the same name
+twice. `wait` takes the first, so a duplicate changes nothing.
+
 ## CLIENT-07: Deluge capture adapter
 
 Source: operator scope and upstream project

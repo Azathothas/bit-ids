@@ -43,7 +43,8 @@
 // Environment: GH_TOKEN, GITHUB_API_URL, GITHUB_REPOSITORY, GITHUB_SHA, and
 // BARRIER_RUN, the run's id and attempt. BIT_IDS_BARRIER_TIMEOUT (seconds,
 // default 1500) and BIT_IDS_BARRIER_INTERVAL (seconds, default 15) bound the
-// wait.
+// wait; BIT_IDS_BARRIER_RETRY_WAIT (seconds, default 2, doubling) spaces an
+// arrival's four attempts.
 //
 // Exit codes: 0 posted, or waited and wrote a verdict; 2 could not run.
 package main
@@ -101,13 +102,33 @@ func installBarrier(args []string) int {
 			"status": "completed", "conclusion": conclusion,
 			"output": map[string]string{"title": "install " + conclusion, "summary": "install " + conclusion},
 		})
-		out, _ := b.call("POST", api+"/check-runs", body)
-		var created struct {
-			ID json.Number `json:"id"`
-		}
-		if json.Unmarshal(out, &created) != nil || created.ID == "" {
-			say("the check run for %s %s was not created", adapter, route)
-			return 2
+		// ⛔ ONE ATTEMPT WAS A LANE LOST FOR THE WHOLE RUN. capture-client run
+		// 39588980862's Linux source lane installed, posted once, got no `id` back
+		// and said only that; both Linux lanes then waited the full 1500 seconds
+		// and recorded `timeout`. So the post is tried four times, 2, 4 and 8
+		// seconds apart, and each refusal prints what GitHub said. ⚠ A retry after
+		// a post that landed but lost its answer posts the same name twice, which
+		// `wait` reads as one: it takes the first. `CLIENT-06`.
+		wait := envSeconds("BIT_IDS_BARRIER_RETRY_WAIT", 2)
+		for attempt := 1; ; attempt++ {
+			out, _ := b.call("POST", api+"/check-runs", body)
+			var created struct {
+				ID      json.Number `json:"id"`
+				Message string      `json:"message"`
+			}
+			if json.Unmarshal(out, &created) == nil && created.ID != "" {
+				break
+			}
+			said := created.Message
+			if said == "" {
+				said = "no answer GitHub could be read from"
+			}
+			say("the check run for %s %s was not created on attempt %d: %s", adapter, route, attempt, said)
+			if attempt == 4 {
+				return 2
+			}
+			time.Sleep(time.Duration(wait) * time.Second)
+			wait *= 2
 		}
 		fmt.Printf("install-barrier: %s arrived, %s\n", nameOf(adapter, route), conclusion)
 		return 0
