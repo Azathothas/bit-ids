@@ -450,20 +450,169 @@ func dlWinInstallSource(workdir, log string) error {
 	if !isRegular(daemon) || !isRegular(filepath.Join(venv, "Scripts", dlWinConsole)) {
 		return fail("pip installed and left no %s with %s beside it in %s", dlWinDaemon, dlWinConsole, venv)
 	}
+	// ⛔ THE ENGINE'S OWN DLLs, BEFORE ANYTHING ASKS IT. See dlWinEngineDeps.
+	cfg, _ := os.ReadFile(filepath.Join(venv, "pyvenv.cfg"))
+	if err := dlWinEngineDeps(workdir, venv, delugeVenvHome(string(cfg)), want); err != nil {
+		return fail("%v", err)
+	}
+	// ⛔ THE IMPORT CHECK COMES BEFORE `--version`, AND BOTH ANSWERS ARE KEPT.
+	// Run 39623700677 asked `--version` first: Deluge swallows a failed
+	// `import libtorrent` there, so the build answered with no libtorrent line,
+	// the route refused, and neither the answer nor the import's traceback was
+	// written anywhere the run uploads. Both go to their own `.log` now, and a
+	// refusal prints the tail.
+	importLog := filepath.Join(workdir, "import-check.log")
+	if rc := qbtWinRun(importLog, py, "-I", "-c", delugeImportCheck); rc != 0 {
+		dlWinTail(importLog)
+		return fail("the build's daemon, console or engine does not load (exit %d); import-check.log has the traceback", rc)
+	}
 	answer, err := dlWinAsk(daemon)
+	_ = os.WriteFile(filepath.Join(workdir, "install-version.log"), []byte(answer), 0o644)
 	if err != nil {
+		dlWinTail(filepath.Join(workdir, "install-version.log"))
 		return fail("the build could not be asked its version: %v", err)
 	}
 	built, _, err := delugeParseVersion(answer)
 	if err != nil {
+		dlWinTail(filepath.Join(workdir, "install-version.log"))
 		return fail("%v", err)
 	}
 	if built != want {
 		return fail("the tag %s named %s and the build it installed reports %s", tag, want, built)
 	}
-	// ⛔ AND THE DAEMON'S MODULES LOAD, for the reason the Linux half gives.
-	if rc := qbtWinRun(log, py, "-I", "-c", delugeImportCheck); rc != 0 {
-		return fail("the build answers --version and its daemon's modules do not load; install.log has why")
+	return nil
+}
+
+// dlWinTail prints the last lines of a log to stderr, indented, so a refusal
+// carries its own diagnosis into the job log.
+func dlWinTail(path string) {
+	b, _ := os.ReadFile(path)
+	lines := strings.Split(strings.TrimRight(strings.ReplaceAll(string(b), "\r", ""), "\n"), "\n")
+	if len(lines) > 25 {
+		lines = lines[len(lines)-25:]
+	}
+	for _, l := range lines {
+		fmt.Fprintf(os.Stderr, "          %s\n", l)
+	}
+}
+
+// dlWinEngineDeps makes the libtorrent extension's own DLL imports resolve,
+// and records what it did in `engine-deps.txt`.
+//
+// ⛔ MEASURED, NOT GUESSED. Run 39623700677's source lane installed PyPI's
+// `libtorrent-1.2.19-cp310-cp310-win_amd64.whl` and `import libtorrent`
+// failed. The wheel is the `.pyd` and its metadata alone, and the `.pyd`'s
+// import table, read on 2026-10-21, names `libcrypto-1_1-x64.dll` and
+// `libssl-1_1-x64.dll`, which nothing on a clean runner carries.
+// ⭐ THE VENDOR'S OWN PAIR. The vendor's installer ships PyPI's cp39 wheel of
+// the same release, its `.pyd` byte for byte (`4cafb50a...`), beside those two
+// DLLs, which is how the vendor makes that wheel load. So the route fetches
+// the vendor's installer over https, held to the vendor's `.sha256`, and
+// extracts those two members alone with 7-Zip beside the `.pyd`, where the
+// extension loader searches. Each is recorded with its digest.
+// ⚠ NOT CPython's OWN OpenSSL 1.1, RENAMED: its `libssl-1_1.dll` imports
+// `libcrypto-1_1.dll`, not the `-x64` name, so a renamed pair would load two
+// copies of libcrypto into one process. ⚠ The pair then shares the vendor's
+// origin for OpenSSL alone, and that is recorded.
+// ⛔ AND EVERY OTHER IMPORT MUST RESOLVE, OR THE ROUTE IS REFUSED BY NAME,
+// rather than leaving `import libtorrent` to fail with a bare *DLL load
+// failed*. API sets resolve in the loader and are not asked.
+func dlWinEngineDeps(workdir, venv, home, version string) error {
+	pyds, _ := filepath.Glob(filepath.Join(venv, "Lib", "site-packages", "libtorrent", "*.pyd"))
+	if len(pyds) != 1 {
+		return fmt.Errorf("%d libtorrent extensions in %s", len(pyds), venv)
+	}
+	pyd := pyds[0]
+	imports, err := delugePEImports(pyd)
+	if err != nil {
+		return fmt.Errorf("the libtorrent extension's imports could not be read: %v", err)
+	}
+	var b strings.Builder
+	pydSum, _ := fileSHA256(pyd)
+	fmt.Fprintf(&b, "extension=%s\nextension_sha256=%s\nimports=%s\n", pyd, pydSum, strings.Join(imports, ","))
+	dirs := []string{filepath.Dir(pyd), home, filepath.Join(home, "DLLs"), filepath.Join(os.Getenv("SystemRoot"), "System32")}
+	present := func(name string) string {
+		for _, d := range dirs {
+			if d != "" {
+				if p := filepath.Join(d, name); isRegular(p) {
+					return p
+				}
+			}
+		}
+		return ""
+	}
+	var wanted []string
+	for _, name := range imports {
+		if present(name) == "" {
+			if member, ok := delugeVendorDLL(name); ok {
+				wanted = append(wanted, member)
+			}
+		}
+	}
+	if len(wanted) > 0 {
+		if err := dlWinVendorDLLs(workdir, version, filepath.Dir(pyd), wanted, &b); err != nil {
+			return err
+		}
+	}
+	var missing []string
+	for _, name := range imports {
+		if p := present(name); p != "" {
+			fmt.Fprintf(&b, "resolves=%s at=%s\n", name, p)
+		} else if !delugeAPISet(name) {
+			missing = append(missing, name)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(workdir, "engine-deps.txt"), []byte(b.String()), 0o644); err != nil {
+		return fmt.Errorf("the route could not record the engine's dependencies")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("the libtorrent extension imports %s and nothing on this host carries it", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
+// dlWinVendorDLLs fetches the vendor's installer for version over https, held
+// to the vendor's `.sha256`, and extracts members flat into dir.
+func dlWinVendorDLLs(workdir, version, dir string, members []string, b *strings.Builder) error {
+	url, file, err := delugeVendorInstallerURL(version)
+	if err != nil {
+		return err
+	}
+	sevenZip := qbtWin7z()
+	if sevenZip == "" {
+		return fmt.Errorf("the vendor's OpenSSL DLLs are extracted with 7-Zip and it is not on this host")
+	}
+	self, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("cannot find this binary to run install-rootless with")
+	}
+	log := filepath.Join(workdir, "engine-deps.log")
+	sums := filepath.Join(workdir, file+".sha256")
+	if rc := qbtWinRun(log, self, "install-rootless", "--fetch", "--url", url+".sha256", "--into", sums,
+		"--digest-unpublished", "the vendor's .sha256 beside its installer publishes no digest of itself"); rc != 0 {
+		dlWinTail(log)
+		return fmt.Errorf("the vendor's .sha256 for %s could not be fetched over https (exit %d)", file, rc)
+	}
+	setup := filepath.Join(workdir, file)
+	if rc := qbtWinRun(log, self, "install-rootless", "--fetch", "--url", url, "--into", setup,
+		"--sums", sums, "--sums-name", file, "--report", filepath.Join(workdir, "engine-deps-fetch.txt")); rc != 0 {
+		dlWinTail(log)
+		return fmt.Errorf("the vendor's installer could not be fetched over https or did not match its .sha256 (exit %d)", rc)
+	}
+	setupSum, _ := fileSHA256(setup)
+	fmt.Fprintf(b, "vendor_installer=%s\nvendor_installer_url=%s\nvendor_installer_sha256=%s\nextractor=%s\n", file, url, setupSum, sevenZip)
+	args := append([]string{"e", "-y", "-bd", "-o" + dir, setup}, members...)
+	if rc := qbtWinRun(log, sevenZip, args...); rc != 0 {
+		dlWinTail(log)
+		return fmt.Errorf("7-Zip could not extract %s from the vendor's installer (exit %d)", strings.Join(members, ", "), rc)
+	}
+	for _, m := range members {
+		placed := filepath.Join(dir, filepath.Base(m))
+		if !isRegular(placed) {
+			return fmt.Errorf("the vendor's installer carries no %s", m)
+		}
+		s, _ := fileSHA256(placed)
+		fmt.Fprintf(b, "provided=%s from=%s:%s sha256=%s\n", filepath.Base(m), file, m, s)
 	}
 	return nil
 }

@@ -233,16 +233,32 @@ func delugeCheckBuilt(k *adapterKit, workdir, want, from string) {
 	if d != filepath.Join(venv, "bin", "deluged") {
 		k.refuse("the route installed and left no deluged in " + venv)
 	}
-	_, version, _ := delugeAsk(k, d)
+	// ⛔ THE DAEMON'S OWN MODULES LOAD, ASKED BEFORE `--version`, with the
+	// traceback in its own log and its tail in the refusal. `--version` answers
+	// before the daemon's modules are imported, so a build that cannot start
+	// passes it: measured on 2026-10-16, when setuptools 84 had dropped
+	// `pkg_resources`. And Deluge swallows a failed `import libtorrent` there,
+	// so on run 39623700677's Windows lane `--version` answered with no engine
+	// and the import's own error was written nowhere. See delugePins.
+	importLog := filepath.Join(workdir, "import-check.log")
+	c := exec.Command(filepath.Join(venv, "bin", "python"), "-I", "-c", delugeImportCheck)
+	if run(c, stdio{in: os.DevNull, out: importLog, err: "&1"}) != 0 {
+		run(exec.Command("tail", "-25", importLog), stdio{out: "&2"})
+		k.refuse("the build's daemon, console or engine does not load; import-check.log has the traceback")
+	}
+	// ⚠ And the answer is kept before it is read, so a refusal over it leaves
+	// the build's own words in the workdir the run uploads.
+	answer, rc := capture(exec.Command(d, "--version"), stdio{in: os.DevNull, err: "&1"})
+	_ = writeText(filepath.Join(workdir, "install-version.log"), answer+"\n")
+	if rc != 0 {
+		k.refuse(fmt.Sprintf("deluged --version exited %d; install-version.log has its answer", rc))
+	}
+	version, _, err := delugeParseVersion(answer)
+	if err != nil {
+		k.refuse(err.Error() + "; install-version.log has the whole answer")
+	}
 	if version != want {
 		k.refuse(fmt.Sprintf("%s named %s and the build it installed reports %s", from, want, version))
-	}
-	// ⛔ AND THE DAEMON'S OWN MODULES LOAD. `--version` answers before they are
-	// imported, so a build that cannot start passes it: measured on 2026-10-16,
-	// when setuptools 84 had dropped `pkg_resources`. See delugePins.
-	c := exec.Command(filepath.Join(venv, "bin", "python"), "-I", "-c", delugeImportCheck)
-	if run(c, stdio{in: os.DevNull, out: filepath.Join(workdir, "install.log"), outAppend: true, err: "&1"}) != 0 {
-		k.refuse("the build answers --version and its daemon's modules do not load; install.log has why")
 	}
 }
 

@@ -13,6 +13,19 @@ Nothing is released yet. Entries accumulate here until the first
   and green on the next run.
 - Record: [`TODO/ci.md`](TODO/ci.md) `CI-08`. No version bump and no deploy.
 
+### 2026-10-21T15:34:13Z
+
+- **Deluge's Windows source route can load libtorrent 1.2.19.** PyPI's Windows
+  wheel ships no OpenSSL, so `capture-client` run 39623700677's import failed.
+  The route now takes the two OpenSSL DLLs the vendor ships beside the same
+  wheel out of the vendor's installer, fetched over https and checked against
+  the vendor's `.sha256`. It records them, and refuses by name any other DLL
+  the engine needs and the host lacks.
+- Both Deluge halves now check that the build loads before asking its
+  version, and keep both answers in logs the run uploads.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-07`. No version bump and
+  no deploy.
+
 ### 2026-10-21T14:51:16Z
 
 - **Deluge's Windows pair can be filed.** The package route still takes its

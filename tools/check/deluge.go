@@ -34,6 +34,8 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"debug/pe"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -614,6 +616,32 @@ func delugeSelftest(args []string) int {
 	check("and 3.9 when there is no 3.10", err == nil && py == tc[3])
 	_, err = delugePickPython([]string{tc[0], `C:\t\Python\3.10.x\x64\python.exe`})
 	check("a tool cache with no 3.10 or 3.9 is refused", err != nil)
+	for in, want := range map[string]string{"libcrypto-1_1-x64.dll": "_internal/libcrypto-1_1-x64.dll",
+		"LIBSSL-1_1-X64.DLL": "_internal/libssl-1_1-x64.dll"} {
+		got, ok := delugeVendorDLL(in)
+		check("the wheel's "+in+" comes from the vendor's installer as "+want, ok && got == want)
+	}
+	for _, other := range []string{"MSVCP140.dll", "libcrypto-1_1.dll", "python310.dll"} {
+		_, taken := delugeVendorDLL(other)
+		check(other+" is not taken from the installer: a missing one is refused by name", !taken)
+	}
+	vu, vf, err := delugeVendorInstallerURL("2.2.0")
+	check("the vendor's installer for the tag's version is fetched over https from its mirror", err == nil &&
+		vu == "https://ftp.osuosl.org/pub/deluge/windows/deluge-2.2.0-win64-setup.exe" && vf == "deluge-2.2.0-win64-setup.exe")
+	_, _, err = delugeVendorInstallerURL("2.2.0/../x")
+	check("a version that is not one names no installer", err != nil)
+	check("an API set is the loader's", delugeAPISet("api-ms-win-crt-runtime-l1-1-0.dll") && !delugeAPISet("KERNEL32.dll"))
+	fixture := filepath.Join(os.TempDir(), fmt.Sprintf("deluge-pe-%d.pyd", os.Getpid()))
+	err = os.WriteFile(fixture, delugePEFixture("libssl-1_1-x64.dll", "WSOCK32.dll"), 0o644)
+	imps, ierr := delugePEImports(fixture)
+	check("a PE import directory is read whole, in order", err == nil && ierr == nil &&
+		strings.Join(imps, ",") == "libssl-1_1-x64.dll,WSOCK32.dll")
+	os.Remove(fixture)
+	notPE := filepath.Join(os.TempDir(), fmt.Sprintf("deluge-not-pe-%d", os.Getpid()))
+	_ = os.WriteFile(notPE, []byte("MZ but nothing more"), 0o644)
+	_, err = delugePEImports(notPE)
+	check("a file that is not a PE image has no import table to read", err != nil)
+	os.Remove(notPE)
 	check("the import check reaches the console, which imports curses", strings.Contains(delugeImportCheck, "deluge.ui.console.main"))
 	check("the routes pin setuptools below 81, which still carries pkg_resources", len(delugePins) == 5 && delugePins[2] == "setuptools<81")
 	check("the import check loads the daemon and the console", strings.Contains(delugeImportCheck, "deluge.core.daemon") &&
@@ -831,6 +859,142 @@ func delugeGNUTimeout(git string) string {
 		return ""
 	}
 	return filepath.Join(filepath.Dir(filepath.Dir(git)), "usr", "bin", "timeout.exe")
+}
+
+// delugePEImports is the DLLs a Windows executable or extension imports, read
+// from its import directory, in the directory's order.
+//
+// ⚠ READ HERE RATHER THAN THROUGH debug/pe's ImportedLibraries, which returns
+// nothing for a PE file, and ImportedSymbols, which leaves out a DLL imported
+// by ordinal alone: libtorrent 1.2.19's `.pyd` imports `WSOCK32.dll` that way.
+func delugePEImports(path string) ([]string, error) {
+	f, err := pe.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	var dir pe.DataDirectory
+	switch h := f.OptionalHeader.(type) {
+	case *pe.OptionalHeader64:
+		if len(h.DataDirectory) > pe.IMAGE_DIRECTORY_ENTRY_IMPORT {
+			dir = h.DataDirectory[pe.IMAGE_DIRECTORY_ENTRY_IMPORT]
+		}
+	case *pe.OptionalHeader32:
+		if len(h.DataDirectory) > pe.IMAGE_DIRECTORY_ENTRY_IMPORT {
+			dir = h.DataDirectory[pe.IMAGE_DIRECTORY_ENTRY_IMPORT]
+		}
+	default:
+		return nil, fmt.Errorf("%s has no optional header", path)
+	}
+	read := func(rva uint32) ([]byte, error) {
+		for _, s := range f.Sections {
+			if rva >= s.VirtualAddress && rva < s.VirtualAddress+s.VirtualSize {
+				b, err := s.Data()
+				if err != nil {
+					return nil, err
+				}
+				if off := rva - s.VirtualAddress; int(off) < len(b) {
+					return b[off:], nil
+				}
+			}
+		}
+		return nil, fmt.Errorf("RVA %#x is in no section of %s", rva, path)
+	}
+	if dir.VirtualAddress == 0 {
+		return nil, nil
+	}
+	table, err := read(dir.VirtualAddress)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for i := 0; i+20 <= len(table); i += 20 {
+		nameRVA := uint32(table[i+12]) | uint32(table[i+13])<<8 | uint32(table[i+14])<<16 | uint32(table[i+15])<<24
+		if nameRVA == 0 {
+			return out, nil
+		}
+		name, err := read(nameRVA)
+		if err != nil {
+			return nil, err
+		}
+		if end := bytes.IndexByte(name, 0); end >= 0 {
+			name = name[:end]
+		}
+		out = append(out, string(name))
+	}
+	return nil, fmt.Errorf("the import directory of %s has no terminator", path)
+}
+
+// delugePEFixture is a minimal PE32+ image importing the named DLLs, for the
+// selftest: one section holding the import directory and the names.
+func delugePEFixture(dlls ...string) []byte {
+	const fileAlign, rva = 0x200, 0x1000
+	var sec bytes.Buffer
+	names := 20 * (len(dlls) + 1)
+	var desc, strs bytes.Buffer
+	for _, d := range dlls {
+		var e [20]byte
+		at := uint32(rva + names + strs.Len())
+		e[12], e[13], e[14], e[15] = byte(at), byte(at>>8), byte(at>>16), byte(at>>24)
+		desc.Write(e[:])
+		strs.WriteString(d)
+		strs.WriteByte(0)
+	}
+	desc.Write(make([]byte, 20))
+	sec.Write(desc.Bytes())
+	sec.Write(strs.Bytes())
+	sec.Write(make([]byte, fileAlign-sec.Len()%fileAlign))
+	var b bytes.Buffer
+	dos := make([]byte, 0x40)
+	dos[0], dos[1], dos[0x3c] = 'M', 'Z', 0x40
+	b.Write(dos)
+	b.WriteString("PE\x00\x00")
+	oh := pe.OptionalHeader64{Magic: 0x20b, SectionAlignment: rva, FileAlignment: fileAlign,
+		SizeOfImage: rva + uint32(sec.Len()), SizeOfHeaders: fileAlign, NumberOfRvaAndSizes: 16}
+	oh.DataDirectory[pe.IMAGE_DIRECTORY_ENTRY_IMPORT] = pe.DataDirectory{VirtualAddress: rva, Size: uint32(desc.Len())}
+	fh := pe.FileHeader{Machine: pe.IMAGE_FILE_MACHINE_AMD64, NumberOfSections: 1,
+		SizeOfOptionalHeader: uint16(binary.Size(oh)), Characteristics: 0x2022}
+	sh := pe.SectionHeader32{VirtualSize: uint32(sec.Len()), VirtualAddress: rva, SizeOfRawData: uint32(sec.Len()),
+		PointerToRawData: fileAlign, Characteristics: 0x40000040}
+	copy(sh.Name[:], ".idata")
+	binary.Write(&b, binary.LittleEndian, fh)
+	binary.Write(&b, binary.LittleEndian, oh)
+	binary.Write(&b, binary.LittleEndian, sh)
+	b.Write(make([]byte, fileAlign-b.Len()))
+	b.Write(sec.Bytes())
+	return b.Bytes()
+}
+
+// delugeVendorDLL is the member of the vendor's Windows installer that
+// carries a DLL libtorrent 1.2.19's Windows wheel imports and does not
+// bundle: OpenSSL 1.1's two, as the vendor ships them beside the same wheel.
+// Nothing else is taken from the installer. See dlWinEngineDeps.
+func delugeVendorDLL(name string) (string, bool) {
+	switch strings.ToLower(name) {
+	case "libcrypto-1_1-x64.dll":
+		return "_internal/libcrypto-1_1-x64.dll", true
+	case "libssl-1_1-x64.dll":
+		return "_internal/libssl-1_1-x64.dll", true
+	}
+	return "", false
+}
+
+// delugeVendorInstallerURL is the vendor's win64 installer for a version on
+// its https mirror, and the file's name: the file the Windows package route
+// fetches too, here asked by the version the source tag names.
+func delugeVendorInstallerURL(version string) (string, string, error) {
+	if !delugeVersionRe.MatchString(version) {
+		return "", "", fmt.Errorf("[%s] is not a version", version)
+	}
+	file := "deluge-" + version + "-win64-setup.exe"
+	return "https://ftp.osuosl.org/pub/deluge/windows/" + file, file, nil
+}
+
+// delugeAPISet says whether an import is a Windows API set, which the loader
+// resolves itself and no directory carries.
+func delugeAPISet(name string) bool {
+	n := strings.ToLower(name)
+	return strings.HasPrefix(n, "api-ms-win-") || strings.HasPrefix(n, "ext-ms-win-")
 }
 
 // delugeWinPythonMinors are the Python versions the Windows source route may

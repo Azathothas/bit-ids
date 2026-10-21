@@ -2182,6 +2182,75 @@ is platform-scoped under the operator's settled rule.
    `publishable` and `build_equivalent`, with `reserved` and `user_agent`
    agreeing.
 
+### ⛔ Run 39623700677: the 1.2.19 wheel does not load on its own. 2026-10-21
+
+`capture-client` run 39623700677 on `c68e838` dispatched the Windows pair
+alone. The package lane installed through the https route.
+
+The source lane installed on the tool cache's Python 3.10.11: `build-deps.txt`
+names it, `pip-freeze.txt` has `libtorrent==1.2.19`, and `install.log` ends
+*Successfully installed*. It then refused with `deluged 2.2.0 reported no
+libtorrent: []`.
+
+⛔ **Why, read rather than guessed, on 2026-10-21:**
+
+- PyPI's `libtorrent-1.2.19-cp310-cp310-win_amd64.whl` holds only the `.pyd`
+  and its metadata.
+- The `.pyd`'s import table names `libcrypto-1_1-x64.dll` and
+  `libssl-1_1-x64.dll` beside the CRT, `MSVCP140` and system DLLs. Two readers
+  agree: a Python parser, and the adapter's own `delugePEImports`.
+- Nothing on a clean runner carries those two names. CPython 3.10.11's own
+  OpenSSL is `DLLs\libcrypto-1_1.dll` and `libssl-1_1.dll`, read from its
+  nuget package.
+- So `import libtorrent` failed. Deluge catches that failure inside `--version`
+  and prints no libtorrent line, so `--version` answered with no engine; on
+  this host, a venv with libtorrent removed answers `deluged 2.2.0` and exit 0.
+
+⛔ **And the route hid both answers.** It asked `--version` before the import
+check, and neither the answer nor the import's traceback went anywhere the
+run uploads. Both halves now run the import check first, into
+`import-check.log`, and keep the `--version` answer in `install-version.log`.
+A refusal over either prints the tail. On this host, the planted removal of
+libtorrent makes the import check print `ModuleNotFoundError: No module named
+'libtorrent'`.
+
+⭐ **The fix is the vendor's own pairing.** The vendor's installer ships
+PyPI's cp39 wheel of libtorrent 1.2.19, its `.pyd` identical byte for byte
+(`4cafb50a...`). Beside it are exactly `libcrypto-1_1-x64.dll` (`13071dc7...`)
+and `libssl-1_1-x64.dll` (`6ba837ce...`). So the source route:
+
+1. reads the `.pyd`'s imports;
+2. fetches the vendor's installer for the tag's version over https from
+   ftp.osuosl.org, held to the vendor's `.sha256`;
+3. extracts those two members alone with 7-Zip beside the `.pyd`, where the
+   extension loader searches;
+4. records the installer, both DLLs and their digests in `engine-deps.txt`.
+
+Any other import that nothing on the host carries is refused by name.
+
+⚠ CPython's own OpenSSL 1.1 was weighed and set aside. Its DLLs would need
+renaming, and its `libssl-1_1.dll` imports `libcrypto-1_1.dll`, not the
+`-x64` name, so the process would load two libcrypto copies. ⚠ The pair now
+shares the vendor's origin for OpenSSL alone: Deluge and libtorrent still
+arrive by independent routes, and the record says so.
+
+| held before commit | result |
+| --- | --- |
+| `bit-check deluge --selftest` | 106 of 106, among them a PE image built in the selftest whose two imports, one by ordinal, are read in order |
+| `delugePEImports` over the real 1.2.19 cp310 `.pyd` | the same 20 DLLs the Python parser reads, `WSOCK32.dll` included, which debug/pe's own `ImportedSymbols` drops |
+| `7z e` of the two members from the vendor's installer on this host | both extracted flat, digests above |
+| the Linux package route through the adapter, reordered | `import-check.log` and `install-version.log` written, install exit 0 |
+
+⛔ **What the re-dispatch must prove** (`adapters: []`, `windows_adapters:
+["deluge"]`, `windows_routes: ["package","source"]`), in reading order:
+
+1. The source lane's `engine-deps.txt` names both DLLs `provided` from the
+   vendor's installer, and every other import as resolving.
+2. Its `import-check.log` is clean, and its `install-version.log` reads
+   `libtorrent: 1.2.19.0`.
+3. Both lanes capture, then `assemble-bundle` makes the Windows pair
+   `publishable` and `build_equivalent`.
+
 ## CLIENT-08: BitTorrent capture adapter
 
 Source: operator scope and August 2026 priority sample
