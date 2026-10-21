@@ -357,7 +357,7 @@ notice = ""
 
 [[dependencies]]
 name = "serde_json"
-version = "1.0.151"
+version = "1.0.154"
 licence = "MIT OR Apache-2.0"
 licence_source = "crate-manifest"
 redistribute = "refused"
@@ -373,7 +373,7 @@ notice = ""
 
 [[dependencies]]
 name = "sha2"
-version = "0.11.0"
+version = "0.11.1"
 licence = "MIT OR Apache-2.0"
 licence_source = "crate-manifest"
 redistribute = "refused"

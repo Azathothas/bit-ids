@@ -5,6 +5,18 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-21T09:25:00Z
+
+- **Dependencies:** `serde_json` 1.0.154 and `sha2` 0.11.1, each still
+  `MIT OR Apache-2.0` by its own crate manifest, with their licence register
+  rows updated.
+- **Actions:** `actions/download-artifact` 8.0.2 and `actions/upload-artifact`
+  7.0.2, pinned by commit.
+- These are the changes Dependabot proposed in pull requests 3 and 4. Number 4
+  was red only for want of the register rows.
+- Record: [`TODO/foundation.md`](TODO/foundation.md) `FOUND-02`. No version bump
+  and no deploy.
+
 ### 2026-10-16T07:40:00Z
 
 - **A narrow console no longer changes the gate's verdict**: every `ps` asks

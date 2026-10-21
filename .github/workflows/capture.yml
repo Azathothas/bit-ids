@@ -115,7 +115,7 @@ jobs:
       # in docs/conventions/forbidden-patterns.md, and it would leave a green
       # capture run with no evidence anywhere.
       - name: Upload the evidence bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: capture-linux-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/capture
@@ -259,7 +259,7 @@ jobs:
           ./scripts/capture/capture-run.ps1 -RunId $env:RUN_ID -Out "$env:RUNNER_TEMP/capture" -Observer "$env:GITHUB_WORKSPACE/target/debug/examples/evidence-bundle.exe" -Seconds ([int]$env:SECONDS_TO_SERVE)
 
       - name: Upload the evidence bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: capture-windows-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/capture

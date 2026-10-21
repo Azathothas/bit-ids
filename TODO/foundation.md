@@ -84,6 +84,19 @@ the pins already in the tree, so a tag moved or deleted upstream after a merge
 is not detected. Named in `docs/supply-chain.md` and carried by `CI-04`. ⚠ It
 needs `gh` and was not run in this session; the CI Linux lane runs it.
 
+### Dependabot pull requests 3 and 4, taken by hand. 2026-10-21
+
+Pull request 3 proposed `actions/download-artifact` 8.0.2 and
+`actions/upload-artifact` 7.0.2; pull request 4 proposed `serde_json` 1.0.154
+and `sha2` 0.11.1. Both are taken on `main` in one change rather than merged,
+because work goes to `main` and pull request 4 was red only for want of its
+`catalogue/licences.toml` rows (`FOUND-04`). Each crate is still
+`MIT OR Apache-2.0` by its own manifest, so the rows move version and nothing
+else. The action pins are commits with their version comments, the form this
+item's rule requires, in all four workflows that use them. ⚠ Nothing here
+closes either pull request; dependabot closes its own once `main` carries the
+versions.
+
 ## FOUND-03: Deterministic protocol fixture suite
 
 Source: bit-cli peer, tracker, and loopback tests; reference sweep
