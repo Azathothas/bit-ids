@@ -3490,6 +3490,21 @@ unstated write in both doors, and `check-bitcheck` plants each.
   older one fails or fetches the named toolchain, and neither failure is silent.
   `pwsh`'s known drift, the native-command default, is a rule.
 
+### ⚠ CI on 2026-10-21: one load-sensitive red, and a sixth shard
+
+- **`check-step-bodies` went red once in CI.** CI run 39620079519 on
+  `3411cd5`, a records-only commit, failed the Linux gate on *one leaked
+  descriptor onto the step's output brings it back: the output closed, so the
+  planted hang did not happen*. That is the case this entry's 2026-09-09
+  residual names. CI run 39623688612 on `c68e838`, a superset of that tree, ran
+  the same gate green. ⚠ This is the first time that row has been seen red in
+  CI rather than on a session host. The residual stays open.
+- **The acceptance matrix moved from five shards to six.** Shard 4 of five took
+  19 minutes on CI runs 39590370498 and 39616063664, then was cancelled at the
+  20-minute bound on 39620079519 and 39623688612, once `CLIENT-05`'s and
+  `CLIENT-07`'s cases had joined it. The bound stays at 20, as on 2026-10-15,
+  and `check-shards` proves every N from 1 to 6.
+
 ## CI-09: The capture-to-publisher path, end to end
 
 Source: two workflows that have each never run, joined by an artifact

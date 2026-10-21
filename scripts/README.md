@@ -15,7 +15,7 @@ four-processor session host, cold, and on run 179 for CI.
 | Rust | `cargo fmt --all -- --check`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `cargo test --workspace --locked --all-targets` | under a minute warm | *Linux gate* and *Windows gate* |
 | `tools/check/` | `gofmt -l tools/check`, `go vet ./...` from `tools/check`, then `bit-check check-bitcheck --harnesses` from a built `tools/check` | about a minute | *Linux gate*: *Go formatting and vet*, *Checking harnesses* |
 | a shell script | `shellcheck` and `shfmt -d -i 2 -ci` over it, then the gate | seconds, then 3 minutes | *Shell syntax and style* |
-| `.github/workflows/` | `sh scripts/ci/check-workflow.sh`, unsharded, after the gate | about 30 minutes | *Workflow acceptance*, four shards of 12 to 16 minutes |
+| `.github/workflows/` | `sh scripts/ci/check-workflow.sh`, unsharded, after the gate | about 30 minutes | *Workflow acceptance*, six shards of up to 19 minutes each under a 20-minute bound |
 
 ⛔ **Do not edit the tree or `git add` while the gate or `check-workflow` runs.**
 Both copy and compare the working tree, and an edit mid-run fails a row with a

@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-21T15:40:00Z
+
+- **Workflow acceptance runs on six shards**: shard 4 of five reached the
+  20-minute bound. The bound does not move.
+- `check-step-bodies`' load-sensitive case was red once in CI, on `3411cd5`,
+  and green on the next run.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-08`. No version bump and no deploy.
+
 ### 2026-10-21T14:51:16Z
 
 - **Deluge's Windows pair can be filed.** The package route still takes its
