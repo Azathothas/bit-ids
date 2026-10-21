@@ -3504,6 +3504,11 @@ unstated write in both doors, and `check-bitcheck` plants each.
   20-minute bound on 39620079519 and 39623688612, once `CLIENT-05`'s and
   `CLIENT-07`'s cases had joined it. The bound stays at 20, as on 2026-10-15,
   and `check-shards` proves every N from 1 to 6.
+- **Then from six to seven, by where the cost sits.** Seven units run the whole
+  repository gate, at shardable positions 13 to 19. Under `mod 6` shard 1 held
+  two of them beside `rust-clippy`: CI run 39672223612 cancelled it at 1216
+  seconds while the other five shards took 15 to 18 minutes. Under `mod 7` each
+  shard holds exactly one. `check-shards` now proves every N from 1 to 7.
 
 ## CI-09: The capture-to-publisher path, end to end
 

@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-21T21:15:00Z
+
+- **Workflow acceptance runs on seven shards**, so each holds exactly one of
+  the seven units that run the whole gate. Under six, shard 1 held two and was
+  cancelled at the 20-minute bound.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-08`. No version bump and no deploy.
+
 ### 2026-10-21T19:53:00Z
 
 - ⭐ **qBittorrent Enhanced Edition has its own adapter**,
