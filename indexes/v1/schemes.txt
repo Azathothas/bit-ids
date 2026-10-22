@@ -1,3 +1,4 @@
+anacrolix-torrent:v:3:3
 aria2-next:v:3:3
 aria2:release-:3:3
 deluge:deluge-:3:3
