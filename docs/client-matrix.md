@@ -44,7 +44,7 @@ Sources:
 | `bittorrent` | Windows | proprietary | vendor installer | package registry | `CLIENT-08` |
 | `biglybt` | Linux, Windows | open source | its GitHub release: the Linux tarball, the Windows installer with its JRE ⭐ | source build at the matching tag (Linux), winget's NoJRE install with Temurin (Windows) ⭐ | `CLIENT-09` |
 | `tixati` | Linux, Windows | proprietary freeware | vendor package | package registry | `CLIENT-10` |
-| `ktorrent` | Linux | open source | KDE/Flatpak release | distro package | `CLIENT-11` |
+| `ktorrent` | Linux | open source | KDE ships only signed source; Flathub is at 26.04.3 ⛔ | apt needs root or trails; nixpkgs is at 26.08.2 but needs a user-space Nix ⛔ | `CLIENT-11` |
 | `fdm` | Linux, Windows | proprietary | vendor package | package registry | `CLIENT-12` |
 | `zona` | Windows | proprietary | vendor package | package registry if independently verifiable | `CLIENT-13` |
 

@@ -5,6 +5,21 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-22T08:21:00Z
+
+- ⛔ **KTorrent has no adapter, because no rootless pair of routes exists.**
+  The newest stable is 26.08.2. KDE ships it only as signed source, and
+  publishes no Windows build, no AppImage and no CI build.
+- Every binary at 26.08.2 needs root or a new acquisition family. Flathub is at
+  26.04.3, the unofficial AppImage at 26.08.1, and Ubuntu 24.04's apt at
+  23.08.5. nixpkgs carries 26.08.2 but needs a user-space Nix on a runner. A
+  rootless source build would compile about 30 KF6 frameworks on every lane.
+- The measurements and three ways to reopen the entry are recorded for the
+  operator.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-11`.
+
+No version bump and no deploy.
+
 ### 2026-10-22T07:30:56Z
 
 - ⭐ **anacrolix/torrent has an adapter and a harness**, `anacrolix-torrent`,

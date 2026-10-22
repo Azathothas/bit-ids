@@ -2695,6 +2695,91 @@ and block publication when their upstream build identities diverge.
 Prove: two Linux routes resolve to one stable build and produce agreeing live
 profiles, or emit a documented blocking divergence.
 
+### ⛔ No rootless two-route pair exists, so no adapter is built. 2026-10-22
+
+⭐ **What KTorrent publishes, read on 2026-10-22.** Every web source answered
+directly, through this host's proxy and its CA bundle, so `AGENTS.md` rule 9's
+prefix was not needed. GitHub was read through rule 8's route.
+
+| source | what it carries |
+| --- | --- |
+| `invent.kde.org` `network/ktorrent` tags | the newest stable is `v26.08.2`, a signed tag on commit `9f7373f2...` dated 2026-10-06. The release service's directory for it is dated 2026-10-12 |
+| `download.kde.org/stable/release-service/26.08.2/src/` | `ktorrent-26.08.2.tar.xz`, 2255144 bytes, sha256 `5b85388c...`, and `libktorrent-26.08.2.tar.xz`, 606928 bytes, `140a8e90...`. Each has a `.sig`, and the mirror answers a `.sha256` sidecar. Both tarballs were fetched here and passed `sha256sum -c`, then deleted |
+| `.../26.08.2/windows/` | three files, all KDE Connect. **No KTorrent** |
+| `cdn.kde.org/ci-builds/network/` | seven applications. **No KTorrent** |
+| `.gitlab-ci.yml` at the tag | Linux and FreeBSD Qt 6 builds, Flatpak, Snap and lint templates. No Craft template, so KDE's CI makes no Windows build and no AppImage |
+| `download.kde.org/stable/ktorrent/` | 5.0 to 5.2.0, the last dated 2020. Nothing newer |
+
+| index | at 26.08.2? |
+| --- | --- |
+| Flathub `org.kde.ktorrent` | no: 26.04.3, on the `org.kde.Sdk` 6.11 runtime. Its manifest last moved to a new version, 26.04.3, on 2026-07-03, and to the 6.11 runtime on 2026-09-07 |
+| Ubuntu 24.04 apt | no: `23.08.5-0ubuntu3`, a KF5 build. The newest Ubuntu series carries `26.08.1-0ubuntu1` |
+| Arch Linux `extra` | yes, `26.08.2-1`, dated 2026-10-08. It is built against Arch's own glibc and libraries, so it runs on an Ubuntu host only inside an Arch root |
+| `pkgforge-dev/KTorrent-AppImage` | no: `26.08.1-1`, 164125398 bytes, with a listing digest. It is unofficial, Arch's packages repackaged with debloated dependencies and three added Qt style plugins |
+| nixpkgs `nixos-unstable` | yes, 26.08.2, and its source hash is KDE's sha256. Hydra build 350378468 made `/nix/store/6y0mkamw...-ktorrent-26.08.2`. Its runtime closure, walked through `cache.nixos.org`'s narinfo: 411 paths, 2269750432 bytes unpacked and 719575545 to download. It carries qtbase 6.12.0, KF6 6.31.0, glibc 2.44 and qtwebengine `6.140.0-rc` |
+| conda-forge | no `ktorrent` and no KF6: `kf6-kio` answers 404. `qt6-main` exists |
+| winget | no KTorrent manifest under `manifests/k/KDE` |
+| Scoop `extras` | no `ktorrent.json` |
+| Chocolatey | no `ktorrent` package |
+
+⛔ **Why there is no pair:**
+
+- **Windows has no build at all.** KDE's CI makes none, the release service
+  ships none, and no Windows index carries one. That closes the Windows half.
+- **Upstream ships only source for Linux.** A build needs Qt 6.7 or later, ECM,
+  and 17 required KF6 frameworks: Config, ConfigWidgets, CoreAddons, Crash,
+  DBusAddons, GlobalAccel, I18n, IconThemes, KIO, Notifications,
+  NotifyConfig, KCMUtils, Parts, StatusNotifierItem, WidgetsAddons,
+  WindowSystem and XmlGui. KIO alone pulls in Archive, Solid, Service and
+  Bookmarks. libktorrent also needs KF6 Archive, Crash, I18n, KIO and Solid,
+  plus Boost, GMP, and OpenSSL or libgcrypt. Ubuntu 24.04's apt has no KF6.
+  The runner image's own `toolset-2404.json` installs none of the X11 and
+  xcb, udev, zlib, GMP or gcrypt headers those builds need, and apt needs
+  root, which `ACQ-06` keeps off the capture path.
+- So a rootless source pair would build about 30 frameworks and their C
+  libraries from source on every lane, twice, with each origin verified. Qt
+  could come from `download.qt.io`'s prebuilt archives, as `CLIENT-01`'s
+  source route takes it. ⚠ This was not attempted: the session host has 19 GB
+  of disk, shared with another agent.
+- **Every binary route either needs root or trails 26.08.2.** apt, Snap and a
+  system Flatpak need root. Flathub is at 26.04.3, the AppImage at 26.08.1 and
+  noble at 23.08.5. Absolute 5 targets only the newest stable.
+- ⚠ **The one rootless binary at 26.08.2 is nixpkgs', and it is not taken
+  unattended.** The runner has no Nix, and `/nix` needs root to create, so it
+  would run under a user-space Nix. `nix-portable` v012, dated 2024-04-15, is
+  the newest, and its assets have no listing digest. It needs either `bwrap`
+  with unprivileged user namespaces or `proot`, which runs the client under
+  ptrace. Ubuntu 24.04 restricts unprivileged user namespaces by default, and
+  whether a hosted runner keeps that restriction is not measured. This host
+  allows them: `user.max_user_namespaces=64280`, with no AppArmor restriction.
+  The second route would be the same derivation rebuilt from KDE's tarball,
+  so both routes would be nixpkgs' build and neither would be KDE's. That
+  adds a new acquisition family, which is the operator's decision.
+
+⚠ **Read from the 26.08.2 source, so it describes a capture and cannot
+populate a field (absolute 1).** `ktorrent/main.cpp` calls
+`bt::SetClientInfo("KTorrent", KTORRENT_VERSION_STRING, "KT")`, and
+libktorrent's `PeerIDPrefix` is `-KT` plus the version with its dots removed,
+then `-`. So a capture would expect `-KT26082-`. KF6 has no scripting
+plugin: the tarball's plugins are bwscheduler, downloadorder, infowidget,
+ipfilter, logviewer, magnetgenerator, mediaplayer, scanfolder,
+scanforlostfiles, search, shutdown, stats, syndication, upnp and zeroconf.
+The control surface is the D-Bus interface in `libktcore/dbus/`, and the
+zeroconf and upnp plugins are the discovery an adapter would turn off.
+
+⛔ **What would reopen it, for the operator to choose:**
+
+1. **Admit nixpkgs as a route family.** One route substitutes Hydra's build
+   from `cache.nixos.org`, the other rebuilds the same derivation from KDE's
+   verified tarball, both under one user-space Nix. First measure, on a
+   runner, whether `nix-portable` runs rootless there and whether the GUI
+   starts under offscreen QPA or Xvfb.
+2. **Build the KF6 stack from KDE's signed tarballs** against Qt's prebuilt
+   archives, cached between lanes. This is the most effort, and every
+   framework is an origin.
+3. **Wait for a KDE binary.** A Flathub build or AppImage at the newest stable
+   still needs a second route to the same build.
+
 ## CLIENT-12: Free Download Manager capture adapter
 
 Source: operator scope and August 2026 priority sample
