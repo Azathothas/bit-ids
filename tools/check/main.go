@@ -66,6 +66,7 @@
 //	bit-check aria2-next-windows --selftest
 //	bit-check deluge --selftest
 //	bit-check qbittorrent-enhanced --selftest
+//	bit-check rqbit --selftest
 //	bit-check contained -- <command> [args...]
 //	GH_TOKEN=... bit-check flight-recorder <label> <log-dir>
 //	bit-check --rows
@@ -248,6 +249,10 @@ func main() {
 	// `CLIENT-02`.
 	if args[0] == "qbittorrent-enhanced" {
 		os.Exit(qbittorrentEnhancedSelftest(args[1:]))
+	}
+	// ⚠ And one for both halves of `rqbit`, for the same reason. `ENGINE-03`.
+	if args[0] == "rqbit" {
+		os.Exit(rqbitSelftest(args[1:]))
 	}
 	// ⭐ And the two the Linux capture path ran as `sh` last: the namespace a
 	// capture runs in, and the recorder that posts the host's state off it.

@@ -266,6 +266,9 @@ func checkAssemble(r *repo) (verdict, error) {
 	// the attestation or install record leaves out, the runner a host claims, the
 	// install record's `acquired`, and when the install finished.
 	drop, runner, acquired, installed := "", "", "", ""
+	// ⭐ And two more, `ENGINE-03`: the index a `package` lane's adapter named,
+	// and the attestation's target kind, `client` when empty.
+	pkgIndex, targetKind := "", ""
 
 	// writeLane writes one lane's two artifact directories.
 	//
@@ -297,7 +300,11 @@ func checkAssemble(r *repo) (verdict, error) {
 		write := func(path, body string) error { return os.WriteFile(path, []byte(body), 0o644) }
 
 		var a strings.Builder
-		fmt.Fprintf(&a, "bit-ids/capture-attestation/1\nrun=cap-%s\nkind=client\n", tag)
+		kind := targetKind
+		if kind == "" {
+			kind = "client"
+		}
+		fmt.Fprintf(&a, "bit-ids/capture-attestation/1\nrun=cap-%s\nkind=%s\n", tag, kind)
 		fmt.Fprintf(&a, "target=fixture-client\nmeasured_build=%s\nstock_client=true\n", version)
 		// ⚠ `uname -srm`, which is what the real attestation carries, so the
 		// platform and the architecture in the record are DERIVED here exactly as
@@ -391,6 +398,11 @@ func checkAssemble(r *repo) (verdict, error) {
 			i.WriteString("installed_binary_bytes=4096\n")
 		}
 		i.WriteString("retrieved_at=2026-09-09T15:08:18Z\nsignature=not_checked\n")
+		if route == "package" && pkgIndex != "" {
+			fmt.Fprintf(&i, "package_index=%s\npackage_name=fixture-client\npackage_version=%s\n", pkgIndex, version)
+			fmt.Fprintf(&i, "package_origin=https://index.example.invalid/fixture-client-%s\n", version)
+			i.WriteString("package_delivery=fixture-local-build\n")
+		}
 		if err := write(filepath.Join(capDir, "install-"+route+".txt"), i.String()); err != nil {
 			return err
 		}
@@ -415,7 +427,9 @@ func checkAssemble(r *repo) (verdict, error) {
 			if err := write(filepath.Join(insDir, "source", "resolution.txt"), s.String()); err != nil {
 				return err
 			}
-		} else {
+		} else if route != "package" {
+			// ⚠ A package lane consulted its index and has no resolution
+			// document, as on a runner.
 			var s strings.Builder
 			s.WriteString("bit-ids/release-resolution/1\ntarget=fixture-client\n")
 			s.WriteString("repository=fixture-owner/fixture-client\n")
@@ -552,6 +566,30 @@ func checkAssemble(r *repo) (verdict, error) {
 	caseIs(0, "", "two routes with independent resolvers assemble into records", "good", "good-release", "good-source")
 	check(said("good", "build_equivalent"), "a pair whose observations agree reaches build_equivalent",
 		head(out("good"), 6)...)
+
+	// -- ⭐ A CRATES.IO LANE IS `cargo_install`, AND AN ENGINE IS A LIBRARY ------
+	//
+	// `ENGINE-03`. A `package` lane whose index is `crates-io` files as the
+	// record's own `cargo_install` kind with a `module_version` identity, never
+	// as a host's package manager, and an attestation saying `kind=library`
+	// files the target as a library harness.
+	pkgIndex, targetKind = "crates-io", "library"
+	lane("cargo-release", "release", gh, "", digestA, "1.2.3", peerA, peerA)
+	lane("cargo-package", "package", "", "", digestB, "1.2.3", peerA, peerA)
+	pkgIndex, targetKind = "", ""
+	caseIs(0, "", "a crates.io lane beside a release lane assembles into records", "cargo", "cargo-release", "cargo-package")
+	cargoHas := func(literal string) bool {
+		for _, f := range findFiles(filepath.Join(work, "store-cargo", "profiles"), "*.json") {
+			if b, err := os.ReadFile(f); err == nil && bytes.Contains(b, []byte(literal)) {
+				return true
+			}
+		}
+		return false
+	}
+	check(cargoHas(`"cargo_install"`) && cargoHas(`"module_version"`) && cargoHas(`"crates-io"`),
+		"a crates.io lane is a cargo_install route with a module_version identity", head(out("cargo"), 6)...)
+	check(!cargoHas(`"linux_package_manager"`), "and never a Linux package manager's", head(out("cargo"), 6)...)
+	check(cargoHas(`"library"`), "an attestation's kind=library files a library target", head(out("cargo"), 6)...)
 
 	// -- ⛔ A CONNECTOR'S VERSION IS MEASURED, NEVER WRITTEN HERE ------------------
 	//

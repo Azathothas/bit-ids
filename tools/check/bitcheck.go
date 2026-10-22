@@ -927,13 +927,18 @@ func (b *bitcheck) connector() {
 // says is destroyed, which only the self-hosted case may notice; one rewords the
 // refusal an `acquired` that is neither value is given.
 func (b *bitcheck) assemble() {
-	b.harnessCases("assemble", "check-assemble", 70, "crates/bit-ids-probe/examples/assemble-capture.rs", "assemble.orig", []harnessPlant{
+	b.harnessCases("assemble", "check-assemble", 74, "crates/bit-ids-probe/examples/assemble-capture.rs", "assemble.orig", []harnessPlant{
 		{"assemble a self-hosted runner taken as disposable",
 			[][2]string{swap(`if environment != "github-hosted" {`, `if false && environment != "github-hosted" {`)},
-			`{"schema":"check-assemble/1","total":70,"passed":69,"failed":1}`},
+			`{"schema":"check-assemble/1","total":74,"passed":73,"failed":1}`},
 		{"assemble an unknown acquired value refused under other words",
 			[][2]string{swap(`which is neither yes nor no",`, `which is neither yes or no",`)},
-			`{"schema":"check-assemble/1","total":70,"passed":69,"failed":1}`},
+			`{"schema":"check-assemble/1","total":74,"passed":73,"failed":1}`},
+		// ⭐ A crates.io lane filed as a host's package manager, which only the
+		// cargo cases notice. `ENGINE-03`.
+		{"assemble a crates.io lane filed as a host package manager",
+			[][2]string{swap(`== Some("crates-io") => {`, `== Some("crates-io-unread") => {`)},
+			`{"schema":"check-assemble/1","total":74,"passed":72,"failed":2}`},
 	})
 }
 
@@ -2124,6 +2129,57 @@ func (b *bitcheck) plantedEnhancedSwitch() {
 		"FAILED the Linux profile is held")
 }
 
+// plantedRqbitSwitch takes `--disable-lsd` off the command line both halves
+// of `rqbit` build, in a scratch copy, builds that copy and asks its selftest,
+// which must refuse the line it now makes. `ENGINE-03`.
+//
+// ⛔ Local peer discovery is the plant because it is the build's own default
+// ON and the one surface a contained host can still reach: a multicast is
+// link-local, so a missing switch fails nothing else first.
+func (b *bitcheck) plantedRqbitSwitch() {
+	const rq = "tools/check/rqbit.go"
+	const line = "\t\t\"--disable-dht\", \"--disable-dht-persistence\", \"--disable-upnp-port-forward\", \"--disable-lsd\","
+	b.save(rq, "rqbit.orig")
+	defer b.put("rqbit.orig", rq)
+	landed := false
+	b.rewrite("rqbit.orig", rq, func(l string) (string, bool) {
+		if l == line && !landed {
+			landed = true
+			return "\t\t\"--disable-dht\", \"--disable-dht-persistence\", \"--disable-upnp-port-forward\",", true
+		}
+		return l, true
+	})
+	if !landed {
+		b.h.bad("adapters rqbit's LSD switch could not be planted: rqbit.go no longer has [" + strings.TrimSpace(line) + "]")
+		return
+	}
+	b.plantedSelftestOf("rqbit's LSD switch, removed,", []string{"rqbit", "--selftest"},
+		"FAILED the command line is held")
+}
+
+// rqbitToolchainPin holds the Rust `rqbit`'s package route compiles with to
+// this repository's own pin. ⛔ The route runs `cargo install` outside this
+// tree, where `rust-toolchain.toml` does not reach, so the adapter names the
+// channel; this is what stops the two drifting apart. `ENGINE-03`.
+func (b *bitcheck) rqbitToolchainPin() {
+	body, err := os.ReadFile(b.p("rust-toolchain.toml"))
+	if err != nil {
+		b.h.bad("adapters rqbit's toolchain pin: rust-toolchain.toml could not be read")
+		return
+	}
+	channel := ""
+	for _, l := range strings.Split(string(body), "\n") {
+		if v, ok := strings.CutPrefix(strings.TrimSpace(l), "channel = "); ok {
+			channel = strings.Trim(v, `"`)
+		}
+	}
+	if channel != "" && channel == rqbitToolchain {
+		b.h.ok("adapters rqbit's package route compiles with this tree's pinned Rust " + channel)
+	} else {
+		b.h.bad(fmt.Sprintf("adapters rqbit's package route names Rust %s and rust-toolchain.toml pins [%s]", rqbitToolchain, channel))
+	}
+}
+
 // plantedSelftest builds the scratch tree's planted copy and asks its
 // capture-client selftest, which must exit 1 naming the case `named` ends.
 func (b *bitcheck) plantedSelftest(what, named string) {
@@ -2215,6 +2271,16 @@ func (b *bitcheck) adapters() {
 		b.h.bad(fmt.Sprintf("adapters the qbittorrent-enhanced adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
 	}
 	b.plantedEnhancedSwitch()
+	// ⭐ AND rqbit's, ONE SELFTEST FOR BOTH HALVES: the scheme, the command
+	// line and its refusal, the environment, the answers, cargo's install
+	// record and the feature probe are rqbit.go, untagged. `ENGINE-03`.
+	if rc, out := b.run("rqbit", "--selftest"); rc == 0 && strings.Contains(out, `"failed":0}`) {
+		b.h.ok("adapters the rqbit adapter's selftest holds: go (exit 0)")
+	} else {
+		b.h.bad(fmt.Sprintf("adapters the rqbit adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
+	}
+	b.plantedRqbitSwitch()
+	b.rqbitToolchainPin()
 
 	// ⛔ A RELEASE FETCH WITH NO TIME LIMIT. ⚠ Planted in the installer, because
 	// `ACQ-06` moved every release retrieval there, and in its Go file since

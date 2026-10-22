@@ -94,11 +94,22 @@ because two empty sets agree perfectly.
 | --- | --- | --- | --- | --- |
 | `libtorrent` | minimal Rust/C++ or Python-binding client pinned to one stable libtorrent | package registry/system package | matching GitHub tag | `ENGINE-01` |
 | `anacrolix-torrent` | minimal Go client using `github.com/anacrolix/torrent` | Go module proxy | matching GitHub tag | `ENGINE-02` |
-| `rqbit` | minimal Rust client using the stable rqbit/librqbit release | crates.io package | matching GitHub tag | `ENGINE-03` |
+| `rqbit` | the upstream `rqbit` command, librqbit's own wrapper, at the stable tag ⭐ | crates.io `rqbit`, `cargo install --locked`, Linux and Windows ⭐ | the vendor's GitHub release binary, Linux and Windows ⭐ | `ENGINE-03` |
 
 Library harnesses are not allowed to choose an identity value for convenience.
 The profile records both library version and harness commit, and the observer
 measures what the built harness actually emits.
+
+⭐ **`rqbit`'s two routes are measured, and its harness is upstream's.** On
+2026-10-21 both Linux routes installed 9.0.1 rootless. Both build the crate's
+default features, `default-tls`, `postgres`, `webui` and `prometheus`, which
+are what the vendor's own workflows build. Both use the vendor's `panic =
+"abort"` profile. So no harness of this project's own is committed. ⚠ **The
+record has no field for the library version or the harness commit.**
+`Target.kind = library` is the harness label it carries. The library version
+the running build reports and cargo's install record are kept as evidence
+files beside the capture. Nothing a run writes names the tag's commit.
+`ENGINE-03` records both gaps.
 
 ## Platform rule
 

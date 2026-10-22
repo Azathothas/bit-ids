@@ -242,6 +242,24 @@ func captureClientSelftest() int {
 	self("cpython-stdlib is accepted as the connector of aria2-next", false,
 		"id=cpython-stdlib\nversion=3.12.3\nruntime=cpython\n", "aria2-next")
 
+	// ⭐ AND THE ATTESTATION'S TARGET KIND IS THE ADAPTER'S DECLARATION.
+	// `ENGINE-03`.
+	tk := func(label, describe, want string) {
+		cases++
+		got, err := attestationTargetKind([]byte(describe))
+		if (want == "" && err == nil) || (want != "" && (err != nil || got != want)) {
+			failed++
+			fmt.Fprintf(os.Stderr, "capture-client --selftest: FAILED %s (got %q err=%v, wanted %q)\n", label, got, err, want)
+		}
+	}
+	tk("an adapter that declares nothing is a client", "target=aria2\nkind=stock\n", "client")
+	tk("an engine's harness is a library", "target=rqbit\nkind=stock\ntarget_kind=library\n", "library")
+	tk("a declared client is a client", "target=x\nkind=stub\ntarget_kind=client\n", "client")
+	tk("a fixture is refused", "target=x\nkind=stock\ntarget_kind=fixture\n", "")
+	tk("an engine spelling is refused", "target=x\nkind=stock\ntarget_kind=engine\n", "")
+	tk("an empty declaration is refused", "target=x\nkind=stock\ntarget_kind=\n", "")
+	tk("a doubled declaration is refused", "target=x\ntarget_kind=library\ntarget_kind=client\n", "")
+
 	fmt.Printf(`{"schema":"capture-client-selftest/1","cases":%d,"failed":%d}`+"\n", cases, failed)
 	if failed != 0 {
 		return 1

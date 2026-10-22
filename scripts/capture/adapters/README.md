@@ -15,8 +15,9 @@ their contract.** Each is a `bit-check` command, `bit-check adapter <name>
 | `transmission` | [`../../../tools/check/adapter_transmission.go`](../../../tools/check/adapter_transmission.go), with a Windows half registered under the same name |
 | `deluge` | [`../../../tools/check/adapter_deluge.go`](../../../tools/check/adapter_deluge.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/deluge.go`](../../../tools/check/deluge.go) |
 | `qbittorrent-enhanced` | [`../../../tools/check/adapter_qbittorrent-enhanced.go`](../../../tools/check/adapter_qbittorrent-enhanced.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/qbtenhanced.go`](../../../tools/check/qbtenhanced.go) |
+| `rqbit` | [`../../../tools/check/adapter_rqbit.go`](../../../tools/check/adapter_rqbit.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/rqbit.go`](../../../tools/check/rqbit.go). An engine target |
 
-The six Linux adapters share their mechanics, and none of their decisions, in
+The seven Linux adapters share their mechanics, and none of their decisions, in
 [`../../../tools/check/adapterkit.go`](../../../tools/check/adapterkit.go). The
 door every caller reaches an adapter through is
 [`../../../tools/check/adapter.go`](../../../tools/check/adapter.go): a
@@ -239,6 +240,24 @@ Chocolatey stop at 5.2.3.10. The profile writes the fork's ban and
 tracker-list switches at their defaults and refuses itself if one is on.
 `CLIENT-02` in [`../../../TODO/clients.md`](../../../TODO/clients.md) carries
 the measurements.
+
+⭐ **`rqbit` is the first engine target, and its `describe` says so.** It
+prints `target_kind=library`, and `capture-client` copies that into the
+attestation's `kind`, so the record files the target as a library harness
+rather than an application. An adapter that prints no `target_kind` is a
+`client`, as every other one is. Any other value is could-not-run. The harness
+is the upstream `rqbit` command, librqbit's own wrapper. Both platforms pair
+the vendor's release binary with crates.io's `rqbit`, built by `cargo install
+--locked` with no version and no feature flag. That is the vendor's default
+feature set, which both vendor workflows build. The build uses the pinned Rust
+and the vendor's `panic = "abort"` profile. `start` runs `server start` with
+DHT, its persistence, UPnP port forwarding, local discovery and session
+persistence off. It adds the torrent over the build's HTTP API on loopback,
+and probes `/web/` and `/metrics` to see the `webui` and `prometheus` features
+in the running build. The `package` route compiles, so `describe` names
+`compiles=package`, and the Windows lane now reads `compiles` as the Linux one
+does. `ENGINE-03` in [`../../../TODO/engines.md`](../../../TODO/engines.md)
+carries the measurements.
 
 ## ⛔ The workdir IS the evidence bundle
 

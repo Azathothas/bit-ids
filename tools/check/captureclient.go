@@ -573,6 +573,14 @@ func runCaptureClient(args []string) error {
 	default:
 		return cannot("the adapter declared an unknown kind: %s", kind)
 	}
+	// ⛔ THE RECORD'S TARGET KIND IS THE ADAPTER'S DECLARATION, copied rather
+	// than assumed. An engine's harness declares `target_kind=library`, which
+	// `assemble-capture` files as `TargetKind::Library`, the harness label
+	// `TODO/engines.md` asks for. `ENGINE-03`.
+	targetKind, tkErr := attestationTargetKind(desc)
+	if tkErr != nil {
+		return cannot("%v", tkErr)
+	}
 
 	// ⛔ THE VERSION COMES OUT OF THE INSTALLED EXECUTABLE, into a FILE, never
 	// through a substitution that waits on a pipe the product may hold.
@@ -931,7 +939,7 @@ func runCaptureClient(args []string) error {
 	var a strings.Builder
 	a.WriteString("bit-ids/capture-attestation/1\n")
 	for _, kv := range [][2]string{
-		{"run", runID}, {"kind", "client"}, {"target", target}, {"measured_build", measured},
+		{"run", runID}, {"kind", targetKind}, {"target", target}, {"measured_build", measured},
 		{"stock_client", stock}, {"adapter", adapter}, {"adapter_kind", kind},
 		{"adapter_sha256", adSum}, {"adapter_stop_status", fmt.Sprint(stopRC)},
 		{"stopped_within_window", stoppedWithin}, {"stopped_after", fmt.Sprintf("%ds", stoppedAfter)},
@@ -987,4 +995,33 @@ func fileHasLine(path, want string) bool {
 		}
 	}
 	return false
+}
+
+// attestationTargetKind is the attestation's `kind`, read from the adapter's
+// `describe`: `client` when it says nothing, which is every application's
+// adapter, and `library` when it declares `target_kind=library`, which is an
+// engine's harness. ⛔ Anything else is refused rather than written: the record
+// has two target kinds and a third would be a value `assemble-capture` cannot
+// file. ⚠ `fixture` is `capture.yml`'s and never an adapter's.
+func attestationTargetKind(desc []byte) (string, error) {
+	n := 0
+	for _, l := range strings.Split(string(desc), "\n") {
+		if l == "target_kind" || strings.HasPrefix(l, "target_kind=") {
+			n++
+		}
+	}
+	if n > 1 {
+		return "", fmt.Errorf("the adapter declared target_kind %d times", n)
+	}
+	v := keyField(desc, "target_kind")
+	switch {
+	case n == 0:
+		return "client", nil
+	case v == "client" || v == "library":
+		return v, nil
+	case v == "":
+		return "", fmt.Errorf("the adapter declared an empty target_kind")
+	default:
+		return "", fmt.Errorf("the adapter declared an unknown target_kind: %s", v)
+	}
 }

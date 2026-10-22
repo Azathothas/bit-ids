@@ -5,6 +5,27 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-22T00:56:58Z
+
+- ⭐ **rqbit has an adapter, the first engine target**, on Linux and Windows.
+  It pairs the vendor's 9.0.1 release binary with crates.io's `rqbit`, built
+  by `cargo install --locked` with the release's default features and its
+  `panic = "abort"` profile on the pinned Rust. The routes record cargo's own
+  install record and the crate's digest.
+- The adapter declares `target_kind=library`, and `capture-client` now copies
+  that into the attestation, so the record files rqbit as a library harness.
+  `assemble-capture` files a crates.io lane as `cargo_install`.
+- `start` runs `server start` with DHT, UPnP, local discovery and persistence
+  off. It adds the torrent over the loopback HTTP API and refuses a build that
+  lacks the web UI or metrics features. The Windows capture lane now gives a
+  compiling route a build's time bound.
+- Both Linux routes installed 9.0.1 rootless on the session host. Neither can
+  run there, because the host has IPv6 disabled and the build always opens an
+  IPv6 socket, so the capture is a runner's to prove.
+- Record: [`TODO/engines.md`](TODO/engines.md) `ENGINE-03`.
+
+No version bump and no deploy.
+
 ### 2026-10-21T21:15:00Z
 
 - **Workflow acceptance runs on seven shards**, so each holds exactly one of

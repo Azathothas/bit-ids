@@ -268,6 +268,13 @@ impl Lane {
         match self.route.as_str() {
             "release" => RouteKind::GithubRelease,
             "source" => RouteKind::SourceBuild,
+            // ⭐ A PACKAGE ROUTE WHOSE INDEX IS CRATES.IO IS `cargo_install`,
+            // on either platform: the record's own vocabulary has the kind, and
+            // calling crates.io a host's package manager would name the wrong
+            // resolver. `rqbit`'s adapter writes `index=crates-io`. `ENGINE-03`.
+            _ if self.install.get("package_index").map(String::as_str) == Some("crates-io") => {
+                RouteKind::CargoInstall
+            }
             // ⚠ WHICH HOST'S INDEX IS THE INSTALL RECORD'S PLATFORM, the same
             // line the identity tuple is derived from. ⭐ winget on Windows,
             // measured on capture-client run 38788416994. `CI-11`.
@@ -504,6 +511,30 @@ fn source_identity(lane: &Lane) -> Result<SourceIdentity, String> {
             Ok(SourceIdentity::IndexedPackage {
                 index: label(field("package_index")?)?,
                 package: label(field("package_name")?)?,
+                version: Version::parse(version)
+                    .map_err(|error| format!("package_version {version:?}: {error}"))?,
+            })
+        }
+        // ⭐ A CRATE IS A MODULE VERSION: the registry, the crate and the
+        // version its index resolved, from the same `package-index.txt`, which
+        // is the form `RouteKind::CargoInstall` asks for. `ENGINE-03`.
+        RouteKind::CargoInstall => {
+            let field = |key: &str| {
+                lane.install
+                    .get(key)
+                    .map(String::as_str)
+                    .filter(|value| !value.is_empty())
+                    .ok_or_else(|| {
+                        format!(
+                            "the cargo route records no `{key}`; its adapter writes \
+                             package-index.txt and `install-client` carries it into the record"
+                        )
+                    })
+            };
+            let version = field("package_version")?;
+            Ok(SourceIdentity::ModuleVersion {
+                registry: label(field("package_index")?)?,
+                module: label(field("package_name")?)?,
                 version: Version::parse(version)
                     .map_err(|error| format!("package_version {version:?}: {error}"))?,
             })

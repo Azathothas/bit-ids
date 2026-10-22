@@ -605,10 +605,12 @@ jobs:
     name: Windows client capture (${{ matrix.adapter }}, ${{ matrix.route }})
     if: inputs.windows_adapters != '[]'
     runs-on: windows-2025
-    # ⚠ Nothing on this lane compiles, so the bound is a download lane's with
-    # room for winget, whose first call also refreshes its index, or for Scoop,
-    # which is installed and clones its bucket first.
-    timeout-minutes: 45
+    # ⚠ A download lane needs room for winget, whose first call also refreshes
+    # its index, or for Scoop, which is installed and clones its bucket first.
+    # ⛔ AND ONE ROUTE COMPILES NOW: `rqbit`'s `package` route is `cargo
+    # install`, bounded below as a build, so the job's own bound is the Linux
+    # job's plus the observer's slower Windows build. `ENGINE-03`.
+    timeout-minutes: 55
     # ⛔ READ ONLY, with `checks: write` for the install barrier's check runs.
     permissions:
       contents: read
@@ -710,6 +712,29 @@ jobs:
           Get-Content -LiteralPath (Join-Path $dir 'resolution.txt')
           exit 0
 
+      # ⛔ THE BOUND IS A BUILD'S WHEN THE ROUTE COMPILES, as on Linux. Every
+      # Windows route downloaded until `rqbit`'s `package` route, which is
+      # `cargo install` and declares `compiles=package`. `ENGINE-03`.
+      - name: Read whether this route compiles
+        id: bounds
+        shell: pwsh
+        env:
+          ADAPTER: ${{ matrix.adapter }}
+          ROUTE: ${{ matrix.route }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $compiles = ''
+          foreach ($line in @(& $env:BIT_CHECK adapter $env:ADAPTER describe)) {
+            if ($line.StartsWith('compiles=')) { $compiles = $line.Substring(9) }
+          }
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $answer = 'false'
+          if ((',' + $compiles + ',').Contains(',' + $env:ROUTE + ',')) { $answer = 'true' }
+          Write-Output "the $($env:ROUTE) route compiles: $answer"
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "compiles=$answer" -Encoding utf8NoBOM
+          exit 0
+
       # ⭐ THE INSTALL, BOUNDED, WITH ITS OUTPUT IN FILES. `bit-check
       # install-step` runs the install in a JOB OBJECT, so everything the route
       # starts is swept when it ends. ⛔ AND THIS STEP BOUNDS THAT PROCESS FROM
@@ -726,11 +751,13 @@ jobs:
         env:
           ADAPTER: ${{ matrix.adapter }}
           ROUTE: ${{ matrix.route }}
-          BIT_IDS_INSTALL_TIMEOUT: "600"
+          # ⚠ 1500 for a route that compiles, the Linux job's build bound, and
+          # each outer bound grows by the same 900 seconds.
+          BIT_IDS_INSTALL_TIMEOUT: ${{ steps.bounds.outputs.compiles == 'true' && '1500' || '600' }}
           BIT_IDS_VERSION_TIMEOUT: "120"
-          BIT_IDS_STEP_TIMEOUT: "1080"
-          OUTER_TIMEOUT: "1200"
-        timeout-minutes: 22
+          BIT_IDS_STEP_TIMEOUT: ${{ steps.bounds.outputs.compiles == 'true' && '1980' || '1080' }}
+          OUTER_TIMEOUT: ${{ steps.bounds.outputs.compiles == 'true' && '2100' || '1200' }}
+        timeout-minutes: ${{ steps.bounds.outputs.compiles == 'true' && 37 || 22 }}
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
