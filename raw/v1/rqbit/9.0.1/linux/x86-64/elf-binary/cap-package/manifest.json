@@ -1,0 +1,193 @@
+{
+  "schema": "bit-ids/manifest/1",
+  "capture": "cap-package",
+  "target": "rqbit",
+  "version": "9.0.1",
+  "platform": "linux",
+  "arch": "x86-64",
+  "package": "elf-binary",
+  "host": {
+    "image": "ubuntu24/20261021.345.10",
+    "kernel": "7.0.0-1017-azure",
+    "os": "Ubuntu 24.04.5 LTS",
+    "arch": "x86-64",
+    "disposable": true
+  },
+  "isolation": {
+    "claim": {
+      "fingerprint": "sha256:7fe3aa851c84c5fc47954f854698dd337c7ed9adf69309128a8041aa1ae95f90",
+      "claimed_at": "2026-10-22T12:39:18Z"
+    },
+    "host": "ephemeral_runner",
+    "network": "loopback_only",
+    "external_reason": null
+  },
+  "clocks": {
+    "wall_start": "2026-10-22T12:39:18Z",
+    "wall_end": "2026-10-22T12:44:34Z",
+    "monotonic_elapsed_ns": 315760000000
+  },
+  "sampling": {
+    "sessions": 3,
+    "torrents": 1,
+    "connections": 2
+  },
+  "tools": [
+    {
+      "id": "bit-ids-probe",
+      "version": "0.0.0",
+      "role": "observer"
+    },
+    {
+      "id": "cpython-stdlib",
+      "version": "3.12.3",
+      "role": "connector"
+    },
+    {
+      "id": "install-client",
+      "version": "0.0.0",
+      "role": "acquisition"
+    }
+  ],
+  "acquisition": [
+    {
+      "route": "route-package",
+      "source": "https://static.crates.io/crates/rqbit/rqbit-9.0.1.crate",
+      "retrieved_at": "2026-10-22T12:43:47Z",
+      "artifact": "sha256:79c04939f52d34a7d36bcb15a4aae1252f18211cf8a2738feb61709773a7e56d",
+      "bytes": 21919704,
+      "signature": "not_checked",
+      "installed_version": "9.0.1"
+    },
+    {
+      "route": "route-release",
+      "source": "https://github.com/ikatson/rqbit/releases/download/v9.0.1/rqbit-linux-amd64",
+      "retrieved_at": "2026-10-22T12:39:49Z",
+      "artifact": "sha256:82ed2c23f4c7b91bb2c92eaab92e4a850d386cdf337bcdf9e0971c8ce3da4335",
+      "bytes": 28696960,
+      "signature": "not_checked",
+      "installed_version": "9.0.1"
+    }
+  ],
+  "phases": [
+    {
+      "name": "planned",
+      "started_at": "2026-10-22T12:39:18Z",
+      "ended_at": "2026-10-22T12:40:09Z",
+      "detail": "the host was claimed and the routes chosen"
+    },
+    {
+      "name": "resolved",
+      "started_at": "2026-10-22T12:40:09Z",
+      "ended_at": "2026-10-22T12:40:09Z",
+      "detail": "every route resolved its version"
+    },
+    {
+      "name": "acquired_twice",
+      "started_at": "2026-10-22T12:40:09Z",
+      "ended_at": "2026-10-22T12:43:47Z",
+      "detail": "every route installed, the last at this instant"
+    },
+    {
+      "name": "installed",
+      "started_at": "2026-10-22T12:43:47Z",
+      "ended_at": "2026-10-22T12:43:47Z",
+      "detail": "every installed build reported its version"
+    },
+    {
+      "name": "observed",
+      "started_at": "2026-10-22T12:43:49Z",
+      "ended_at": "2026-10-22T12:44:34Z",
+      "detail": "the observer served the build for its window"
+    },
+    {
+      "name": "corroborated",
+      "started_at": "2026-10-22T12:44:34Z",
+      "ended_at": "2026-10-22T12:44:34Z",
+      "detail": "the connector read the bundle and the readings were compared"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-package-installed-version",
+      "kind": "process_output",
+      "path": "package/version.txt",
+      "bytes": 28,
+      "sha256": "sha256:93d164cb4dadb3907c834c99b7b5bd3692bb10fc366c08a6e32344a1a3c112ee",
+      "produced_by": "install-client",
+      "phase": "installed",
+      "redacted": false
+    },
+    {
+      "id": "ev-package-metainfo",
+      "kind": "metainfo",
+      "path": "package/fixture/generated.torrent",
+      "bytes": 273,
+      "sha256": "sha256:1941632774c9da4629b7b1848df395ddd693ec5c7f7e2f25ee7a475336ed1276",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-package-peer",
+      "kind": "peer_transcript",
+      "path": "package/peer-wire-dialled.transcript.json",
+      "bytes": 6518,
+      "sha256": "sha256:cf1aac3cceebb21598c21d4ef1e297ce8114b27edccccdccb0512afb4b7f15d2",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-package-tracker",
+      "kind": "tracker_capture",
+      "path": "package/tracker-http.transcript.json",
+      "bytes": 3253,
+      "sha256": "sha256:9fbdf7c6e80f9912283748351edc5aabfb93762bbd4127e935d61335d447edcf",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-release-installed-version",
+      "kind": "process_output",
+      "path": "release/version.txt",
+      "bytes": 28,
+      "sha256": "sha256:93d164cb4dadb3907c834c99b7b5bd3692bb10fc366c08a6e32344a1a3c112ee",
+      "produced_by": "install-client",
+      "phase": "installed",
+      "redacted": false
+    },
+    {
+      "id": "ev-release-metainfo",
+      "kind": "metainfo",
+      "path": "release/fixture/generated.torrent",
+      "bytes": 273,
+      "sha256": "sha256:198d28c17e54f6fec8682a6d79628f3cdcf8a005c8486867e2f215e566f561e1",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-release-peer",
+      "kind": "peer_transcript",
+      "path": "release/peer-wire-dialled.transcript.json",
+      "bytes": 6746,
+      "sha256": "sha256:0927040458ce9d0eac95e44e73e28b6fea9794cd03e8fd813eabef63a671f19f",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-release-tracker",
+      "kind": "tracker_capture",
+      "path": "release/tracker-http.transcript.json",
+      "bytes": 3257,
+      "sha256": "sha256:e5f32452e24d3750dac951081ff3b554e2be0df4b1706b4bf07d59093597c3be",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    }
+  ],
+  "redactions": []
+}
