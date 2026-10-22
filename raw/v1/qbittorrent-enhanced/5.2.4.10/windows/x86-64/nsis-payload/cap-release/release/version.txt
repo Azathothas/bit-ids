@@ -1,0 +1,12 @@
+qbittorrent-enhanced reported, asked over /api/v2/app/version on 127.0.0.1:56498 (webui-shutdown):
+v5.2.4.10
+/api/v2/app/buildInfo:
+{
+  "bitness": 64,
+  "boost": "1.86.0",
+  "libtorrent": "1.2.20.0",
+  "openssl": "3.6.5",
+  "platform": "windows",
+  "qt": "6.10.3",
+  "zlib": "1.3.2"
+}

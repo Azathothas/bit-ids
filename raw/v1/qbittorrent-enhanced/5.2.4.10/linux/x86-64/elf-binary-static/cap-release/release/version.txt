@@ -1,0 +1,2 @@
+qbittorrent-enhanced reported:
+qBittorrent v5.2.4.10
