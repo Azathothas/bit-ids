@@ -373,7 +373,10 @@ func rqbitCargoRecord(body []byte) (rqbitCargoInstall, error) {
 		if !regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`).MatchString(f[1]) {
 			return rqbitCargoInstall{}, fmt.Errorf("cargo installed %s at [%s], which is not a stable version", rqbitCrate, f[1])
 		}
-		if len(in.Bins) != 1 || in.Bins[0] != rqbitCrate {
+		// ⚠ Windows' cargo records the executable with its suffix: capture-client
+		// run 39777039760's Windows package lane built rqbit and was refused for
+		// naming `rqbit.exe`. The name or the name plus `.exe`, nothing else.
+		if len(in.Bins) != 1 || (in.Bins[0] != rqbitCrate && in.Bins[0] != rqbitCrate+".exe") {
 			return rqbitCargoInstall{}, fmt.Errorf("cargo installed the executables %v, not one %s", in.Bins, rqbitCrate)
 		}
 		if len(in.Features) != 0 || in.AllFeatures || in.NoDefaultFeatures {
@@ -689,6 +692,9 @@ func rqbitSelftest(args []string) int {
 	in, err := rqbitCargoRecord([]byte(rec))
 	check("cargo's record is read", err == nil && in.version == "9.0.1" && in.profile == "release" &&
 		in.target == "x86_64-unknown-linux-gnu" && in.rustc == "rustc 1.98.0 (88d9e12ae 2026-08-18)")
+	winRec := strings.Replace(strings.Replace(rec, `"bins":["rqbit"]`, `"bins":["rqbit.exe"]`, 1), "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc", 1)
+	_, err = rqbitCargoRecord([]byte(winRec))
+	check("cargo's Windows record, naming rqbit.exe, is read", err == nil)
 	note := rqbitFeaturesNote(in, strings.Repeat("0", 64))
 	check("the features note names the default set", strings.Contains(note, "default_features=default-tls,postgres,webui,prometheus\n"))
 	check("the features note names the compiler", strings.Contains(note, "rustc=rustc 1.98.0 (88d9e12ae 2026-08-18)\n"))
@@ -702,6 +708,7 @@ func rqbitSelftest(args []string) int {
 		"a git source":          strings.Replace(rec, `(registry+https://github.com/rust-lang/crates.io-index)`, `(git+https://github.com/ikatson/rqbit#a499d2f)`, 1),
 		"a prerelease":          strings.Replace(rec, `"rqbit 9.0.1 `, `"rqbit 9.0.0-rc.0 `, 1),
 		"a second executable":   strings.Replace(rec, `"bins":["rqbit"]`, `"bins":["rqbit","x"]`, 1),
+		"another executable":    strings.Replace(rec, `"bins":["rqbit"]`, `"bins":["rqbit2.exe"]`, 1),
 		"no compiler":           strings.Replace(rec, `"rustc":"rustc 1.98.0 (88d9e12ae 2026-08-18)\nbinary: rustc\n"`, `"rustc":""`, 1),
 		"a second install":      strings.Replace(rec, `}}}`, `},"x 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)":{}}}`, 1),
 		"no install at all":     `{"installs":{}}`,

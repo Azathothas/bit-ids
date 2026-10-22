@@ -5,6 +5,14 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-22T12:45:00Z
+
+- **rqbit's Windows cargo route is no longer refused for naming `rqbit.exe`.**
+  capture-client run 39777039760 built it, and the install record's check
+  compared the bare name.
+- Record: [`TODO/engines.md`](TODO/engines.md) `ENGINE-03`. No version bump and
+  no deploy.
+
 ### 2026-10-22T08:21:00Z
 
 - ⛔ **KTorrent has no adapter, because no rootless pair of routes exists.**

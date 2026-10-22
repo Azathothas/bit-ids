@@ -420,3 +420,13 @@ and its job bound is 55 minutes. Check, in reading order:
    observed yet;
 4. then `assemble-bundle`: each platform's pair `publishable` and
    `build_equivalent`, with `target.kind` `library`.
+
+### ⛔ Run 39777039760: the Windows cargo record names `rqbit.exe`. 2026-10-22
+
+capture-client run 39777039760 was rqbit's first capture anywhere. Both Linux
+lanes, `release` and `package`, installed and captured. On Windows, cargo
+built rqbit 9.0.1 in 7 minutes 48 seconds, and then the adapter refused it:
+*cargo installed the executables [rqbit.exe], not one rqbit*. Windows' cargo
+records the executable with its suffix, and the check compared the bare name.
+⭐ The record now accepts `rqbit` or `rqbit.exe` and nothing else. The selftest
+reads a Windows-shaped record and refuses `rqbit2.exe` (117 of 117).
