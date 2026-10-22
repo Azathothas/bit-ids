@@ -1,6 +1,7 @@
 anacrolix-torrent:v:3:3
 aria2-next:v:3:3
 aria2:release-:3:3
+biglybt:v:4:4
 deluge:deluge-:3:3
 qbittorrent-enhanced:release-:4:4
 qbittorrent:release-:3:4

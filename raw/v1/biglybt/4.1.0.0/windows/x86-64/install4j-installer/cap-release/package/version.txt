@@ -1,0 +1,12 @@
+biglybt reported:
+biglybt.version=4.1.0.0
+biglybt.peer_id_prefix=-BI4100-
+java.version=25.0.4.1
+java.vendor=Eclipse Adoptium
+java.vm.name=OpenJDK 64-Bit Server VM
+java.vm.version=25.0.4.1+1-LTS
+java.runtime.name=OpenJDK Runtime Environment
+java.runtime.version=25.0.4.1+1-LTS
+java.home=c:\program files\eclipse adoptium\jre-25.0.4.101-hotspot
+os.name=Windows Server 2025
+os.arch=amd64

@@ -1,0 +1,355 @@
+{
+  "schema": "bit-ids/profile/1",
+  "id": "record:sha256:17e7f8b2c34776a096e0b7fc26762f931a858ce5603e71233732b7fede64625f",
+  "target": {
+    "id": "biglybt",
+    "display_name": "biglybt",
+    "kind": "client",
+    "engine": null
+  },
+  "build": {
+    "version": "4.1.0.0",
+    "channel": "stable",
+    "platform": "linux",
+    "arch": "x86-64",
+    "package": "java-source",
+    "executable": "sha256:91a0d83828db7aa78309d69eab45bcd04527152a663757e9aabd036bfd1c0815"
+  },
+  "acquisition": [
+    {
+      "id": "route-release",
+      "kind": "github_release",
+      "resolver": "https-api-gh-pkgforge-dev-repos-biglysoftware-biglybt-releases",
+      "delivery": "https-release-asset",
+      "origin": "https://github.com/BiglySoftware/BiglyBT/releases/download/v4.1.0.0/GitHub_BiglyBT_unix.tar.gz",
+      "source": {
+        "form": "release_asset",
+        "detail": {
+          "repository": "BiglySoftware/BiglyBT",
+          "tag": "v4.1.0.0",
+          "asset": "GitHub_BiglyBT_unix.tar.gz"
+        }
+      },
+      "resolved_version": "4.1.0.0",
+      "artifact": "sha256:ff2a3d1cbcf8d9b816ffd022cde33db1c610fd38857f75a10148dc4a21e83572",
+      "signature": "not_checked",
+      "installed_probe": "aria2-next --version",
+      "installed_evidence": "ev-release-installed-version",
+      "installed_executable": "sha256:ff2a3d1cbcf8d9b816ffd022cde33db1c610fd38857f75a10148dc4a21e83572",
+      "installed_version": "4.1.0.0"
+    },
+    {
+      "id": "route-source",
+      "kind": "source_build",
+      "resolver": "https-github-com-biglysoftware-biglybt-git",
+      "delivery": "git-clone-and-local-build",
+      "origin": "https://github.com/BiglySoftware/BiglyBT.git",
+      "source": {
+        "form": "source_commit",
+        "detail": {
+          "repository": "BiglySoftware/BiglyBT",
+          "commit": "9ea7ea8a33767df1817e3f9e0dd5c05940ceb461"
+        }
+      },
+      "resolved_version": "4.1.0.0",
+      "artifact": "sha256:91a0d83828db7aa78309d69eab45bcd04527152a663757e9aabd036bfd1c0815",
+      "signature": "not_checked",
+      "installed_probe": "aria2-next --version",
+      "installed_evidence": "ev-source-installed-version",
+      "installed_executable": "sha256:91a0d83828db7aa78309d69eab45bcd04527152a663757e9aabd036bfd1c0815",
+      "installed_version": "4.1.0.0"
+    }
+  ],
+  "capture": {
+    "id": "cap-source",
+    "captured_at": "2026-10-22T12:30:50Z",
+    "fixture": "sha256:ac8993fa427d5fe473451f6c3d002e5c1817d26d02ea1cdbc23b0406db3ec8db",
+    "observed_route": "route-source",
+    "observer": "bit-ids-probe",
+    "connectors": [
+      {
+        "id": "bit-ids-probe",
+        "version": "0.0.0"
+      },
+      {
+        "id": "cpython-stdlib",
+        "version": "3.12.3"
+      }
+    ]
+  },
+  "observations": [
+    {
+      "path": "peer_wire/peer_id",
+      "state": {
+        "kind": "patterned",
+        "detail": {
+          "pattern": {
+            "length": 20,
+            "runs": [
+              {
+                "kind": "fixed",
+                "detail": {
+                  "bytes": "2d4249343130302d"
+                }
+              },
+              {
+                "kind": "varying",
+                "detail": {
+                  "length": 12,
+                  "alphabet": null
+                }
+              }
+            ]
+          },
+          "samples": 6
+        }
+      },
+      "evidence": [
+        "ev-source-peer"
+      ]
+    },
+    {
+      "path": "peer_wire/reserved",
+      "state": {
+        "kind": "constant",
+        "detail": {
+          "value": "8000000000130004",
+          "samples": 6
+        }
+      },
+      "evidence": [
+        "ev-source-peer"
+      ]
+    },
+    {
+      "path": "tracker_http/peer_id",
+      "state": {
+        "kind": "patterned",
+        "detail": {
+          "pattern": {
+            "length": 20,
+            "runs": [
+              {
+                "kind": "fixed",
+                "detail": {
+                  "bytes": "2d4249343130302d"
+                }
+              },
+              {
+                "kind": "varying",
+                "detail": {
+                  "length": 12,
+                  "alphabet": null
+                }
+              }
+            ]
+          },
+          "samples": 6
+        }
+      },
+      "evidence": [
+        "ev-source-tracker"
+      ]
+    },
+    {
+      "path": "tracker_http/user_agent",
+      "state": {
+        "kind": "constant",
+        "detail": {
+          "value": "4269676c79425420342e312e302e30",
+          "samples": 6
+        }
+      },
+      "evidence": [
+        "ev-source-tracker"
+      ]
+    }
+  ],
+  "corroboration": [
+    {
+      "path": "peer_wire/peer_id",
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-source-peer",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "2d4249343130302d4b594e4c3571533336433834"
+          }
+        },
+        {
+          "connector": "cpython-stdlib",
+          "evidence": "ev-source-peer",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "2d4249343130302d4b594e4c3571533336433834"
+          }
+        }
+      ],
+      "agreement": "exact",
+      "conflict": null
+    },
+    {
+      "path": "peer_wire/reserved",
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-source-peer",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "8000000000130004"
+          }
+        },
+        {
+          "connector": "cpython-stdlib",
+          "evidence": "ev-source-peer",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "8000000000130004"
+          }
+        }
+      ],
+      "agreement": "exact",
+      "conflict": null
+    },
+    {
+      "path": "tracker_http/peer_id",
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-source-tracker",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "2d4249343130302d4b594e4c3571533336433834"
+          }
+        },
+        {
+          "connector": "cpython-stdlib",
+          "evidence": "ev-source-tracker",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "2d4249343130302d4b594e4c3571533336433834"
+          }
+        }
+      ],
+      "agreement": "exact",
+      "conflict": null
+    },
+    {
+      "path": "tracker_http/user_agent",
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-source-tracker",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "4269676c79425420342e312e302e30"
+          }
+        },
+        {
+          "connector": "cpython-stdlib",
+          "evidence": "ev-source-tracker",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "4269676c79425420342e312e302e30"
+          }
+        }
+      ],
+      "agreement": "exact",
+      "conflict": null
+    }
+  ],
+  "normalizations": [],
+  "evidence": [
+    {
+      "id": "ev-release-installed-version",
+      "kind": "process_output",
+      "path": "release/version.txt",
+      "bytes": 343,
+      "sha256": "sha256:0558f021d5e6ce2bafdb218ff2b30ae232e6a1765f96cc15a06520bd1554c56b",
+      "connector": null
+    },
+    {
+      "id": "ev-release-metainfo",
+      "kind": "metainfo",
+      "path": "release/fixture/generated.torrent",
+      "bytes": 273,
+      "sha256": "sha256:f58876217930f72aaa83403b45917166eab7707f489c9a2cd3d6600f22a4acd7",
+      "connector": null
+    },
+    {
+      "id": "ev-release-peer",
+      "kind": "peer_transcript",
+      "path": "release/peer-wire-dialled.transcript.json",
+      "bytes": 6334,
+      "sha256": "sha256:4a9017e2815cf28e39055f26d9cce18b1f81601cc7b0c6b886c1dc2984bcd782",
+      "connector": "bit-ids-probe"
+    },
+    {
+      "id": "ev-release-tracker",
+      "kind": "tracker_capture",
+      "path": "release/tracker-http.transcript.json",
+      "bytes": 7901,
+      "sha256": "sha256:ed2e5c9b8b7827896d27bb316398ace46cc34812945e0cfd2189fc6b34e790c6",
+      "connector": "bit-ids-probe"
+    },
+    {
+      "id": "ev-source-installed-version",
+      "kind": "process_output",
+      "path": "source/version.txt",
+      "bytes": 343,
+      "sha256": "sha256:0558f021d5e6ce2bafdb218ff2b30ae232e6a1765f96cc15a06520bd1554c56b",
+      "connector": null
+    },
+    {
+      "id": "ev-source-metainfo",
+      "kind": "metainfo",
+      "path": "source/fixture/generated.torrent",
+      "bytes": 273,
+      "sha256": "sha256:ac8993fa427d5fe473451f6c3d002e5c1817d26d02ea1cdbc23b0406db3ec8db",
+      "connector": null
+    },
+    {
+      "id": "ev-source-peer",
+      "kind": "peer_transcript",
+      "path": "source/peer-wire-dialled.transcript.json",
+      "bytes": 6334,
+      "sha256": "sha256:0736b97586f24dc21e4a06b03091465b0e842534be335376b36be2182e5999b4",
+      "connector": "bit-ids-probe"
+    },
+    {
+      "id": "ev-source-tracker",
+      "kind": "tracker_capture",
+      "path": "source/tracker-http.transcript.json",
+      "bytes": 7901,
+      "sha256": "sha256:e0da102d3ed3ea1c7aa0d93e6a9b5d73609aed778d050e2cb414324c92351c76",
+      "connector": "bit-ids-probe"
+    }
+  ],
+  "supersedes": null,
+  "adjudication": null
+}

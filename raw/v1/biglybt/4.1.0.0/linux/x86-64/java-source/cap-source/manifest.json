@@ -1,0 +1,193 @@
+{
+  "schema": "bit-ids/manifest/1",
+  "capture": "cap-source",
+  "target": "biglybt",
+  "version": "4.1.0.0",
+  "platform": "linux",
+  "arch": "x86-64",
+  "package": "java-source",
+  "host": {
+    "image": "ubuntu24/20261012.334.1",
+    "kernel": "6.17.0-1022-azure",
+    "os": "Ubuntu 24.04.5 LTS",
+    "arch": "x86-64",
+    "disposable": true
+  },
+  "isolation": {
+    "claim": {
+      "fingerprint": "sha256:dca9c165888ec9ec98abcde95398c5136ebe312972ec30115638c86211a0bd38",
+      "claimed_at": "2026-10-22T12:30:04Z"
+    },
+    "host": "ephemeral_runner",
+    "network": "loopback_only",
+    "external_reason": null
+  },
+  "clocks": {
+    "wall_start": "2026-10-22T12:30:04Z",
+    "wall_end": "2026-10-22T12:31:35Z",
+    "monotonic_elapsed_ns": 91300000000
+  },
+  "sampling": {
+    "sessions": 3,
+    "torrents": 1,
+    "connections": 2
+  },
+  "tools": [
+    {
+      "id": "bit-ids-probe",
+      "version": "0.0.0",
+      "role": "observer"
+    },
+    {
+      "id": "cpython-stdlib",
+      "version": "3.12.3",
+      "role": "connector"
+    },
+    {
+      "id": "install-client",
+      "version": "0.0.0",
+      "role": "acquisition"
+    }
+  ],
+  "acquisition": [
+    {
+      "route": "route-release",
+      "source": "https://github.com/BiglySoftware/BiglyBT/releases/download/v4.1.0.0/GitHub_BiglyBT_unix.tar.gz",
+      "retrieved_at": "2026-10-22T12:30:46Z",
+      "artifact": "sha256:ff2a3d1cbcf8d9b816ffd022cde33db1c610fd38857f75a10148dc4a21e83572",
+      "bytes": 21258206,
+      "signature": "not_checked",
+      "installed_version": "4.1.0.0"
+    },
+    {
+      "route": "route-source",
+      "source": "https://github.com/BiglySoftware/BiglyBT.git",
+      "retrieved_at": "2026-10-22T12:30:48Z",
+      "artifact": "sha256:91a0d83828db7aa78309d69eab45bcd04527152a663757e9aabd036bfd1c0815",
+      "bytes": 19348067,
+      "signature": "not_checked",
+      "installed_version": "4.1.0.0"
+    }
+  ],
+  "phases": [
+    {
+      "name": "planned",
+      "started_at": "2026-10-22T12:30:04Z",
+      "ended_at": "2026-10-22T12:30:25Z",
+      "detail": "the host was claimed and the routes chosen"
+    },
+    {
+      "name": "resolved",
+      "started_at": "2026-10-22T12:30:25Z",
+      "ended_at": "2026-10-22T12:30:42Z",
+      "detail": "every route resolved its version"
+    },
+    {
+      "name": "acquired_twice",
+      "started_at": "2026-10-22T12:30:42Z",
+      "ended_at": "2026-10-22T12:30:48Z",
+      "detail": "every route installed, the last at this instant"
+    },
+    {
+      "name": "installed",
+      "started_at": "2026-10-22T12:30:48Z",
+      "ended_at": "2026-10-22T12:30:48Z",
+      "detail": "every installed build reported its version"
+    },
+    {
+      "name": "observed",
+      "started_at": "2026-10-22T12:30:50Z",
+      "ended_at": "2026-10-22T12:31:35Z",
+      "detail": "the observer served the build for its window"
+    },
+    {
+      "name": "corroborated",
+      "started_at": "2026-10-22T12:31:35Z",
+      "ended_at": "2026-10-22T12:31:35Z",
+      "detail": "the connector read the bundle and the readings were compared"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-release-installed-version",
+      "kind": "process_output",
+      "path": "release/version.txt",
+      "bytes": 343,
+      "sha256": "sha256:0558f021d5e6ce2bafdb218ff2b30ae232e6a1765f96cc15a06520bd1554c56b",
+      "produced_by": "install-client",
+      "phase": "installed",
+      "redacted": false
+    },
+    {
+      "id": "ev-release-metainfo",
+      "kind": "metainfo",
+      "path": "release/fixture/generated.torrent",
+      "bytes": 273,
+      "sha256": "sha256:f58876217930f72aaa83403b45917166eab7707f489c9a2cd3d6600f22a4acd7",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-release-peer",
+      "kind": "peer_transcript",
+      "path": "release/peer-wire-dialled.transcript.json",
+      "bytes": 6334,
+      "sha256": "sha256:4a9017e2815cf28e39055f26d9cce18b1f81601cc7b0c6b886c1dc2984bcd782",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-release-tracker",
+      "kind": "tracker_capture",
+      "path": "release/tracker-http.transcript.json",
+      "bytes": 7901,
+      "sha256": "sha256:ed2e5c9b8b7827896d27bb316398ace46cc34812945e0cfd2189fc6b34e790c6",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-source-installed-version",
+      "kind": "process_output",
+      "path": "source/version.txt",
+      "bytes": 343,
+      "sha256": "sha256:0558f021d5e6ce2bafdb218ff2b30ae232e6a1765f96cc15a06520bd1554c56b",
+      "produced_by": "install-client",
+      "phase": "installed",
+      "redacted": false
+    },
+    {
+      "id": "ev-source-metainfo",
+      "kind": "metainfo",
+      "path": "source/fixture/generated.torrent",
+      "bytes": 273,
+      "sha256": "sha256:ac8993fa427d5fe473451f6c3d002e5c1817d26d02ea1cdbc23b0406db3ec8db",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-source-peer",
+      "kind": "peer_transcript",
+      "path": "source/peer-wire-dialled.transcript.json",
+      "bytes": 6334,
+      "sha256": "sha256:0736b97586f24dc21e4a06b03091465b0e842534be335376b36be2182e5999b4",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-source-tracker",
+      "kind": "tracker_capture",
+      "path": "source/tracker-http.transcript.json",
+      "bytes": 7901,
+      "sha256": "sha256:e0da102d3ed3ea1c7aa0d93e6a9b5d73609aed778d050e2cb414324c92351c76",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    }
+  ],
+  "redactions": []
+}
