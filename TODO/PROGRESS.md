@@ -2,10 +2,10 @@
 
 State instant: 2026-10-14
 Total: 67
-Open: 19
+Open: 15
 In progress: 0
 Blocked: 0
-Done: 48
+Done: 52
 
 ⚠ Those five counts are compared against [`INDEX.md`](INDEX.md) by
 `check-project` on every gate. Nothing else in this header is checked, so no
@@ -248,6 +248,7 @@ Choices made while working unattended under the operator's standing rule, each f
 | the Windows version reading also requires `aria2` on the first line and a version-shaped field after `version` | a usage text or an error message is then refused rather than recorded, as Transmission's Windows half refuses one | `a2nwindows.go`, `CLIENT-14` |
 | whether `CLIENT-01` and `CLIENT-06` close now that agreeing Linux and Windows profiles are published | left OPEN: the Prove says "a run", and the two platforms were published from two runs at one version, because the store never rewrites the Linux records. The operator decides. 2026-10-16. | `CLIENT-01`, `CLIENT-06` |
 | whether `CLIENT-05` closes now that aria2 1.37.0's two rootless routes are published and `E-COR-20` refuses self-corroboration | left OPEN: the Prove is met as written, but the title and Approach also name aria2 as a connector for other targets, which nothing does yet. Closing on the Prove alone is the operator's call. 2026-10-21. | `CLIENT-05` |
+| whether `CLIENT-07` closes now that Deluge 2.2.0 is published on Linux and Windows | left OPEN: each platform's pair is `build_equivalent`, but Linux runs libtorrent 2.0.15 and Windows 1.2.19, so the user agent and reserved bytes differ across platforms. Whether the Prove's *agreeing observed surfaces* means within a platform or across them is the operator's reading. 2026-10-22. | `CLIENT-07` |
 | `OBS-10`'s "one client build" is one captured run's recorded bytes, fed to the observer as compiled on each platform | a client build cannot be byte-identical across operating systems, and comparing two platforms' own captures would mix the clients' platform differences into a test of the observer. Holding the bytes fixed makes a difference the observer's. The fixtures are qBittorrent 5.2.4's Windows `package` transcripts from `data` at `4221e28`. Reversed by replacing the fixtures and the constant. 2026-10-16. | `cross_platform_events.rs`, `OBS-10` |
 | the normalization moved out of the `assemble-capture` example into `bit_ids_probe::normalize`, unchanged, and the example calls it | a test cannot call an example's functions, and a copy in the test would prove the copy. The four fields it gives for the fixtures equal the published record's | `normalize.rs`, `assemble-capture.rs`, `OBS-10` |
 | `OBS-10` stays OPEN rather than DONE | its Prove names a Windows run, and this host is Linux. It closes on a `CI` run whose Windows job shows the step green | `OBS-10` |

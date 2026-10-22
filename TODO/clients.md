@@ -461,7 +461,7 @@ satisfy the Prove is the operator's call; `TODO/PROGRESS.md` records it.
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: Enhanced Edition may alter observable identity and must not inherit a
 qBittorrent profile by name or source similarity.
@@ -638,6 +638,16 @@ reading order:
    record carries both;
 5. the four captures, then `assemble-bundle`: Linux and Windows records
    `publishable` and `build_equivalent` within each platform.
+
+### ⭐ Closed: a distinct corroborated profile on both platforms. 2026-10-22
+
+capture-client run 39775689368 captured qBittorrent Enhanced 5.2.4.10 on
+Linux (`release` and `source`) and on Windows (`release` and `package`).
+assemble-bundle run 39777060387 found all four records `publishable`, and each
+platform's pair `build_equivalent`. publish-data run 39777244771 appended them
+to `data`. The profile is Enhanced's own, observed rather than inherited: peer
+ID `-qB524A-` and user agent `qBittorrent Enhanced/5.2.4.10`, where qBittorrent
+5.2.4's published profile reads `-qB5240-`. That is the first half of the Prove.
 
 ## CLIENT-03: uTorrent capture adapter
 
@@ -2418,6 +2428,32 @@ arrive by independent routes, and the record says so.
 3. Both lanes capture, then `assemble-bundle` makes the Windows pair
    `publishable` and `build_equivalent`.
 
+### ⭐ Published on both platforms, and OPEN for one reading. 2026-10-22
+
+capture-client run 39774315820 captured Deluge 2.2.0 on Windows: the
+`package` route fetched the vendor's installer over https, and the `source`
+route loaded libtorrent 1.2.19 with the vendor's two OpenSSL DLLs. assemble-
+bundle run 39775134717 found both records `publishable` and
+`build_equivalent`, and publish-data run 39775290158 appended them to `data`
+beside the Linux pair published on 2026-10-21.
+
+⚠ **The two platforms run different engines, and their surfaces differ
+accordingly.**
+
+| field | Linux | Windows |
+| --- | --- | --- |
+| engine | libtorrent 2.0.15 | libtorrent 1.2.19 |
+| `tracker_http/user_agent` | `Deluge/2.2.0 libtorrent/2.0.15.0` | `Deluge/2.2.0 libtorrent/1.2.19.0` |
+| `peer_wire/reserved` | `0000000000100005` | `0000000000180005` |
+| peer-ID prefix | `-DE220s-` | `-DE220s-` |
+
+Each platform's pair agrees. The Prove asks for records that *prove product and
+embedded-engine versions plus agreeing observed surfaces*. Whether that means
+agreeing within a platform, which holds, or across them, which cannot hold for
+a vendor that ships 1.2 on Windows and whose PyPI route builds 2.0 on Linux, is
+the operator's reading. It is recorded in [`PROGRESS.md`](PROGRESS.md) beside
+`CLIENT-01` and `CLIENT-06`.
+
 ## CLIENT-08: BitTorrent capture adapter
 
 Source: operator scope and August 2026 priority sample
@@ -2435,7 +2471,7 @@ from the uTorrent adapter.
 ## CLIENT-09: BiglyBT capture adapter
 
 Source: operator scope and upstream project
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: Java runtime and packaging differences can affect observable client
 behavior and must be represented, not flattened.
@@ -2666,6 +2702,20 @@ the Linux source lane reads `compiles=source`. Check, in reading order:
    `version.biglybt.com` leaves the runner;
 6. the four captures, then `assemble-bundle`: each platform's pair
    `publishable` and `build_equivalent`.
+
+### ⭐ Closed: product, JVM and host facts beside agreeing observations. 2026-10-22
+
+capture-client run 39778781947 captured BiglyBT 4.1.0.0 on Linux (`release`
+and `source`, both on the host's JVM) and on Windows (`release` with the
+installer's bundled JRE, `package` with winget's NoJRE install and Temurin).
+assemble-bundle run 39780042336 found all four records `publishable`, and each
+platform's pair `build_equivalent`. publish-data run 39780216266 appended them
+to `data`. Each record's version answer names the product, its peer-ID prefix
+and the JVM that ran it, so the Prove's correlation is in the records.
+⚠ Still open beside the closure: whether the two vendor calls that cannot be
+switched off (`version.biglybt.com`, `vrpc.vuze.com`) put a DNS query on the
+Windows runner's resolver. That is a containment question about the lab, not
+a fact about the published profile.
 
 ## CLIENT-10: Tixati capture adapter
 

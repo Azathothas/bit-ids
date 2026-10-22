@@ -1,17 +1,17 @@
 # Work index
 
 Total: 67
-Open: 19
+Open: 15
 In progress: 0
 Blocked: 0
-Done: 48
+Done: 52
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 25 | 25 |
-| P1 | 19 | 0 | 0 | 22 | 41 |
+| P1 | 15 | 0 | 0 | 26 | 41 |
 | P2 | 0 | 0 | 0 | 1 | 1 |
-| Total | 19 | 0 | 0 | 48 | 67 |
+| Total | 15 | 0 | 0 | 52 | 67 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -42,22 +42,22 @@ Done: 48
 | ACQ-05 | P1 | M | DONE | Artifact cache and authenticity evidence |
 | ACQ-06 | P0 | L | DONE | Rootless, portable client installation |
 | CLIENT-01 | P1 | L | OPEN | qBittorrent capture adapter |
-| CLIENT-02 | P1 | L | OPEN | qBittorrent Enhanced capture adapter |
+| CLIENT-02 | P1 | L | DONE | qBittorrent Enhanced capture adapter |
 | CLIENT-03 | P1 | L | OPEN | uTorrent capture adapter |
 | CLIENT-04 | P1 | L | OPEN | BitComet capture adapter |
 | CLIENT-05 | P1 | L | OPEN | aria2 capture adapter and connector |
 | CLIENT-06 | P1 | L | OPEN | Transmission capture adapter |
 | CLIENT-07 | P1 | L | OPEN | Deluge capture adapter |
 | CLIENT-08 | P1 | L | OPEN | BitTorrent capture adapter |
-| CLIENT-09 | P1 | L | OPEN | BiglyBT capture adapter |
+| CLIENT-09 | P1 | L | DONE | BiglyBT capture adapter |
 | CLIENT-10 | P1 | L | OPEN | Tixati capture adapter |
 | CLIENT-11 | P1 | L | OPEN | KTorrent capture adapter |
 | CLIENT-12 | P1 | L | OPEN | Free Download Manager capture adapter |
 | CLIENT-13 | P1 | L | OPEN | Zona capture adapter |
 | CLIENT-14 | P1 | L | DONE | aria2-next, acquired from its releases and driven over RPC |
 | ENGINE-01 | P1 | L | OPEN | libtorrent engine matrix |
-| ENGINE-02 | P1 | L | OPEN | anacrolix/torrent engine matrix |
-| ENGINE-03 | P1 | L | OPEN | rqbit engine matrix |
+| ENGINE-02 | P1 | L | DONE | anacrolix/torrent engine matrix |
+| ENGINE-03 | P1 | L | DONE | rqbit engine matrix |
 | CORPUS-01 | P0 | L | DONE | Append-only canonical store |
 | CORPUS-02 | P0 | L | DONE | Semantic corpus validator |
 | CORPUS-03 | P0 | L | DONE | Deterministic indexes and latest views |

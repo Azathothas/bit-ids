@@ -21,7 +21,7 @@ and Windows without claiming that an embedding client shares the profile.
 ## ENGINE-02: anacrolix/torrent engine matrix
 
 Source: operator scope and anacrolix/torrent upstream
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: A Go module version is not directly an installable client release and
 needs a reproducible harness definition.
@@ -243,10 +243,20 @@ in reading order:
 4. the four captures, then `assemble-bundle`: each platform's pair
    `publishable` and `build_equivalent`, with `target.kind` `library`.
 
+### ⭐ Closed: two independent builds, one binary per platform. 2026-10-22
+
+capture-client run 39774331484 built the pinned harness at anacrolix/torrent
+v1.61.0 on both routes on both platforms. Each platform's two routes, the
+module proxy and the tag fetched with `GOPROXY=direct`, installed the same
+executable: Linux `59e39159…` on both (the same digest as the session host's
+build) and Windows `cdc6a2d8…` on both. assemble-bundle run 39775716205 found
+all four records `publishable`, and each pair `build_equivalent`, with
+`target.kind` `library`. publish-data run 39775861918 appended them to `data`.
+
 ## ENGINE-03: rqbit engine matrix
 
 Source: operator scope and rqbit upstream
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: rqbit is available as application artifacts and Rust packages, which
 may encode different features or revisions.
@@ -430,3 +440,13 @@ built rqbit 9.0.1 in 7 minutes 48 seconds, and then the adapter refused it:
 records the executable with its suffix, and the check compared the bare name.
 ⭐ The record now accepts `rqbit` or `rqbit.exe` and nothing else. The selftest
 reads a Windows-shaped record and refuses `rqbit2.exe` (117 of 117).
+
+### ⭐ Closed: build equivalence on both platforms, published as a library harness. 2026-10-22
+
+capture-client run 39780037879 on `f87cc67` captured rqbit 9.0.1 on both
+platforms, from the vendor's release binary and from crates.io through
+`cargo install`. assemble-bundle run 39781553203 found all four records
+`publishable`, and each platform's pair `build_equivalent`, with `target.kind`
+`library`. publish-data run 39781744625 appended them to `data` with their raw
+evidence. The earlier run, 39777039760, is the one whose Windows cargo record
+named `rqbit.exe`.

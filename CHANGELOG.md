@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-22T13:40:00Z
+
+- ⭐ **Four entries closed, on runner captures published to `data`**:
+  `CLIENT-02` qBittorrent Enhanced 5.2.4.10, `CLIENT-09` BiglyBT 4.1.0.0,
+  `ENGINE-02` anacrolix/torrent v1.61.0 and `ENGINE-03` rqbit 9.0.1, each on
+  Linux and Windows with both platforms' pairs `build_equivalent`. `data` holds
+  36 records.
+- Deluge 2.2.0's Windows pair is published too. `CLIENT-07` stays OPEN for the
+  operator, because the two platforms run different libtorrent versions.
+- 15 open, 52 done.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-02`, `CLIENT-07`,
+  `CLIENT-09`, and [`TODO/engines.md`](TODO/engines.md) `ENGINE-02`,
+  `ENGINE-03`. No version bump and no deploy.
+
 ### 2026-10-22T12:45:00Z
 
 - **rqbit's Windows cargo route is no longer refused for naming `rqbit.exe`.**

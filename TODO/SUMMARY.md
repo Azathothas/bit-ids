@@ -11,14 +11,14 @@ mapping of its own and the two twins cannot hold different ones.
 | Schema | `SCHEMA` | 0 | 0 | 0 | 4 | 4 |
 | Observer | `OBS` | 0 | 0 | 0 | 11 | 11 |
 | Acquisition | `ACQ` | 0 | 0 | 0 | 6 | 6 |
-| Clients | `CLIENT` | 13 | 0 | 0 | 1 | 14 |
-| Engines | `ENGINE` | 3 | 0 | 0 | 0 | 3 |
+| Clients | `CLIENT` | 11 | 0 | 0 | 3 | 14 |
+| Engines | `ENGINE` | 1 | 0 | 0 | 2 | 3 |
 | Corpus | `CORPUS` | 0 | 0 | 0 | 4 | 4 |
 | Library | `LIB` | 0 | 0 | 0 | 2 | 2 |
 | Publishing | `PUB` | 0 | 0 | 0 | 5 | 5 |
 | CI | `CI` | 3 | 0 | 0 | 8 | 11 |
 | Documentation | `DOC` | 0 | 0 | 0 | 2 | 2 |
-| Total | | 19 | 0 | 0 | 48 | 67 |
+| Total | | 15 | 0 | 0 | 52 | 67 |
 
 Effort inventory: 1 S, 13 M, 51 L, 2 XL. `check-project` derives that line from
 the index and refuses it when they disagree. `CI-10` and `CI-11` are the XL entries; the
