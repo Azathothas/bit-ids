@@ -204,3 +204,85 @@ fn cross_platform_events_are_the_same_on_a_second_run() {
         canonical(&normalized(TRACKER, PEER))
     );
 }
+
+/// The peer transcript with the first segment the build sent on each
+/// connection split into two at byte `at`, the second on the same connection
+/// at the same offset, which is how the lab records a handshake written in two
+/// writes.
+fn split_opening_segments(peer: &str, at: usize) -> String {
+    let mut out = String::new();
+    let mut seen: Vec<String> = Vec::new();
+    let (mut connection, mut offset, mut direction) = (String::new(), String::new(), String::new());
+    for line in peer.split_inclusive('\n') {
+        let trimmed = line.trim();
+        let value = |prefix: &str| {
+            trimmed
+                .strip_prefix(prefix)
+                .map(|rest| rest.trim_end_matches(',').trim_matches('"').to_owned())
+        };
+        if let Some(v) = value("\"connection\": ") {
+            connection = v;
+        } else if let Some(v) = value("\"offset_ms\": ") {
+            offset = v;
+        } else if let Some(v) = value("\"direction\": ") {
+            direction = v;
+        } else if let Some(bytes) = value("\"bytes\": ")
+            && direction == "from_target"
+            && !seen.contains(&connection)
+            && bytes.len() > 2 * at
+        {
+            seen.push(connection.clone());
+            let (head, tail) = bytes.split_at(2 * at);
+            writeln!(out, "      \"bytes\": \"{head}\"").expect("a String takes a write");
+            // ⚠ The segment boundary is pushed as it is rather than escaped
+            // into a format string.
+            out.push_str("    },\n    {\n");
+            writeln!(out, "      \"connection\": {connection},").expect("a String takes a write");
+            writeln!(out, "      \"offset_ms\": {offset},").expect("a String takes a write");
+            writeln!(out, "      \"direction\": \"from_target\",").expect("a String takes a write");
+            writeln!(out, "      \"bytes\": \"{tail}\"").expect("a String takes a write");
+            continue;
+        }
+        out.push_str(line);
+    }
+    out
+}
+
+/// `ENGINE-02`: anacrolix/torrent v1.61.0 writes its handshake in two writes,
+/// and the lab recorded it split after the protocol string on one lane and
+/// after the reserved bytes on the other. ⛔ Either split normalizes exactly as
+/// the whole handshake does.
+#[test]
+fn cross_platform_events_split_handshakes_normalize_as_whole_ones() {
+    let whole = canonical(&normalized(TRACKER, PEER));
+    for at in [20_usize, 28] {
+        let split = split_opening_segments(PEER, at);
+        // ⚠ Every from_target segment of the fixture opens its own connection,
+        // so each is split and the count doubles.
+        assert_eq!(
+            split.matches("\"from_target\"").count(),
+            2 * PEER.matches("\"from_target\"").count(),
+            "every connection's opening segment is split at byte {at}"
+        );
+        assert_eq!(
+            canonical(&normalized(TRACKER, &split)),
+            whole,
+            "split at byte {at}"
+        );
+    }
+}
+
+/// ⛔ And a handshake whose rest never arrives is still refused: the rest is
+/// cut to one byte.
+#[test]
+fn cross_platform_events_a_handshake_cut_short_is_refused() {
+    let split = split_opening_segments(PEER, 20);
+    let tail = split
+        .find("\"bytes\": \"0000000000100005")
+        .expect("the planted tail is there");
+    let end = split[tail..].find('\n').expect("a line") + tail;
+    let mut cut = split.clone();
+    cut.replace_range(tail..end, "\"bytes\": \"00\"");
+    let error = normalize(TRACKER, &cut, &evidence).expect_err("a short handshake is refused");
+    assert!(error.contains("the peer handshake"), "{error}");
+}

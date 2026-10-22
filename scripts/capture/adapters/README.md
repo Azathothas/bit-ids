@@ -17,8 +17,9 @@ their contract.** Each is a `bit-check` command, `bit-check adapter <name>
 | `qbittorrent-enhanced` | [`../../../tools/check/adapter_qbittorrent-enhanced.go`](../../../tools/check/adapter_qbittorrent-enhanced.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/qbtenhanced.go`](../../../tools/check/qbtenhanced.go) |
 | `rqbit` | [`../../../tools/check/adapter_rqbit.go`](../../../tools/check/adapter_rqbit.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/rqbit.go`](../../../tools/check/rqbit.go). An engine target |
 | `biglybt` | [`../../../tools/check/adapter_biglybt.go`](../../../tools/check/adapter_biglybt.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/biglybt.go`](../../../tools/check/biglybt.go) |
+| `anacrolix-torrent` | [`../../../tools/check/adapter_anacrolix-torrent.go`](../../../tools/check/adapter_anacrolix-torrent.go), with a Windows half registered under the same name and both halves' pure decisions and their one install in [`../../../tools/check/anacrolix.go`](../../../tools/check/anacrolix.go). An engine target, whose harness is [`../../../tools/harness/anacrolix-torrent/`](../../../tools/harness/anacrolix-torrent/) |
 
-The seven Linux adapters share their mechanics, and none of their decisions, in
+The nine Linux adapters share their mechanics, and none of their decisions, in
 [`../../../tools/check/adapterkit.go`](../../../tools/check/adapterkit.go). The
 door every caller reaches an adapter through is
 [`../../../tools/check/adapter.go`](../../../tools/check/adapter.go): a
@@ -259,6 +260,26 @@ in the running build. The `package` route compiles, so `describe` names
 `compiles=package`, and the Windows lane now reads `compiles` as the Linux one
 does. `ENGINE-03` in [`../../../TODO/engines.md`](../../../TODO/engines.md)
 carries the measurements.
+
+⭐ **`anacrolix-torrent` is the one target whose product this tree commits.**
+A Go module version installs nothing, so the product is the harness in
+[`../../../tools/harness/anacrolix-torrent/`](../../../tools/harness/anacrolix-torrent/),
+a module of its own whose `go.mod` and `go.sum` pin the library at the newest
+stable tag, every dependency and the Go toolchain. It runs the library's
+default config, and every flag it takes defaults to the library's value.
+`describe` prints `target_kind=library`, as rqbit's does. Both routes compile
+the same harness source with one pinned toolchain, cgo off, `-trimpath` and
+no VCS stamp. The `package` route fetches every module from proxy.golang.org,
+checked by sum.golang.org, and must write the committed `go.sum`. The
+`source` route takes the tag `resolve-source` selected and clones every
+module from its own origin with `GOPROXY=direct`. Both write the executable's
+own build information to `build-manifest.txt`, which is held to the pin, and
+`version` reports the library's version out of it. `start` switches off the
+DHT, PEX, port forwarding, webseeds, WebRTC peers and IPv6, and holds the
+harness's own report of its config. `stop` writes a stop file the harness
+polls, so the library's own close runs on both platforms. `ENGINE-02` in
+[`../../../TODO/engines.md`](../../../TODO/engines.md) carries the
+measurements.
 
 ⭐ **`biglybt` is the one Java target, and the one whose build has no
 `--version`.** `version` writes a small class file, made byte by byte in

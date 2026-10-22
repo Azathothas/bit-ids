@@ -81,8 +81,14 @@ func checkConnector(r *repo) (verdict, error) {
 		b.WriteString("  \"segments\": [\n")
 		for i, seg := range segments {
 			dir, bytes, _ := strings.Cut(seg, ":")
+			// ⚠ `from_target@2:...` puts a segment on connection 2; every
+			// other is on connection 1. `ENGINE-02`.
+			dir, conn, ok := strings.Cut(dir, "@")
+			if !ok {
+				conn = "1"
+			}
 			b.WriteString("    {\n")
-			b.WriteString("      \"connection\": 1,\n")
+			fmt.Fprintf(&b, "      \"connection\": %s,\n", conn)
 			fmt.Fprintf(&b, "      \"offset_ms\": %d,\n", (i+1)*100)
 			fmt.Fprintf(&b, "      \"direction\": \"%s\",\n", dir)
 			fmt.Fprintf(&b, "      \"bytes\": \"%s\"\n", bytes)
@@ -272,6 +278,20 @@ func checkConnector(r *repo) (verdict, error) {
 
 	runCase(1, "not 68", "a segment that starts as a handshake and is short is refused",
 		bundle("short", []string{cleanTracker}, "from_target:13"+protocolHex+reservedHex))
+
+	// ⭐ A HANDSHAKE IN TWO SEGMENTS OF ONE CONNECTION IS ONE HANDSHAKE, as
+	// anacrolix/torrent v1.61.0 put it on the wire on 2026-10-22: the protocol
+	// string, then the other 48 bytes. ⛔ Across two connections it is not, and
+	// is still refused. `ENGINE-02`.
+	split := "13" + protocolHex
+	runCase(0, "", "a handshake split across two segments of one connection is read",
+		bundle("split", []string{cleanTracker}, cleanPeerLab, "from_target:"+split,
+			"from_target@2:"+handshake(otherHex), "from_target:"+reservedHex+infoHashHex+peerHex))
+	check(reported(runs, "peer_wire/peer_id") == peerHex+","+otherHex &&
+		reported(runs, "peer_wire/reserved") == reservedHex+","+reservedHex,
+		"the joined handshake reads at its own offsets and the other connection's still reads")
+	runCase(1, "not 68", "a handshake whose rest is on another connection is refused",
+		bundle("splitapart", []string{cleanTracker}, "from_target:"+split, "from_target@2:"+reservedHex+infoHashHex+peerHex))
 
 	runCase(0, "", "a segment that is neither surface is skipped",
 		bundle("extra", []string{cleanTracker}, cleanPeer, "from_target:"+hexOf("not a handshake at all")))

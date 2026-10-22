@@ -32,6 +32,217 @@ routes at one tag, record Go toolchain facts, and actively capture behavior.
 Prove: two independently resolved harness builds at the same module version
 produce corroborated profiles and reproducible build manifests.
 
+### ⭐ What anacrolix/torrent publishes, and the harness this tree pins. 2026-10-22
+
+Read through `AGENTS.md` rule 8's route, proxy.golang.org, sum.golang.org and
+go.dev, each answering directly.
+
+| source | what it carries |
+| --- | --- |
+| GitHub `anacrolix/torrent` releases | **none**: the listing is empty. The tags are the releases |
+| the tags | 153 refs. `resolve-source` selects `v1.61.0`, 114 superseded, 3 `prerelease_by_version`, 35 `foreign_tag` |
+| proxy.golang.org `@latest` | `v1.61.0`, 2025-12-17T07:39:03Z, origin `refs/tags/v1.61.0` at `486bcbe7...`. The newest of its `@v/list` |
+| sum.golang.org | `h1:vxo+B4Sw...` for the module and `h1:yKUKuZSS...` for its `go.mod` |
+| the module's `go.mod` | `go 1.24.0`. Its default build links `go-libutp`, C++, when cgo is on, and anacrolix/utp, Go, when it is off |
+| go.dev/dl | newest stable `go1.27.3`. The session host's own Go is 1.24.7 |
+
+⭐ **The harness is this tree's, because a module version installs nothing.**
+[`../tools/harness/anacrolix-torrent/`](../tools/harness/anacrolix-torrent/)
+is a single `main.go` of about 200 lines and its own `go.mod` and `go.sum`.
+It starts `torrent.NewDefaultClientConfig()`, adds the observer's torrent,
+whose tracker hands out the observer's peer, and writes back what it
+configured. Every flag defaults to the library's own value. The adapter passes
+the flags that switch surfaces off.
+
+- ⚠ **Not upstream's `cmd/torrent`**, which the module also carries. It is a
+  downloader: it ends when its torrent completes unless told to seed, stops on
+  a signal Windows cannot send a console-less process, and reports none of its
+  config. `docs/client-matrix.md` already names a minimal harness.
+- ⛔ **Its own module**, because the library has 70 dependencies in the build
+  and `bit-check` has none. `go.mod` requires `github.com/anacrolix/torrent
+  v1.61.0` and names `toolchain go1.27.3`. `go.sum` is the 140 lines the proxy
+  route writes from sum.golang.org's answers, not `go mod tidy`'s 507.
+- ⛔ **The pin is held in two places with one function.** `anacrolixPinRefusal`
+  holds `go.mod` and `go.sum` to the adapter's constants: the version, both
+  hashes and the toolchain, no `replace`, no `exclude`. Every `install` asks it,
+  and `check-bitcheck` asks it of the tree. When stable moves, the harness is
+  re-pinned in one change. A route refuses a newer `@latest` or tag rather than
+  upgrading.
+- ⚠ **`-buildvcs=false` is load-bearing.** The library's `version` package
+  writes the main module's path and version into the extended handshake's `v`.
+  Go 1.24 and later stamp that version from the enclosing git tree, so a harness
+  built inside this repository would change its wire identity with every
+  commit. With the flag the main module is `(devel)`.
+
+| surface | library default | what `start` passes |
+| --- | --- | --- |
+| DHT, bootstrapping from global nodes | on | `-dht=false` |
+| PEX, `ut_pex` | on | `-pex=false` |
+| UPnP and NAT-PMP port forwarding | on | `-port-forward=false` |
+| webseeds | on | `-webseeds=false` |
+| WebRTC peers through websocket trackers | on | `-webtorrent=false` |
+| IPv6 | on | `-ipv6=false` |
+| local peer discovery | none in the library | nothing |
+| uTP | on | nothing |
+| peer port | 42069 | the capture's, `-port 51413` |
+| peer ID, user agent, `v`, BEP 20 prefix | the library's | nothing |
+
+- ⛔ **IPv6 is off on every host, and that is measured.** The library listens
+  on `tcp6` by default. On a kernel booted with IPv6 disabled that fails with
+  `socket: address family not supported`, which the library does not treat as
+  an unsupported network, so the client never starts. Off everywhere keeps the
+  profile independent of the host. It changes no handshake field.
+- ⭐ **The harness reports what it configured** in `ready.txt`, and `start`
+  holds it with `anacrolixReadyRefusal`. Every surface must be off, no proxy and
+  no ICE server, every listener IPv4 on the peer port. The library's three
+  identity defaults must stand as self-reports, unset: prefix `-GT0003-`, user
+  agent `anacrolix-torrent/v1.61.0`, and `v` `bit-ids/harness/anacrolix-torrent
+  (devel) (anacrolix/torrent v1.61.0)`.
+- The harness's environment drops every `GO*` (the runtime's knobs, the
+  library's `GO_LOG`, anacrolix/utp's `GO_UTP_*`), every `TORRENT_*` and
+  `WEBTORRENT_*`, and every proxy variable.
+- ⭐ **`stop` is the library's own `Client.Close`**, on a stop file the harness
+  polls every 200 ms, because Windows has no SIGTERM to send. One mechanism on
+  both platforms keeps the two halves one harness. It kills after 10 seconds.
+
+### ⭐ Two routes at v1.61.0 build one executable, byte for byte. 2026-10-22
+
+⭐ **The routes, one module version and one harness source:**
+
+| route | resolver | what the go command fetches | checked against |
+| --- | --- | --- | --- |
+| `package` | proxy.golang.org's `@latest`, which must name the pin | every module from `GOPROXY=https://proxy.golang.org`, with no `go.sum` given, `-mod=mod` | sum.golang.org, by the go command. The `go.sum` it writes must be the committed one byte for byte |
+| `source` | `resolve-source`: `git ls-remote --tags` of the repository, which must select the pin | every module from its own origin, `GOPROXY=direct`, `-mod=readonly`. The library is cloned by git from `https://github.com/anacrolix/torrent` at `refs/tags/v1.61.0` | the committed `go.sum`. Each module's zip is built from its tree and hashed |
+
+- ⛔ **Nothing on the source route comes from the proxy**, and the record
+  shows it. The go command's download record carries the same origin on both
+  routes, so it cannot tell them apart. `vcs_repositories` counts what git
+  cloned instead: 66 on the source route and 0 on the package route, and each
+  route refuses the other's count.
+- ⛔ **One build environment, every host value dropped.** `GOENV=off`,
+  `GOWORK=off`, a module cache and a build cache of the workdir's own,
+  `GOTOOLCHAIN=go1.27.3`, `CGO_ENABLED=0`, `GOSUMDB=sum.golang.org`. The build
+  is `go build -trimpath -buildvcs=false`.
+- ⚠ **The toolchain is the one input both routes share.** `GOTOOLCHAIN` names
+  the pin. The package route takes it from proxy.golang.org and the source
+  route from go.dev/dl/mod, `golang.org/toolchain`'s own origin. Both are
+  checked against sum.golang.org.
+- ⭐ **CGO is off, and that is a decision.** With cgo the library links libutp
+  through C++. Without it, anacrolix/utp, which is Go. A Linux runner has a C
+  compiler and a Windows one may not, so cgo's default would put two uTP
+  implementations under one profile and tie the executable to the host's
+  compiler.
+- ⚠ The build carries `DefaultGODEBUG`, Go 1.27.3's compatibility defaults for
+  a `go 1.24.0` module, `tlssha1=1` among them. It is recorded as it is.
+
+⭐ **The build manifest is the executable's own answer.** The harness's
+`--version` prints its library line and then the whole build information, as
+`go version -m` prints it. `anacrolixManifestRefusal` holds it to the pin: the
+library at `v1.61.0` under sum.golang.org's hash, `go1.27.3`,
+`-trimpath=true`, `CGO_ENABLED=0`, `-buildmode=exe`, the main module at
+`(devel)`, every dependency with an `h1:` sum. It refuses a `vcs.*` stamp, a
+`replace` and any setting it does not name. `version` reports `1.61.0`, the
+library's version, which is what the record's version is.
+
+⭐ **Driven on the session host as `ubuntu`, each lane with its own `HOME`,
+prefix, claim and `RUNNER_TEMP`, through `bit-check install-step`:**
+
+| step | package | source |
+| --- | --- | --- |
+| resolve | the proxy's `@latest`: `v1.61.0` | `resolve-source`: 153 refs, `v1.61.0` selected |
+| `install-step` | exit 0 in 59 seconds, go itself 45, `acquired=yes`, `package=elf-binary-static` | exit 0 in 134 seconds, go itself 125, `acquired=yes`, commit `486bcbe7...` |
+| what was fetched | every module from the proxy, 0 repositories cloned | 66 repositories cloned, no module from the proxy |
+| `go.sum` written | the committed one, byte for byte | unchanged, `-mod=readonly` |
+| the executable | 29464958 bytes, sha256 `59e39159...`, static | **the same bytes** |
+| the build manifest | 70 dependencies, `go1.27.3`, `-trimpath`, `CGO_ENABLED=0`, `GOAMD64=v1` | **byte-identical** |
+| the answer | `1.61.0` | `1.61.0` |
+
+⚠ The routes were driven three times each. An earlier harness revision built
+to `3d684a21...` on both routes and the final one to `59e39159...` on both,
+twice each. The harness's digest, over its three files, is `9457a73b...`.
+Each route then removes its caches. ⚠ `-modcacherw` does not reach the
+toolchain, which the go command extracts read-only: 253 megabytes were left
+behind until the cleanup made each directory writable first.
+
+⭐ **The capture ran on this host**, because the harness is IPv4-only. Each
+lane ran 45 seconds and 3 sessions in a loopback-only namespace as uid 1000,
+which root made because `ubuntu` has no `sudo` here:
+
+| | package | source |
+| --- | --- | --- |
+| `capture-client` | exit 0: 3 announces, 6 peer streams, verified by `sha256sum` | the same |
+| tracker `peer_id` | `-GT0003-` and a new twelve-byte tail per session | the same |
+| tracker `user_agent` | `anacrolix-torrent/v1.61.0` | the same |
+| peer-wire `reserved` | `0000000000100005` | the same |
+| `stop` | `closed on the stop file` in every session, stopped after 40 s with 5 s margin | the same |
+| sockets | TCP `0.0.0.0:51413` listening and UDP `0.0.0.0:51413`, uTP. Nothing else | |
+| `assemble-dispatch`, by hand | both records `publishable`, `classify_across` `build_equivalent`, 4 fields agreeing. Refused only for the run manifests a dispatch writes and the runner environment this host's claim has not got | |
+
+- The announce is `compact=1`, `downloaded=0`, `event=started`, a signed
+  decimal `key`, `left`, `port`, `supportcrypto=1` and `uploaded=0`. Its
+  headers are `User-Agent`, `Accept-Encoding: gzip` and `Connection: close`.
+- ⚠ **The reserved bytes advertise the DHT though it is off.** The library's
+  default extension bits are DHT, LTEP and Fast, whatever `NoDHT` says. That is
+  the library's handshake and it is recorded.
+- The extension handshake offers `ut_holepunch` and `ut_metadata`, `ut_pex`
+  being off. It carries `e=1`, `reqq=1024`, `p=51413` and `yourip`. Its `v` is
+  the self-report above, measured on the wire.
+- ⚠ **No `stopped` announce.** `Client.Close` returned in 0 ms in every
+  session and the transcript holds one `started` per session.
+
+⛔ **A handshake split across segments refused both readers, and both were
+wrong.**
+The library writes its handshake in more than one write, and the lab records
+what each read returned. Over the final two captures' twelve connections it
+arrived whole on four, as 20 and 48 bytes on three, as 28 and 40 on two, and
+as 20, 8 and the rest on three. The second connector refused
+with *a segment begins with the protocol string and is 20 bytes, not 68*.
+`assemble-capture` refused with *the peer handshake: truncated*. Both now read
+the connection's byte stream: a first segment that opens as a handshake and
+is shorter than one takes the following segments of its own connection until
+it is one. A connection that opens with anything else is not joined, and a
+handshake its connection never completes is still refused. `normalize.rs`'s
+`opening_streams` and the connector's `joined_handshakes` make the same test.
+⭐ `check-connector` has three new cases, and a plant that reads segment by
+segment fails two. `cross_platform_events` has two new tests: the committed
+qBittorrent fixture split at byte 20 and at byte 28 normalizes to the same
+canonical text, and a cut handshake is refused. Removing the join fails the
+first. `check-assemble`'s unchoke-first case, which a join of any first
+segment let through, is what made the opening test a prefix test.
+
+⭐ **The record path is proved.** `check-assemble` has three new rows. A
+`package` lane whose index is `proxy.golang.org` files as the record's own
+`go_module` route with a `module_version` identity, never a host's package
+manager. 77 of 77. `check-bitcheck --harnesses` disables the branch in
+`assemble-capture`, and exactly two rows fail. `bit-check anacrolix-torrent
+--selftest` asks every pure decision on any host: 180 cases, all held.
+`check-bitcheck` runs it, removes `-dht=false` from a scratch copy and sees
+the selftest refuse, and holds the harness to the pin.
+
+⚠ **Gap, as rqbit's:** `docs/client-matrix.md` says a library profile records
+the library version and the harness commit, and the record has no field for
+either. No field is invented. The record's version is the library's,
+`1.61.0`, and the route identity names the module. `build-env.txt` keeps the
+harness's digest, the tree's commit when git can read it, the toolchain and
+the build environment. `build-manifest.txt` keeps the build information, and
+`library-origin.txt` the tag's commit.
+
+⛔ **What only a runner can prove.** Dispatch `capture-client` with `adapters:
+["anacrolix-torrent"]`, `routes: ["package","source"]`, `windows_adapters:
+["anacrolix-torrent"]` and `windows_routes: ["package","source"]`. The
+workflow needs no change: both platforms read `compiles=package,source`. Check,
+in reading order:
+
+1. whether both Linux lanes install inside 1500 seconds, and whether a
+   runner's executable digests as `59e39159...`. `build-env.txt` names the
+   bootstrap Go, which must be 1.21 or later to switch toolchains;
+2. whether the Windows lanes' git and Go reach every module's origin, and
+   whether both Windows executables digest alike. Nothing has built them yet;
+3. whether the stop file ends the harness on Windows. `client/stop.txt` says
+   `closed on the stop file` or `killed`;
+4. the four captures, then `assemble-bundle`: each platform's pair
+   `publishable` and `build_equivalent`, with `target.kind` `library`.
+
 ## ENGINE-03: rqbit engine matrix
 
 Source: operator scope and rqbit upstream

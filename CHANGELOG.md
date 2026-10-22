@@ -5,6 +5,29 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-22T07:30:56Z
+
+- ⭐ **anacrolix/torrent has an adapter and a harness**, `anacrolix-torrent`,
+  on Linux and Windows, at v1.61.0. A Go module version installs nothing, so
+  the product is a small harness this tree pins in
+  `tools/harness/anacrolix-torrent/`: the library's default config, with its
+  own `go.mod` and `go.sum` pinning every module and Go 1.27.3.
+- The routes: the module proxy, every module checked by sum.golang.org, and
+  the tag from GitHub with every module cloned from its own origin. Both
+  build with cgo off, `-trimpath` and no VCS stamp, and both record the
+  executable's own build information.
+- The adapter switches off the DHT, PEX, port forwarding, webseeds, WebRTC
+  peers and IPv6, and checks the harness's own report of what it configured.
+  The library's peer ID, user agent and handshake version are left alone.
+- Driven on the session host, both Linux routes built the same executable
+  byte for byte, captured `-GT0003-` and `anacrolix-torrent/v1.61.0`, and
+  assembled `build_equivalent` across them.
+- The second connector and the record's reader now read a handshake that
+  arrives in more than one segment, which this library's does.
+- Record: [`TODO/engines.md`](TODO/engines.md) `ENGINE-02`.
+
+No version bump and no deploy.
+
 ### 2026-10-22T02:40:00Z
 
 - **Workflow acceptance runs on eight shards**, and the unit that runs the whole

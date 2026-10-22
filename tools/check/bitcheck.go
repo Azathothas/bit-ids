@@ -913,13 +913,18 @@ func (b *bitcheck) staleness() {
 // one reads the reserved bytes one byte late, one decodes a bare `+` as a space,
 // which is the query-string reading a peer ID must not get.
 func (b *bitcheck) connector() {
-	b.harnessCases("connector", "check-connector", 51, "scripts/capture/connectors/cpython-stdlib.py", "connector.orig", []harnessPlant{
+	b.harnessCases("connector", "check-connector", 54, "scripts/capture/connectors/cpython-stdlib.py", "connector.orig", []harnessPlant{
 		{"connector reserved bytes read one byte late",
 			[][2]string{swap(`"peer_wire/reserved": raw[reserved_at : reserved_at + 8],`, `"peer_wire/reserved": raw[reserved_at + 1 : reserved_at + 9],`)},
-			`{"schema":"check-connector/1","total":51,"passed":48,"failed":3}`},
+			`{"schema":"check-connector/1","total":54,"passed":50,"failed":4}`},
 		{"connector a bare plus decoded as a space",
 			[][2]string{swap("decoded = urllib.parse.unquote_to_bytes(value)", `decoded = urllib.parse.unquote_to_bytes(value.replace(b"+", b" "))`)},
-			`{"schema":"check-connector/1","total":51,"passed":50,"failed":1}`},
+			`{"schema":"check-connector/1","total":54,"passed":53,"failed":1}`},
+		// ⭐ A handshake in two segments read segment by segment, which only the
+		// split case notices. `ENGINE-02`.
+		{"connector a split handshake read segment by segment",
+			[][2]string{swap("        if reader is handshake_fields:", "        if False and reader is handshake_fields:")},
+			`{"schema":"check-connector/1","total":54,"passed":52,"failed":2}`},
 	})
 }
 
@@ -927,18 +932,23 @@ func (b *bitcheck) connector() {
 // says is destroyed, which only the self-hosted case may notice; one rewords the
 // refusal an `acquired` that is neither value is given.
 func (b *bitcheck) assemble() {
-	b.harnessCases("assemble", "check-assemble", 74, "crates/bit-ids-probe/examples/assemble-capture.rs", "assemble.orig", []harnessPlant{
+	b.harnessCases("assemble", "check-assemble", 77, "crates/bit-ids-probe/examples/assemble-capture.rs", "assemble.orig", []harnessPlant{
 		{"assemble a self-hosted runner taken as disposable",
 			[][2]string{swap(`if environment != "github-hosted" {`, `if false && environment != "github-hosted" {`)},
-			`{"schema":"check-assemble/1","total":74,"passed":73,"failed":1}`},
+			`{"schema":"check-assemble/1","total":77,"passed":76,"failed":1}`},
 		{"assemble an unknown acquired value refused under other words",
 			[][2]string{swap(`which is neither yes nor no",`, `which is neither yes or no",`)},
-			`{"schema":"check-assemble/1","total":74,"passed":73,"failed":1}`},
+			`{"schema":"check-assemble/1","total":77,"passed":76,"failed":1}`},
 		// ⭐ A crates.io lane filed as a host's package manager, which only the
 		// cargo cases notice. `ENGINE-03`.
 		{"assemble a crates.io lane filed as a host package manager",
 			[][2]string{swap(`== Some("crates-io") => {`, `== Some("crates-io-unread") => {`)},
-			`{"schema":"check-assemble/1","total":74,"passed":72,"failed":2}`},
+			`{"schema":"check-assemble/1","total":77,"passed":75,"failed":2}`},
+		// ⭐ And a Go module proxy lane filed the same way, which only the
+		// go_module cases notice. `ENGINE-02`.
+		{"assemble a Go module proxy lane filed as a host package manager",
+			[][2]string{swap(`== Some("proxy.golang.org") =>`, `== Some("proxy.golang.org-unread") =>`)},
+			`{"schema":"check-assemble/1","total":77,"passed":75,"failed":2}`},
 	})
 }
 
@@ -2180,6 +2190,61 @@ func (b *bitcheck) rqbitToolchainPin() {
 	}
 }
 
+// plantedAnacrolixSwitch takes `-dht=false` off the command line both halves
+// of `anacrolix-torrent` build, in a scratch copy, builds that copy and asks
+// its selftest, which must refuse the line it now makes. `ENGINE-02`.
+//
+// ⛔ The DHT is the plant because the library's default config has it on and
+// bootstraps from public nodes, and because the harness's own report is a
+// second check of it that a line missing the switch would reach only at a
+// capture.
+func (b *bitcheck) plantedAnacrolixSwitch() {
+	const an = "tools/check/anacrolix.go"
+	const line = "\t\t\"-dht=false\", \"-pex=false\", \"-port-forward=false\", \"-webseeds=false\", \"-webtorrent=false\", \"-ipv6=false\","
+	b.save(an, "anacrolix.orig")
+	defer b.put("anacrolix.orig", an)
+	landed := false
+	b.rewrite("anacrolix.orig", an, func(l string) (string, bool) {
+		if l == line && !landed {
+			landed = true
+			return "\t\t\"-pex=false\", \"-port-forward=false\", \"-webseeds=false\", \"-webtorrent=false\", \"-ipv6=false\",", true
+		}
+		return l, true
+	})
+	if !landed {
+		b.h.bad("adapters anacrolix-torrent's DHT switch could not be planted: anacrolix.go no longer has [" + strings.TrimSpace(line) + "]")
+		return
+	}
+	b.plantedSelftestOf("anacrolix-torrent's DHT switch, removed,", []string{anacrolixTarget, "--selftest"},
+		"FAILED the command line is held")
+}
+
+// anacrolixHarnessPin holds the harness this tree commits to the adapter's
+// pin: the library's version and sum.golang.org's hashes in its go.mod and
+// go.sum, and the toolchain. ⛔ The routes build the harness's files and the
+// adapter's constants are what they are held to at install; this row is the
+// one that sees the two drift apart before a dispatch does. `ENGINE-02`.
+func (b *bitcheck) anacrolixHarnessPin() {
+	gomod, e1 := os.ReadFile(b.p(anacrolixHarnessDir + "/go.mod"))
+	gosum, e2 := os.ReadFile(b.p(anacrolixHarnessDir + "/go.sum"))
+	if e1 != nil || e2 != nil {
+		b.h.bad("adapters anacrolix-torrent's harness: " + anacrolixHarnessDir + " has no go.mod or go.sum")
+		return
+	}
+	if msg := anacrolixPinRefusal(string(gomod), string(gosum)); msg != "" {
+		b.h.bad("adapters anacrolix-torrent's harness is not pinned: " + msg)
+		return
+	}
+	b.h.ok("adapters anacrolix-torrent's harness pins " + anacrolixModule + " " + anacrolixPin + " and " + anacrolixToolchain)
+	// ⛔ AND A PLANTED DRIFT IS SEEN: the go.mod moved to another version.
+	planted := strings.Replace(string(gomod), "torrent "+anacrolixPin, "torrent v1.60.0", 1)
+	if anacrolixPinRefusal(planted, string(gosum)) != "" {
+		b.h.ok("adapters a harness re-pinned without the adapter is refused")
+	} else {
+		b.h.bad("adapters a harness re-pinned without the adapter was not refused")
+	}
+}
+
 // plantedSelftest builds the scratch tree's planted copy and asks its
 // capture-client selftest, which must exit 1 naming the case `named` ends.
 func (b *bitcheck) plantedSelftest(what, named string) {
@@ -2318,6 +2383,17 @@ func (b *bitcheck) adapters() {
 		b.h.bad(fmt.Sprintf("adapters the biglybt adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
 	}
 	b.plantedBiglybtDHT()
+	// ⭐ AND anacrolix-torrent's, ONE SELFTEST FOR BOTH HALVES: the pin, the go
+	// environment of each route, the build manifest, the proxy's answer, the
+	// library's origin, the harness's command line and its report are
+	// anacrolix.go, untagged. `ENGINE-02`.
+	if rc, out := b.run(anacrolixTarget, "--selftest"); rc == 0 && strings.Contains(out, `"failed":0}`) {
+		b.h.ok("adapters the anacrolix-torrent adapter's selftest holds: go (exit 0)")
+	} else {
+		b.h.bad(fmt.Sprintf("adapters the anacrolix-torrent adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
+	}
+	b.plantedAnacrolixSwitch()
+	b.anacrolixHarnessPin()
 
 	// ⛔ A RELEASE FETCH WITH NO TIME LIMIT. ⚠ Planted in the installer, because
 	// `ACQ-06` moved every release retrieval there, and in its Go file since

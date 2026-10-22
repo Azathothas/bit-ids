@@ -93,7 +93,7 @@ because two empty sets agree perfectly.
 | id | harness | route A | route B | entry |
 | --- | --- | --- | --- | --- |
 | `libtorrent` | minimal Rust/C++ or Python-binding client pinned to one stable libtorrent | package registry/system package | matching GitHub tag | `ENGINE-01` |
-| `anacrolix-torrent` | minimal Go client using `github.com/anacrolix/torrent` | Go module proxy | matching GitHub tag | `ENGINE-02` |
+| `anacrolix-torrent` | this tree's `tools/harness/anacrolix-torrent/`, the library's default config, pinned at the stable tag ⭐ | proxy.golang.org, checked by sum.golang.org, Linux and Windows ⭐ | the tag from GitHub with every module from its own origin, `GOPROXY=direct`, Linux and Windows ⭐ | `ENGINE-02` |
 | `rqbit` | the upstream `rqbit` command, librqbit's own wrapper, at the stable tag ⭐ | crates.io `rqbit`, `cargo install --locked`, Linux and Windows ⭐ | the vendor's GitHub release binary, Linux and Windows ⭐ | `ENGINE-03` |
 
 Library harnesses are not allowed to choose an identity value for convenience.
@@ -110,6 +110,16 @@ record has no field for the library version or the harness commit.**
 the running build reports and cargo's install record are kept as evidence
 files beside the capture. Nothing a run writes names the tag's commit.
 `ENGINE-03` records both gaps.
+
+⭐ **`anacrolix-torrent`'s harness is this tree's, and its two routes build
+one executable.** A module version installs nothing, so the harness is a
+module of its own whose `go.mod` and `go.sum` pin v1.61.0, every dependency
+and Go 1.27.3. On 2026-10-22 the module proxy and the tag, each with its own
+copy of every module, built the same executable byte for byte with the same
+build information, and both captures assembled `build_equivalent`. ⚠ The same
+gap as rqbit's: the record's version is the library's, and the harness's
+digest, the build information and the tag's commit are evidence files beside
+the capture. `ENGINE-02` records it.
 
 ## Platform rule
 

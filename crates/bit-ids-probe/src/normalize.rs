@@ -24,7 +24,7 @@ use bit_ids::observation::{FieldPath, ObservedField};
 use bit_ids::sampling::{Sample, SamplingPlan, field_state};
 use bit_ids_lab::Journal;
 use bit_ids_lab::evidence::parse_transcript_document;
-use bit_ids_wire::peer_wire::Handshake;
+use bit_ids_wire::peer_wire::{Handshake, INFO_HASH_LEN, PEER_ID_LEN, RESERVED_LEN};
 use bit_ids_wire::tracker_http::HttpRequest;
 use bit_ids_wire::tracker_udp::Direction;
 
@@ -233,34 +233,10 @@ fn peer_observations(
     let starts = session_starts(tracker)?;
     let mut handshake_ids = Vec::new();
     let mut reserved = Vec::new();
-    let mut opened = Vec::new();
     let mut session = 0_u32;
     let mut index = 0_usize;
-    for segment in peer
-        .segments()
-        .iter()
-        .filter(|segment| segment.direction() == Direction::FromTarget)
-    {
-        // ⛔ The FIRST segment the build sent on each connection must open with
-        // a handshake. The lab records one connection per dial and a handshake
-        // is what opens one, so a first segment that is not one is a transcript
-        // this record cannot describe rather than a segment to pass over.
-        // ⚠ A LATER SEGMENT ON THAT CONNECTION IS THE CONVERSATION AFTER IT. This
-        // demanded a handshake of every segment until 2026-10-15, when
-        // Transmission 4.1.3 sent an unchoke, `0000000101`, 9.5 seconds after its
-        // handshake on each connection of `capture-client` run 38667886527, and
-        // the pair was refused over five bytes that were never a handshake. The
-        // second connector, which finds a handshake by its protocol string,
-        // found the same two.
-        // ⛔ A segment carrying no connection still has to be a handshake: with
-        // nothing to tie it to one, it is not known to follow one.
-        if let Some(connection) = segment.connection() {
-            if opened.contains(&connection) {
-                continue;
-            }
-            opened.push(connection);
-        }
-        let handshake = Handshake::parse_prefix(segment.bytes())
+    for (offset_ms, bytes) in opening_streams(peer) {
+        let handshake = Handshake::parse_prefix(&bytes)
             .map_err(|error| format!("the peer handshake: {error}"))?
             .0;
         // ⭐ THE SESSION IS THE ONE WHOSE ANNOUNCE OPENED LAST BEFORE THIS
@@ -271,13 +247,8 @@ fn peer_observations(
         // transcript, on the same clock as this one, place each connection.
         // ⚠ A connection whose first segment came before any later session's
         // opening belongs to the first, which is the old reading exactly.
-        let at = u32::try_from(
-            starts
-                .iter()
-                .filter(|start| **start <= segment.offset_ms())
-                .count(),
-        )
-        .map_err(|error| format!("the peer: {error}"))?;
+        let at = u32::try_from(starts.iter().filter(|start| **start <= offset_ms).count())
+            .map_err(|error| format!("the peer: {error}"))?;
         if at != session {
             session = at;
             index = 0;
@@ -301,6 +272,75 @@ fn peer_observations(
     gathered.push("peer_wire/peer_id", &handshake_ids, evidence, "peer")?;
     gathered.push("peer_wire/reserved", &reserved, evidence, "peer")?;
     Ok(())
+}
+
+/// A whole handshake: a length byte, the protocol string, the reserved bytes,
+/// the info hash and the peer ID.
+const HANDSHAKE_LEN: usize =
+    1 + b"BitTorrent protocol".len() + RESERVED_LEN + INFO_HASH_LEN + PEER_ID_LEN;
+
+/// The bytes that open each connection the build sent on, with the offset of
+/// the segment that opened it, in the order the connections opened.
+///
+/// ⛔ The FIRST segment the build sent on each connection must open with a
+/// handshake. The lab records one connection per dial and a handshake is what
+/// opens one, so a first segment that is not one is a transcript this record
+/// cannot describe rather than a segment to pass over.
+///
+/// ⚠ A LATER SEGMENT ON THAT CONNECTION IS THE CONVERSATION AFTER IT. This
+/// demanded a handshake of every segment until 2026-10-15, when Transmission
+/// 4.1.3 sent an unchoke, `0000000101`, 9.5 seconds after its handshake on each
+/// connection of `capture-client` run 38667886527, and the pair was refused over
+/// five bytes that were never a handshake. The second connector, which finds a
+/// handshake by its protocol string, found the same two.
+///
+/// ⭐ UNLESS THE HANDSHAKE ITSELF IS NOT YET WHOLE. A first segment shorter than
+/// a handshake takes the next segments of its own connection until it is one:
+/// that is the byte stream TCP delivered. Measured on 2026-10-22, `ENGINE-02`:
+/// anacrolix/torrent v1.61.0 writes its handshake in two writes, and the lab
+/// recorded it split after the protocol string on one lane and after the
+/// reserved bytes on the other, so both were refused as truncated.
+///
+/// ⛔ Only a first segment that OPENS as one is continued: the length byte and
+/// as much of the protocol string as it holds. A connection that opens with
+/// anything else is read as it was, and refused. The second connector makes
+/// the same test, so the two join the same segments.
+///
+/// ⛔ A segment carrying no connection still has to be a handshake on its own:
+/// with nothing to tie it to one, nothing is known to continue it.
+fn opening_streams(peer: &Journal) -> Vec<(u64, Vec<u8>)> {
+    let mut streams: Vec<(Option<_>, u64, Vec<u8>)> = Vec::new();
+    for segment in peer
+        .segments()
+        .iter()
+        .filter(|segment| segment.direction() == Direction::FromTarget)
+    {
+        let connection = segment.connection();
+        if connection.is_some()
+            && let Some(stream) = streams.iter_mut().find(|stream| stream.0 == connection)
+        {
+            if stream.2.len() < HANDSHAKE_LEN && opens_as_handshake(&stream.2) {
+                stream.2.extend_from_slice(segment.bytes());
+            }
+            continue;
+        }
+        streams.push((connection, segment.offset_ms(), segment.bytes().to_vec()));
+    }
+    streams
+        .into_iter()
+        .map(|(_, offset_ms, bytes)| (offset_ms, bytes))
+        .collect()
+}
+
+/// Whether bytes open as a handshake: the length byte, then as much of the
+/// protocol string as they hold.
+fn opens_as_handshake(bytes: &[u8]) -> bool {
+    const PROTOCOL: &[u8] = b"BitTorrent protocol";
+    let Some((&length, rest)) = bytes.split_first() else {
+        return false;
+    };
+    usize::from(length) == PROTOCOL.len()
+        && PROTOCOL.starts_with(&rest[..rest.len().min(PROTOCOL.len())])
 }
 
 /// One observation of one field, with where in the plan it came from.

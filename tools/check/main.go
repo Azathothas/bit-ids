@@ -68,6 +68,7 @@
 //	bit-check qbittorrent-enhanced --selftest
 //	bit-check rqbit --selftest
 //	bit-check biglybt --selftest
+//	bit-check anacrolix-torrent --selftest
 //	bit-check contained -- <command> [args...]
 //	GH_TOKEN=... bit-check flight-recorder <label> <log-dir>
 //	bit-check --rows
@@ -258,6 +259,11 @@ func main() {
 	// ⚠ And one for both halves of `biglybt`, for the same reason. `CLIENT-09`.
 	if args[0] == "biglybt" {
 		os.Exit(biglybtSelftest(args[1:]))
+	}
+	// ⚠ And one for both halves of `anacrolix-torrent`, which also holds the
+	// harness this tree commits to its pin. `ENGINE-02`.
+	if args[0] == anacrolixTarget {
+		os.Exit(anacrolixSelftest(args[1:]))
 	}
 	// ⭐ And the two the Linux capture path ran as `sh` last: the namespace a
 	// capture runs in, and the recorder that posts the host's state off it.

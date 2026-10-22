@@ -591,6 +591,27 @@ func checkAssemble(r *repo) (verdict, error) {
 	check(!cargoHas(`"linux_package_manager"`), "and never a Linux package manager's", head(out("cargo"), 6)...)
 	check(cargoHas(`"library"`), "an attestation's kind=library files a library target", head(out("cargo"), 6)...)
 
+	// -- ⭐ AND A GO MODULE PROXY LANE IS `go_module` -----------------------------
+	//
+	// `ENGINE-02`. The same shape for the proxy's index, which
+	// `anacrolix-torrent`'s package route names `proxy.golang.org`.
+	pkgIndex, targetKind = "proxy.golang.org", "library"
+	lane("gomod-release", "release", gh, "", digestA, "1.2.3", peerA, peerA)
+	lane("gomod-package", "package", "", "", digestB, "1.2.3", peerA, peerA)
+	pkgIndex, targetKind = "", ""
+	caseIs(0, "", "a Go module proxy lane beside a release lane assembles into records", "gomod", "gomod-release", "gomod-package")
+	gomodHas := func(literal string) bool {
+		for _, f := range findFiles(filepath.Join(work, "store-gomod", "profiles"), "*.json") {
+			if b, err := os.ReadFile(f); err == nil && bytes.Contains(b, []byte(literal)) {
+				return true
+			}
+		}
+		return false
+	}
+	check(gomodHas(`"go_module"`) && gomodHas(`"module_version"`) && gomodHas(`"proxy.golang.org"`),
+		"a Go module proxy lane is a go_module route with a module_version identity", head(out("gomod"), 6)...)
+	check(!gomodHas(`"linux_package_manager"`), "and never a Linux package manager's either", head(out("gomod"), 6)...)
+
 	// -- ⛔ A CONNECTOR'S VERSION IS MEASURED, NEVER WRITTEN HERE ------------------
 	//
 	// Both were `0.0.0` in every record until 2026-10-14, for the second

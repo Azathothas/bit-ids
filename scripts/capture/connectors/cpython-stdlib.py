@@ -60,6 +60,17 @@ BitTorrent protocol string. Selecting by position would have made the two
 readers share a decision, and a record's corroboration would then rest on both
 of them having guessed the same segment.
 
+  ⚠ A HANDSHAKE MAY ARRIVE IN MORE THAN ONE SEGMENT, and it is read across
+  them. A segment that begins with the protocol string and is shorter than a
+  handshake is joined with the `from_target` segments of THE SAME connection
+  that follow it, in order, until it is long enough; the segments it took are
+  not read again. That is the byte stream TCP delivered, not a guess about it.
+  Measured on 2026-10-22, `ENGINE-02`: anacrolix/torrent v1.61.0 writes its
+  handshake in two writes, and the lab recorded the protocol string as a
+  20-byte segment and the other 48 bytes as the next one on one connection of
+  two, so this refused a capture the observer had read. A handshake its
+  connection never completes is still refused.
+
   Two segments that both parse and DISAGREE are both reported, in order, rather
   than resolved. A connector that took one of two differing announces would be
   manufacturing the constant the record is about to declare, and one that
@@ -219,7 +230,42 @@ def segments(bundle, name):
             raise Refused(
                 "%s segment %d is not lowercase hex" % (path, index)
             )
-        out.append(bytes.fromhex(text))
+        # The connection the segment travelled on, which is what a handshake
+        # split across segments is joined within. A transcript the lab wrote
+        # always carries it; one that does not joins nothing.
+        connection = segment.get("connection")
+        if not isinstance(connection, int) or isinstance(connection, bool):
+            connection = None
+        out.append((connection, bytes.fromhex(text)))
+    return out
+
+
+def joined_handshakes(recorded):
+    """The segments, with each short handshake joined to what followed it.
+
+    A segment that begins with the protocol string and is shorter than a
+    handshake takes the next `from_target` segments of its own connection, in
+    order, until it is long enough, and those are not read again. A connection
+    of None joins nothing. What still falls short is left short, and
+    `handshake_fields` refuses it.
+    """
+    out = []
+    taken = set()
+    for index, (connection, raw) in enumerate(recorded):
+        if index in taken:
+            continue
+        # The length byte, and as much of the protocol string as the segment
+        # holds: the same test `normalize.rs` makes, so the two readers join
+        # the same segments. A segment that opens otherwise is never joined.
+        starts = len(raw) >= 1 and raw[0] == len(PROTOCOL) and PROTOCOL.startswith(raw[1 : 1 + len(PROTOCOL)])
+        if starts and len(raw) < HANDSHAKE_LEN and connection is not None:
+            for later in range(index + 1, len(recorded)):
+                if len(raw) >= HANDSHAKE_LEN:
+                    break
+                if recorded[later][0] == connection:
+                    raw += recorded[later][1]
+                    taken.add(later)
+        out.append((connection, raw))
     return out
 
 
@@ -319,7 +365,9 @@ def report_for(bundle):
         if recorded is None:
             unreachable.update(paths)
             continue
-        for raw in recorded:
+        if reader is handshake_fields:
+            recorded = joined_handshakes(recorded)
+        for _, raw in recorded:
             collect(found, reader, raw)
 
     lines = []

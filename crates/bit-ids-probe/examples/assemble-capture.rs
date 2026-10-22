@@ -275,6 +275,14 @@ impl Lane {
             _ if self.install.get("package_index").map(String::as_str) == Some("crates-io") => {
                 RouteKind::CargoInstall
             }
+            // ⭐ AND ONE WHOSE INDEX IS THE GO MODULE PROXY IS `go_module`, for
+            // the same reason. `anacrolix-torrent`'s adapter writes
+            // `index=proxy.golang.org`. `ENGINE-02`.
+            _ if self.install.get("package_index").map(String::as_str)
+                == Some("proxy.golang.org") =>
+            {
+                RouteKind::GoModule
+            }
             // ⚠ WHICH HOST'S INDEX IS THE INSTALL RECORD'S PLATFORM, the same
             // line the identity tuple is derived from. ⭐ winget on Windows,
             // measured on capture-client run 38788416994. `CI-11`.
@@ -517,8 +525,9 @@ fn source_identity(lane: &Lane) -> Result<SourceIdentity, String> {
         }
         // ⭐ A CRATE IS A MODULE VERSION: the registry, the crate and the
         // version its index resolved, from the same `package-index.txt`, which
-        // is the form `RouteKind::CargoInstall` asks for. `ENGINE-03`.
-        RouteKind::CargoInstall => {
+        // is the form `RouteKind::CargoInstall` asks for. `ENGINE-03`. ⭐ A Go
+        // module is the same form, `RouteKind::GoModule`. `ENGINE-02`.
+        RouteKind::CargoInstall | RouteKind::GoModule => {
             let field = |key: &str| {
                 lane.install
                     .get(key)
@@ -526,7 +535,7 @@ fn source_identity(lane: &Lane) -> Result<SourceIdentity, String> {
                     .filter(|value| !value.is_empty())
                     .ok_or_else(|| {
                         format!(
-                            "the cargo route records no `{key}`; its adapter writes \
+                            "the module route records no `{key}`; its adapter writes \
                              package-index.txt and `install-client` carries it into the record"
                         )
                     })
