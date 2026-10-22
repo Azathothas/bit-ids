@@ -1840,7 +1840,7 @@ records once already.
 ## CI-08: Runner-default drift, swept rather than waited for
 
 Source: `$PSNativeCommandUseErrorActionPreference`, found by CI going red
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: A PowerShell default changed between 7.4 and 7.5 and turned a green
 lane red over a script nobody had edited. That default was one of a class: every
@@ -3517,6 +3517,14 @@ unstated write in both doors, and `check-bitcheck` plants each.
   puts it in shard 4, the one shard without a gate run. The units share no
   state, and `check-shards`
   proves every N from 1 to 8.
+
+### ⭐ Closed; the load-sensitive row is `CI-12`. 2026-10-22
+
+`CI-08` is closed on its Prove, by the operator's decision of 2026-10-22. Each inherited
+default the Approach names is stated by a rule or argued in the 2026-10-21
+audit, and the hostile-environment pass gives the plain gate's verdict. The
+residual, `check-step-bodies`' load-sensitive case, is
+[`CI-12`](#ci-12-check-step-bodies-is-independent-of-host-load).
 
 ## CI-09: The capture-to-publisher path, end to end
 
@@ -6623,3 +6631,19 @@ as a download, and Deluge's pip install is one. ⚠ Dispatch `deluge` alone on
 Windows, with `windows_routes: ["package","source"]`: the matrix is a cross
 product, and the other Windows adapters have no `source` route.
 ⛔ `check-workflow` was not run here; the operator runs it.
+
+## CI-12: `check-step-bodies` is independent of host load
+
+Source: `CI-08`'s 2026-09-09 residual, split out when `CI-08` closed on 2026-10-22
+Priority: P2 | Effort: M | Status: OPEN
+
+Problem: The case *one leaked descriptor onto the step's output brings it back*
+times a planted hang. Under load it can fail on a correct tree. It went red in
+CI run 39620079519 on `3411cd5` and green on the next run over a superset.
+
+Approach: Replace the timing the case asserts with an event it can wait for,
+so a slow host moves the case's duration and not its verdict.
+
+Prove: the gate under twelve CPU spinners passes `check-step-bodies` on every
+run of a twenty-run loop, and the case still refuses its planted defect.
+

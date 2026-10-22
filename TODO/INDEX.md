@@ -1,17 +1,17 @@
 # Work index
 
-Total: 67
-Open: 15
+Total: 69
+Open: 12
 In progress: 0
 Blocked: 0
-Done: 52
+Done: 57
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 25 | 25 |
-| P1 | 15 | 0 | 0 | 26 | 41 |
-| P2 | 0 | 0 | 0 | 1 | 1 |
-| Total | 15 | 0 | 0 | 52 | 67 |
+| P1 | 10 | 0 | 0 | 31 | 41 |
+| P2 | 2 | 0 | 0 | 1 | 3 |
+| Total | 12 | 0 | 0 | 57 | 69 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -41,13 +41,13 @@ Done: 52
 | ACQ-04 | P0 | L | DONE | Disposable-host execution boundary |
 | ACQ-05 | P1 | M | DONE | Artifact cache and authenticity evidence |
 | ACQ-06 | P0 | L | DONE | Rootless, portable client installation |
-| CLIENT-01 | P1 | L | OPEN | qBittorrent capture adapter |
+| CLIENT-01 | P1 | L | DONE | qBittorrent capture adapter |
 | CLIENT-02 | P1 | L | DONE | qBittorrent Enhanced capture adapter |
 | CLIENT-03 | P1 | L | OPEN | uTorrent capture adapter |
 | CLIENT-04 | P1 | L | OPEN | BitComet capture adapter |
-| CLIENT-05 | P1 | L | OPEN | aria2 capture adapter and connector |
-| CLIENT-06 | P1 | L | OPEN | Transmission capture adapter |
-| CLIENT-07 | P1 | L | OPEN | Deluge capture adapter |
+| CLIENT-05 | P1 | L | DONE | aria2 capture adapter and connector |
+| CLIENT-06 | P1 | L | DONE | Transmission capture adapter |
+| CLIENT-07 | P1 | L | DONE | Deluge capture adapter |
 | CLIENT-08 | P1 | L | OPEN | BitTorrent capture adapter |
 | CLIENT-09 | P1 | L | DONE | BiglyBT capture adapter |
 | CLIENT-10 | P1 | L | OPEN | Tixati capture adapter |
@@ -55,6 +55,7 @@ Done: 52
 | CLIENT-12 | P1 | L | OPEN | Free Download Manager capture adapter |
 | CLIENT-13 | P1 | L | OPEN | Zona capture adapter |
 | CLIENT-14 | P1 | L | DONE | aria2-next, acquired from its releases and driven over RPC |
+| CLIENT-15 | P2 | M | OPEN | aria2 as an independent connector |
 | ENGINE-01 | P1 | L | OPEN | libtorrent engine matrix |
 | ENGINE-02 | P1 | L | DONE | anacrolix/torrent engine matrix |
 | ENGINE-03 | P1 | L | DONE | rqbit engine matrix |
@@ -76,10 +77,11 @@ Done: 52
 | CI-05 | P1 | S | DONE | Acceptance commands that cannot pass over nothing |
 | CI-06 | P1 | L | DONE | The first dispatched capture run |
 | CI-07 | P1 | L | OPEN | PowerShell halves for the declared gate rows |
-| CI-08 | P1 | L | OPEN | Runner-default drift, swept rather than waited for |
+| CI-08 | P1 | L | DONE | Runner-default drift, swept rather than waited for |
 | CI-09 | P1 | L | DONE | The capture-to-publisher path, end to end |
 | CI-10 | P1 | XL | DONE | Every checking script in Go, and CI across multiple runners |
 | CI-11 | P1 | XL | DONE | The capture path in Go, so a client capture runs on Windows |
+| CI-12 | P2 | M | OPEN | `check-step-bodies` is independent of host load |
 | DOC-01 | P1 | M | DONE | Public data and library documentation |
 | DOC-02 | P2 | M | DONE | Contributor capture-run handbook |
 

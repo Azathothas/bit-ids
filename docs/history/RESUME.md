@@ -7,10 +7,35 @@ and why it is not the record. The work order is
 
 | | |
 | --- | --- |
-| the task | Take the work order in `TODO/PROGRESS.md` in sequence. Session started `2026-10-14T02:33:13Z` on `30a9801`, which CI run 183 read back green on all six jobs. |
-| the resume point | `CI-07`: `check-assemble`, the last portable row, whose dispatch rows need a decision first (`TODO/ci.md`). ⛔ Waiting on the operator: Transmission's source-route resolution (`CLIENT-06`), qBittorrent's second Linux route (`CLIENT-01`), and the first append to `data` (`CI-09`). |
-| in flight | nothing. |
-| the state of the tree | six `CI-07` rows ported into `bit-check` and passing on the Windows lane; `check-bitcheck --harnesses` green. |
+| the task | ⛔ **Paused for a transfer and refactor of the repository**, settled by the operator on 2026-10-22. A session resuming here takes the work order in `TODO/PROGRESS.md` in sequence. |
+| the resume point | `ENGINE-01`: dispatch libtorrent's Linux capture on `main` (inputs in `TODO/PROGRESS.md`'s work order), then assemble and publish. |
+| in flight | nothing. Every commit is pushed, no dispatch is running, and no worktree carries unpushed work. |
+| the state of the tree | `main` green in CI; `data` holds 36 records; 12 of 69 entries open. |
+
+## Where things are
+
+- ⭐ **Published data** is the `data` branch, appended by `publish-data.yml`
+  from an `assemble-bundle.yml` run, which reads a `capture-client.yml` run.
+  Assemble against the current `data`: a bundle assembled before the last
+  publish landed omits that publish's records, so assemble again rather than
+  publishing it.
+- ⭐ **One adapter per target** under `tools/check/adapter_*.go`, with its pure
+  decisions and selftest in `tools/check/<target>.go`. The contract is
+  [`../../scripts/capture/adapters/README.md`](../../scripts/capture/adapters/README.md).
+  Engine targets declare `target_kind=library`; their pinned harnesses live
+  under `tools/harness/`.
+- ⭐ **Every scheme declares `release_series`**, `-` for none, since
+  `cc76d1e`. libtorrent's is `2.0`.
+- ⚠ **`capture-client` keeps only the newest pending run** in its concurrency
+  group. Dispatch one capture at a time, and the next when the queue is free.
+- ⚠ **CI runs workflow acceptance on eight shards** under a 20-minute bound.
+  The slowest took 1091 seconds on CI run 39742567476. A unit that runs the
+  whole gate or the whole harness is what makes a shard heavy.
+- ⚠ **The session host's writable disk is a fixed allowance.** A full disk
+  makes `check-workflow` report a guard as could-not-run. Clear build output
+  before a long run.
+- ⚠ **This session host has IPv6 disabled**: rqbit and anacrolix/torrent can
+  only be captured here IPv4-only, or on a runner.
 
 ## Starting, on this host
 
@@ -26,10 +51,6 @@ and why it is not the record. The work order is
   check run on the commit shows the host's state while the job runs.
 - ⚠ The session host is `root` and a runner is uid 1001. Drive anything that
   uses `sudo` as an unprivileged user before believing a local pass.
-- ⭐ A capture that refuses uploads its bundle after `scan-bundle.sh` passes, which
-  is what run 35 was diagnosed from. ⚠ In that run a closed recorder check run
-  showed no text and a failed install printed nothing to the job log; both are
-  fixed since, so the next dispatch is the first to show either.
 
 ## The paste
 

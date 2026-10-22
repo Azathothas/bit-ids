@@ -1,11 +1,11 @@
 # Current progress
 
-State instant: 2026-10-14
-Total: 67
-Open: 15
+State instant: 2026-10-22
+Total: 69
+Open: 12
 In progress: 0
 Blocked: 0
-Done: 52
+Done: 57
 
 ⚠ Those five counts are compared against [`INDEX.md`](INDEX.md) by
 `check-project` on every gate. Nothing else in this header is checked, so no
@@ -41,7 +41,12 @@ for all of it.
 
 ### What has been measured, and what has not
 
-⛔ **Nothing is published, and every record in the tree is synthetic.** The
+⭐ **36 measured records are published on `data`**, as of `ab08fa3` on
+2026-10-22: qBittorrent 5.2.4, qBittorrent Enhanced 5.2.4.10, Transmission
+4.1.3, Deluge 2.2.0, BiglyBT 4.1.0.0, aria2-next 3.0.3 and 3.0.4, rqbit 9.0.1 and
+anacrolix/torrent v1.61.0 on Linux and Windows, and aria2 1.37.0 on Linux. Every
+pair was captured on two independent routes and is `build_equivalent`.
+⚠ **Every record in the tree itself is still synthetic.** The
 schema fixtures under
 [`../crates/bit-ids/tests/fixtures/`](../crates/bit-ids/tests/fixtures/)
 describe a target that does not exist, and the wire fixtures under
@@ -106,48 +111,29 @@ still open is a host that never reached it.
 
 ## Work order
 
-⛔ **Nothing here is blocked.** Take these in order.
+⚠ **Paused on 2026-10-22 for a transfer and refactor of the repository**, settled by
+the operator. 12 entries are open. In the order a resuming session would take
+them:
 
-1. **`CLIENT-06` and `CLIENT-01`**, the remaining vertical captures. ⭐
-   `CLIENT-06`'s two 4.1.3 routes build without root and answer 4.1.3, driven
-   as an unprivileged user on 2026-10-14. ⭐ The source route's resolution
-   failed closed over 112 historical tags git refs cannot date; the scheme
-   floor the operator chose is built, and the source route selects 4.1.3 from
-   the live refs. ⭐ **Published on 2026-10-15**: run 38680098567's pair is on
-   `data` at `4c6ccb1`, beside aria2-next, 4 of 4 records in the published view. ⭐ `CLIENT-01`'s two 5.2.4 routes are built,
-   installed and captured, and **published on 2026-10-15**: run
-   38705799000's pair is on `data` at `bfeab59`, 6 of 6 records across three
-   targets in the published view. Its entry in
-   [`clients.md`](clients.md) carries the drive. ⭐ **Windows published on 2026-10-16**: qBittorrent
-   5.2.4 and Transmission 4.1.3 on both Windows routes (run 38838965380),
-   and aria2-next 3.0.4 on Linux and Windows from one run (38838967241).
-   `data` is at `4221e28`, 14 of 14 records in the published view, and the
-   Linux and Windows profiles agree on every observed field.
-2. **`CI-08`**: `capture.yml`'s Linux job runs in a network namespace,
-   proved on `capture` run 38612214714. The wrapper is `bit-check contained`
-   since 2026-10-16 and has not been dispatched in that form. ⭐ Its Windows job no longer cuts the host's
-   route: on 2026-10-15 it blocks the capture's own programs at the firewall,
-   reads the rules back and proves them, the operator's settled shape, proved
-   on `capture` run 38722969612: the blocked `curl.exe` exited 7 and the
-   capture still verified over loopback. The
-   orphaned-subprocess residual and the `sh -c` and `bash -e` split are closed.
-3. **`CI-11`**: the capture path in Go, leaves first, then a Windows lane of
-   `capture-client.yml` capturing qBittorrent. ⭐ **Closed on 2026-10-16**:
-   capture-client run 38862040107 captured qBittorrent 5.2.4 on Linux and on
-   Windows from one workflow, with no `sh` script on the capture path.
-4. **`OBS-10`**: built on 2026-10-16. One published qBittorrent 5.2.4 Windows
-   capture's transcripts normalize to a committed digest on Linux, and `ci.yml`
-   runs the same test on both gates. ⭐ **Closed on 2026-10-16**: CI run
-   38849622597 showed the step green on the Linux and Windows gates.
-5. **`CI-07`**: its Approach and Prove were rewritten on 2026-10-14 to the route
-   `CI-10` made. `check-corpus`, `check-indexes`, `check-release`,
-   `check-formats` and `check-staleness` are ported and run on both lanes;
-   `check-connector` too, and `check-assemble` on 2026-10-15, the last portable
-   row. ⭐ `check-bitcheck` is Go too since 2026-10-15; its Windows row waits on
-   stand-ins that are not shell scripts.
-6. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
+1. **`ENGINE-01`**, libtorrent 2.0.15. The Linux pair is built and was captured
+   on runner run 39783974176, and its view refusal is fixed by the release
+   series in the scheme (`cc76d1e`). Next: dispatch `capture-client` with
+   `adapters: ["libtorrent"]`, `routes: ["package","source"]`,
+   `windows_adapters: []`, then assemble and publish. The Windows half (PyPI's
+   wheel plus an MSVC source build) is unbuilt. [`engines.md`](engines.md).
+2. **`CI-07`**: the Windows rows that wait on stand-ins that are not shell
+   scripts. [`ci.md`](ci.md).
+3. **`CI-12`**: `check-step-bodies` independent of host load.
+4. **`CLIENT-15`**: aria2 as an independent connector.
+5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
-7. The remaining client and engine breadth, then refinements.
+6. **The proprietary Windows clients**, `CLIENT-03` uTorrent, `CLIENT-04`
+   BitComet, `CLIENT-08` BitTorrent, `CLIENT-12` Free Download Manager and
+   `CLIENT-13` Zona, which need silent installs and bounded UI automation, and
+   `CLIENT-10` Tixati, freeware for Linux and Windows whose headless driving is
+   unmeasured.
+7. **`CLIENT-11`**, KTorrent: blocked until KDE ships a binary, by the
+   operator's decision.
 
 ## Settled decisions
 
@@ -183,6 +169,13 @@ Do not re-raise one.
 | how a capture tells a per-session value from a constant one on the peer surface | the peer surface is dialled again in every session, and each connection is attributed to the session its offset falls in. Settled by the operator on 2026-10-15. `CLIENT-06`, `SCHEMA-04`. |
 | how a capture keeps a coincidence at a varying span's edge from lengthening a fixed run | three sessions instead of two, so a span has three distinct values; the classifier is unchanged. Settled by the operator on 2026-10-15. `CLIENT-06`, `SCHEMA-04`. |
 | which 5.2.4 build the qBittorrent pair measures | the `_lt20` AppImage, libtorrent 2.0.15, on the release route; the source route links libtorrent 2.0.15 built from its own tag. Both run the GUI `qbittorrent` under Xvfb inside the capture namespace. Qt stays 6.11.2 from the prebuilt archives, though the AppImage bundles 6.10.3. Settled by the operator on 2026-10-15, after the AppImages were measured. `CLIENT-01`. |
+| how `CLIENT-07`'s *agreeing observed surfaces* is read | within a platform: each platform's two routes must agree. A cross-platform difference that follows the vendor's own engine choice is a recorded finding, not a blocker. Settled by the operator on 2026-10-22. `CLIENT-07` closed on it. |
+| whether a client's Prove that says *a run* is met by Linux and Windows records from two runs | yes. Settled by the operator on 2026-10-22. `CLIENT-01` and `CLIENT-06` closed on it. |
+| whether `CLIENT-05` closes before aria2 is a connector for other targets | yes, on its Prove; the connector role is `CLIENT-15`. Settled by the operator on 2026-10-22. |
+| what happens to `CLIENT-11`, KTorrent, with no rootless KDE binary | it stays OPEN and blocked until KDE ships a binary at the newest stable. The nixpkgs route is not admitted. Settled by the operator on 2026-10-22. |
+| whether `CI-08` closes with `check-step-bodies`' load-sensitive case unresolved | yes; the case is `CI-12`. Settled by the operator on 2026-10-22. |
+| whether BiglyBT's two unswitchable vendor calls are measured on a Windows runner | no; the possible DNS query stays a recorded open question in `CLIENT-09`. Settled by the operator on 2026-10-22. |
+| what follows 2026-10-22 | cleanup and a saved handoff: the repository is being transferred and refactored. Settled by the operator on 2026-10-22. |
 | whether to take `rusqlite` 0.40.2 | no, settled by the operator on 2026-09-16. It resolves thirteen further packages for the same API. `.github/dependabot.yml` ignores every `rusqlite` version from 0.38, and dependabot closed pull request 2 itself on 2026-09-29 after reading it. |
 
 ⛔ **A capture host was never a blocker.** A hosted runner is a fresh virtual
@@ -246,9 +239,9 @@ Choices made while working unattended under the operator's standing rule, each f
 | Windows `stop` deletes the token on every path, sends `aria2.shutdown`, waits ten seconds, then kills, and writes `stop.txt` | ten seconds is the Linux half's measured grace; Windows has no SIGTERM for a console process in another process group | `adapter_aria2-next_windows.go`, `CLIENT-14` |
 | the Windows release route with no resolution is could-not-run | the adapter declares the vendor's checksums document and no reason to install without one, which is the Linux half's standalone behaviour | `adapter_aria2-next_windows.go` |
 | the Windows version reading also requires `aria2` on the first line and a version-shaped field after `version` | a usage text or an error message is then refused rather than recorded, as Transmission's Windows half refuses one | `a2nwindows.go`, `CLIENT-14` |
-| whether `CLIENT-01` and `CLIENT-06` close now that agreeing Linux and Windows profiles are published | left OPEN: the Prove says "a run", and the two platforms were published from two runs at one version, because the store never rewrites the Linux records. The operator decides. 2026-10-16. | `CLIENT-01`, `CLIENT-06` |
-| whether `CLIENT-05` closes now that aria2 1.37.0's two rootless routes are published and `E-COR-20` refuses self-corroboration | left OPEN: the Prove is met as written, but the title and Approach also name aria2 as a connector for other targets, which nothing does yet. Closing on the Prove alone is the operator's call. 2026-10-21. | `CLIENT-05` |
-| whether `CLIENT-07` closes now that Deluge 2.2.0 is published on Linux and Windows | left OPEN: each platform's pair is `build_equivalent`, but Linux runs libtorrent 2.0.15 and Windows 1.2.19, so the user agent and reserved bytes differ across platforms. Whether the Prove's *agreeing observed surfaces* means within a platform or across them is the operator's reading. 2026-10-22. | `CLIENT-07` |
+| whether `CLIENT-01` and `CLIENT-06` close now that agreeing Linux and Windows profiles are published | left OPEN: the Prove says "a run", and the two platforms were published from two runs at one version, because the store never rewrites the Linux records. The operator decides. 2026-10-16. ⭐ Settled by the operator on 2026-10-22: closed. | `CLIENT-01`, `CLIENT-06` |
+| whether `CLIENT-05` closes now that aria2 1.37.0's two rootless routes are published and `E-COR-20` refuses self-corroboration | left OPEN: the Prove is met as written, but the title and Approach also name aria2 as a connector for other targets, which nothing does yet. Closing on the Prove alone is the operator's call. 2026-10-21. ⭐ Settled by the operator on 2026-10-22: closed, the connector role is `CLIENT-15`. | `CLIENT-05` |
+| whether `CLIENT-07` closes now that Deluge 2.2.0 is published on Linux and Windows | left OPEN: each platform's pair is `build_equivalent`, but Linux runs libtorrent 2.0.15 and Windows 1.2.19, so the user agent and reserved bytes differ across platforms. Whether the Prove's *agreeing observed surfaces* means within a platform or across them is the operator's reading. 2026-10-22. ⭐ Settled by the operator on 2026-10-22: closed, agreement read within a platform. | `CLIENT-07` |
 | `OBS-10`'s "one client build" is one captured run's recorded bytes, fed to the observer as compiled on each platform | a client build cannot be byte-identical across operating systems, and comparing two platforms' own captures would mix the clients' platform differences into a test of the observer. Holding the bytes fixed makes a difference the observer's. The fixtures are qBittorrent 5.2.4's Windows `package` transcripts from `data` at `4221e28`. Reversed by replacing the fixtures and the constant. 2026-10-16. | `cross_platform_events.rs`, `OBS-10` |
 | the normalization moved out of the `assemble-capture` example into `bit_ids_probe::normalize`, unchanged, and the example calls it | a test cannot call an example's functions, and a copy in the test would prove the copy. The four fields it gives for the fixtures equal the published record's | `normalize.rs`, `assemble-capture.rs`, `OBS-10` |
 | `OBS-10` stays OPEN rather than DONE | its Prove names a Windows run, and this host is Linux. It closes on a `CI` run whose Windows job shows the step green | `OBS-10` |

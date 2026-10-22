@@ -5,6 +5,22 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-22T14:45:00Z
+
+- ⭐ **The operator settled the open questions, and five entries closed**:
+  `CLIENT-01` and `CLIENT-06` on their two-run records, `CLIENT-05` on its
+  Prove, `CLIENT-07` with agreement read within a platform, and `CI-08`.
+- **Two entries opened for what they left**: `CLIENT-15`, aria2 as an
+  independent connector, and `CI-12`, `check-step-bodies` independent of host
+  load.
+- `CLIENT-11`, KTorrent, stays blocked until KDE ships a binary.
+- The work order and `docs/history/RESUME.md` are written for a pause: the
+  repository is being transferred and refactored. 12 open, 57 done, 69 total.
+- Record: [`TODO/PROGRESS.md`](TODO/PROGRESS.md) *Settled decisions*,
+  [`TODO/clients.md`](TODO/clients.md) `CLIENT-01`, `CLIENT-05`, `CLIENT-06`,
+  `CLIENT-07`, `CLIENT-15`, and [`TODO/ci.md`](TODO/ci.md) `CI-08`, `CI-12`.
+  No version bump and no deploy.
+
 ### 2026-10-22T13:41:02Z
 
 - ⛔ **libtorrent's first runner capture was refused by the published view.**

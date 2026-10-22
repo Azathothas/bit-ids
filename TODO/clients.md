@@ -31,7 +31,7 @@ own empty digests satisfies everything else.
 ## CLIENT-01: qBittorrent capture adapter
 
 Source: operator scope, upstream repository, and August 2026 priority sample
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: The highest-priority observed client lacks a reproducible live
 profile across Linux and Windows acquisition routes.
@@ -458,6 +458,13 @@ profiles come from two runs: Linux from 38705799000 and Windows from
 store never rewrites the Linux records already on `data`. Whether two runs
 satisfy the Prove is the operator's call; `TODO/PROGRESS.md` records it.
 
+### ⭐ Closed by the operator's reading. 2026-10-22
+
+The operator settled on 2026-10-22 that the Prove's *a run* is met by the published
+records, though Linux and Windows came from two runs: Linux from capture-client
+run 38705799000, Windows from 38838965380, both on `data` and agreeing on every
+observed field.
+
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository
@@ -680,7 +687,7 @@ source-code peer-ID mapping.
 ## CLIENT-05: aria2 capture adapter and connector
 
 Source: operator scope and requirement for an independent CLI connector
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: aria2 is both a required target and a useful independently controlled
 client, but those roles must not create circular corroboration.
@@ -1139,10 +1146,18 @@ the same bytes. But the title and the Approach also name aria2 as a
 operator decides whether that half belongs to this entry. It is recorded in
 [`PROGRESS.md`](PROGRESS.md) beside `CLIENT-01` and `CLIENT-06`.
 
+### ⭐ Closed on the Prove; the connector role is `CLIENT-15`. 2026-10-22
+
+The operator settled on 2026-10-22 that `CLIENT-05` closes on its Prove: `E-COR-20`
+refuses aria2 corroborating aria2, and aria2 1.37.0's two rootless routes are
+published. The role the title also names, aria2 as a connector for other
+targets, is [`CLIENT-15`](#client-15-aria2-as-an-independent-connector), so
+it is not lost.
+
 ## CLIENT-06: Transmission capture adapter
 
 Source: operator scope and bit-cli source-profile generator study
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: Existing source-derived formulas are useful hypotheses but violate
 this corpus's live-only evidence rule.
@@ -2038,10 +2053,17 @@ and fails; 58 of 58 pass with it.
 ⚠ A retry after a post that landed but lost its answer posts the same name
 twice. `wait` takes the first, so a duplicate changes nothing.
 
+### ⭐ Closed by the operator's reading. 2026-10-22
+
+The operator settled on 2026-10-22 that the Prove's *a run* is met by the published
+records, though Linux and Windows came from two runs: Linux from capture-client
+run 38680098567, Windows from 38838965380, both on `data` and agreeing on every
+observed field.
+
 ## CLIENT-07: Deluge capture adapter
 
 Source: operator scope and upstream project
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: Deluge's daemon and UI separation can change automation and engine
 version evidence across packages.
@@ -2453,6 +2475,14 @@ agreeing within a platform, which holds, or across them, which cannot hold for
 a vendor that ships 1.2 on Windows and whose PyPI route builds 2.0 on Linux, is
 the operator's reading. It is recorded in [`PROGRESS.md`](PROGRESS.md) beside
 `CLIENT-01` and `CLIENT-06`.
+
+### ⭐ Closed: agreement is read within a platform. 2026-10-22
+
+The operator settled on 2026-10-22 that *agreeing observed surfaces* means each
+platform's two routes agree, which holds on Linux and on Windows. The
+cross-platform difference, libtorrent 2.0.15 on Linux and 1.2.19 on Windows
+with the user agent and reserved bytes that follow, stays recorded above as a
+finding.
 
 ## CLIENT-08: BitTorrent capture adapter
 
@@ -3518,4 +3548,21 @@ The vendor released 3.0.4 on 2026-10-15, so no route resolves 3.0.3 any more.
   run 38841951112.
 - **On `data` at `4221e28`:** 14 of 14 records valid and admitted to the
   published view.
+
+## CLIENT-15: aria2 as an independent connector
+
+Source: `CLIENT-05`'s title and Approach, split out when `CLIENT-05` closed on 2026-10-22
+Priority: P2 | Effort: M | Status: OPEN
+
+Problem: Every capture is corroborated by two readings of one capture's bytes,
+the Rust observer and `cpython-stdlib`. aria2 could drive a second, independent
+observation of another target, but no capture uses it that way.
+
+Approach: Drive aria2 over JSON-RPC as a peer and tracker client against
+another target's capture, and record what it reads as a connector. `E-COR-20`
+already refuses aria2 corroborating aria2 or aria2-next.
+
+Prove: a published record of a target other than aria2 carries a corroboration
+outcome from an aria2 connector, and `E-COR-20` still refuses aria2 beside
+itself.
 
