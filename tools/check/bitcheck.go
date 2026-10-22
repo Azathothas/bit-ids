@@ -2214,6 +2214,33 @@ func (b *bitcheck) plantedSelftestOf(what string, selftest []string, named strin
 	}
 }
 
+// plantedBiglybtDHT writes BiglyBT's DHT row ON into the settings both halves
+// of `biglybt` write, in a scratch copy, builds that copy and asks its
+// selftest, which must refuse the document it now makes. `CLIENT-09`.
+//
+// ⛔ THE ROW, NOT THE CHECK: bbSurfaces is a second list read off the document
+// itself, so a row changed in bbSettings is what the refusal exists to catch.
+func (b *bitcheck) plantedBiglybtDHT() {
+	const bb = "tools/check/biglybt.go"
+	const line = "\t{\"Plugin.DHT.dht.enabled\", 0},"
+	b.save(bb, "biglybt.orig")
+	defer b.put("biglybt.orig", bb)
+	landed := false
+	b.rewrite("biglybt.orig", bb, func(l string) (string, bool) {
+		if l == line && !landed {
+			landed = true
+			return "\t{\"Plugin.DHT.dht.enabled\", 1},", true
+		}
+		return l, true
+	})
+	if !landed {
+		b.h.bad("adapters BiglyBT's DHT row could not be planted: biglybt.go no longer has [" + strings.TrimSpace(line) + "]")
+		return
+	}
+	b.plantedSelftestOf("BiglyBT's DHT row, planted on,", []string{"biglybt", "--selftest"},
+		"FAILED the Linux settings are held")
+}
+
 func (b *bitcheck) adapters() {
 	b.agree("adapters clean tree", "check-adapters", 0)
 
@@ -2281,6 +2308,16 @@ func (b *bitcheck) adapters() {
 	}
 	b.plantedRqbitSwitch()
 	b.rqbitToolchainPin()
+	// ⭐ AND biglybt's, ONE SELFTEST FOR BOTH HALVES: the scheme, the settings and
+	// their refusal, the probe class, the answer, the launch, the source build's
+	// file split, the tarball's members and the scrub are biglybt.go, untagged.
+	// `CLIENT-09`.
+	if rc, out := b.run("biglybt", "--selftest"); rc == 0 && strings.Contains(out, `"failed":0}`) {
+		b.h.ok("adapters the biglybt adapter's selftest holds: go (exit 0)")
+	} else {
+		b.h.bad(fmt.Sprintf("adapters the biglybt adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
+	}
+	b.plantedBiglybtDHT()
 
 	// ⛔ A RELEASE FETCH WITH NO TIME LIMIT. ⚠ Planted in the installer, because
 	// `ACQ-06` moved every release retrieval there, and in its Go file since

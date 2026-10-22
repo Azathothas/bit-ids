@@ -2446,6 +2446,227 @@ and acquire official and package-manager builds on both host families.
 Prove: runs correlate product, JVM, and host facts with agreeing protocol
 observations for the same stable release.
 
+### ⭐ The adapter is built, and both Linux routes captured on the session host. 2026-10-21
+
+[`../tools/check/adapter_biglybt.go`](../tools/check/adapter_biglybt.go) and
+[`../tools/check/adapter_biglybt_windows.go`](../tools/check/adapter_biglybt_windows.go)
+register `biglybt` on each platform. Their pure decisions are one untagged
+file, [`../tools/check/biglybt.go`](../tools/check/biglybt.go), and `bit-check
+biglybt --selftest` asks them on any host: 133 cases, all held.
+`check-bitcheck` runs it, and plants the DHT row of the settings at 1, which
+the selftest refuses.
+
+⭐ **What BiglyBT publishes, read on 2026-10-21** through `AGENTS.md` rule 8's
+route:
+
+| source | what it carries |
+| --- | --- |
+| GitHub release `v4.1.0.0`, 2026-05-20 | the newest stable. 34 releases, one per tag. 14 assets, each with a listing digest |
+| `GitHub_BiglyBT_unix.tar.gz` | 49824018 bytes, sha256 `3fd0ac70...`. 76 files under `biglybt/`: `BiglyBT.jar` (21258206 bytes, `ff2a3d1c...`, class version 52), `commons-cli.jar`, the vendor's launcher script `biglybt`, 11 plugins, SWT jars. **No JRE** |
+| `GitHub_BiglyBT_Installer.sh` | install4j for Linux. It also carries no JRE and searches for a JVM from 1.8 to 25 |
+| `GitHub_BiglyBT_Windows_Installer.exe` | install4j for Windows, 82936288 bytes, `b9610b3d...`. Its version resource reads `BiglyBT_Installer64_WithJava21.exe` and its data names `jre.tar.gz`: a bundled JRE |
+| `GitHub_BiglyBT_Windows_NoJRE.exe` | the same installer with no JRE, `ab7e58c8...` |
+| `GitHub_BiglyBT.jar` | the jar alone, the tarball's own byte for byte |
+| `GitHub_sha256sum.txt` | names the tarball, both Windows installers and the `.sh`, and **not the jar** |
+| tag `v4.1.0.0` | commit `9ea7ea8a...`. A Maven project at version `3.4.0.1-SNAPSHOT`; the version is `Constants.BIGLYBT_VERSION` |
+
+| index | at 4.1.0.0? |
+| --- | --- |
+| winget `BiglySoftware.BiglyBT` | yes, spelled `4.1`. x64 is the vendor's `GitHub_BiglyBT_Windows_NoJRE.exe` over https, InstallerSha256 `AB7E58C8...`, `Scope: machine`, switches `-q`, and a dependency on `EclipseAdoptium.Temurin.25.JRE`. No `InstallLocation` switch |
+| Scoop `nonportable/biglybt-np` | no: 4.0.0.0. Its autoupdate names the 4.0 asset names, which 4.1 renamed |
+| Chocolatey `biglybt` | no: 3.5.0.0 |
+| Ubuntu 24.04 apt | none |
+| Flathub, Snap | not usable rootless on a runner |
+
+⭐ **The routes:**
+
+| platform | route | what it does | `package` |
+| --- | --- | --- | --- |
+| Linux | `release` | the vendor's tarball, `install-rootless --fetch` with `digest_source=both`, extracted in Go into `<prefix>/opt/biglybt`; only directories and regular files under `biglybt/` are placed | `java-tarball` |
+| Linux | `source` | the `v4.1.0.0` tag, cloned and compiled by the host's JDK, then jarred beside the tag's own `commons-cli.jar` | `java-source` |
+| Windows | `release` | the vendor's installer with its JRE, `-q -dir %ProgramFiles%\BiglyBT`, fetched under the same two digests | `install4j-installer` |
+| Windows | `package` | `winget install --id BiglySoftware.BiglyBT --scope machine --architecture x64`, no version | `install4j-installer-nojre` |
+
+Why these:
+
+- **Linux has no package route.** No distribution carries BiglyBT, Flathub and
+  Snap need privilege, and `ACQ-06` keeps a privileged route off the capture
+  path. The install4j `.sh` is the tarball's listing and delivery again. So
+  the second route is the tag, as for `aria2-next`.
+- ⛔ **Both Linux routes run the host's JVM**: `BIT_IDS_BIGLYBT_JAVA`, else
+  `$JAVA_HOME`, else `java` on PATH. Two lanes on one runner image run one
+  JDK. So the pair differs in how BiglyBT arrived and not in what runs it.
+- **Windows pairs the vendor's two packagings**, which is what the entry's
+  *Problem* asks to represent. winget is the only index at 4.1.0.0. The pair
+  shares its origin, GitHub's release, as aria2-next's Windows pair does; the
+  resolver, the downloader and the digest check differ.
+- ⚠ **So the two Windows routes run one jar on two JVMs**: the bundled JRE, and
+  whatever the NoJRE installer chose, which it records in
+  `.install4j\inst_jre.cfg`. `version` prints each JVM's own properties.
+
+⛔ **The source build is upstream's own recipe, run as `javac`.** The vendor
+builds its jar with Eclipse: its anonymous classes are numbered differently,
+and it carries the Java 8 DNS service `AENameServiceDescriptor`. Upstream's
+Maven profile `java-9-plus` deletes that file and its service entry, compiles
+source and target 1.8 from ISO-8859-1 sources, and copies the Hebrew and
+Indonesian bundles under their new codes. Maven itself would fetch SWT 4.9
+from a repository off GitHub, so the route runs `javac` against the tag's own
+`core/lib` jars and `uis/lib/swt-linux-64.jar`. On this host: 3759 sources
+and 570 resources, 25 to 45 seconds of `javac` 21.0.12.1, under a minute for
+the whole install. `build-deps.txt` records the recipe.
+
+⭐ **How the build is driven.** BiglyBT is GUI-first. Its console UI,
+`com.biglybt.ui.Main --ui=console`, starts the core with no display, and keeps
+running when its stdin reaches end of file. No remote UI is enabled, so the
+adapter holds no credential.
+
+- The launch is the vendor script's: `-Xmx256m`, the jar and
+  `commons-cli.jar`, `java.library.path` and `azureus.install.path` at the
+  install, and `--add-opens java.base/java.net=ALL-UNNAMED` on Java 11 and
+  later. On Windows the vendor's `BiglyBT.vmoptions` comes first. Beside it:
+  `azureus.config.path` in the workdir, `azureus.instance.port` drawn per
+  session, and `az.instance.manager.enable=0`.
+- ⛔ **The torrent is handed over, not passed at launch.** A torrent on the
+  first command line reaches the console UI before the core starts, and Main
+  ends the JVM with *Start fails: Core not running*. Measured on the first
+  drive. So `start` waits for the console's *Running BiglyBT* welcome, then
+  runs the same launch with the torrent. That finds the instance port held,
+  says *passed startup args to already-running BiglyBT*, and the console
+  prints *Open Torrent*.
+- `stop` sends SIGTERM on Linux. The core's shutdown hook stops the download,
+  which announces `stopped`, in three seconds. On Windows `stop` runs the
+  vendor's `--closedown` over the instance port, 6 seconds on this host, and
+  then `taskkill /T /F` after 20. `stop.txt` says which.
+- ⛔ The JVM's option variables, `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS` and
+  `JDK_JAVA_OPTIONS`, are dropped from every JVM the adapter starts.
+  `launch.txt` records which were set. This host's sets an HTTPS proxy there.
+
+⛔ **`version`: the build has no `--version`, and a JRE has no compiler.** So
+`biglybt.go` writes a class file byte by byte: one method, straight-line code
+with no stack map. The route's JVM runs it with the installed jar on the class
+path. It reads `Constants.BIGLYBT_VERSION` and `VERSION_ID` by reflection,
+because the first is a compile-time constant a compiled reference would carry
+inlined. It prints them with the JVM's own `java.*` and `os.*` properties. It
+writes nothing; its class goes to a temporary directory. The answer is refused
+unless the version has four components and the peer ID prefix spells it.
+
+⭐ **The settings**, `biglybt.config` written whole per session, bencoded. The
+keys were read from the build's own `set` listing. The sockets were read with
+`ss` before and after.
+
+| surface | with the vendor's defaults | the setting |
+| --- | --- | --- |
+| Vuze DHT | DHT database files written | `Plugin.DHT.dht.enabled=0` |
+| mainline DHT, plugin `mldht` | UDP 49001, and the DHT bit in the handshake | `PluginInfo.mldht.enabled=0`, `Plugin.mlDHT.enable=0` |
+| PEX, DHT and plugin peer sources | on | `Peer Source Selection Default.{PeerExchange,DHT,Plugin}=0` |
+| LAN Peer Finder | on | `Plugin.azlocaltracker.Plugin.localtracker.enable=0` |
+| LAN instance discovery, 239.255.67.250:16680 | on | `-Daz.instance.manager.enable=0`: there is no config key |
+| UPnP, NAT-PMP | UPnP on, SSDP joined | `Plugin.UPnP.upnp.enable=0`, `Plugin.UPnP.natpmp.enable=0` |
+| UPnP media server, plugin `azupnpav` | TCP 40600 on every address | `PluginInfo.azupnpav.enabled=0` |
+| updates | on | `update.start`, `update.periodic`, `update.opendialog`, `update.autodownload`, `Plugin.PluginUpdate.enable.update`, all 0 |
+| version and stats sending | `Send Version Info=1` | 0 |
+| I2P and Tor networks | the tracker defaults are on | `Network Selection Default.{I2P,Tor}=0` and `Tracker Network Selection Default.{I2P,Tor}=0` |
+| friends and decentralised chat | chat on | `Plugin.azbuddy.azbuddy.*` three keys at 0 |
+| Swarm Discoveries | on | `rcm.overall.enabled=0` |
+| uTP, plugin `azutp` | UDP on the data port | `PluginInfo.azutp.enabled=0` |
+| the other bundled plugins | loaded | `PluginInfo.<id>.enabled=0` for all eleven |
+| ports | random | the peer port as `TCP.Listen.Port`, `UDP.Listen.Port` and `UDP.NonData.Listen.Port`; port 0 leaves them to the build |
+
+With these, a running build holds TCP 51413 on every address and two
+loopback listeners. One is the instance port; the other is the Magnet
+plugin's 45100, which has no switch. Nothing holds UDP.
+
+⛔ **The plugin id is the plugin's, and the first pair proved it.** The mlDHT
+plugin's `plugin.properties` says `plugin.id=mldht`. The first drive wrote
+`PluginInfo.mlDHT.enabled=0`, which matches nothing, so the release route
+loaded mlDHT, and the source route has no such plugin. `assemble-capture` then
+called the pair `divergent` on `peer_wire/reserved`: `8000000000130005` on the
+release route against `...0004` on the source route. The low bit of the last
+byte is BEP 5's DHT bit, which `BTHandshake.setMainlineDHTEnabled` sets when
+a mainline DHT provider registers. With `mldht`, both routes send
+`8000000000130004` and the pair is `build_equivalent`.
+
+⚠ **Two differences between the Linux routes remain, and both are recorded.**
+The core loads the vendor's `azupdater` and `azupdaterpatcher` from the
+tarball's `plugins/` whatever their setting. The source route has neither.
+Updates are off, and `plugin list` shows nothing else that differs. And uTP is
+off on both, so uTP is not measured.
+
+⛔ **Two of the vendor's calls have no switch, and containment refuses them.**
+Per session, the version check asks `version.biglybt.com` about four times, and
+the metasearch refresh asks `vrpc.vuze.com` for featured templates once.
+`PluginInitializer` asks the version check for disabled plugin ids at start,
+unconditionally. In `bit-check contained` each fails at DNS, with
+`UnknownHostException` in the kept `debug_1.log`. ⚠ On Windows the firewall
+blocks `java.exe`, and the name lookup goes through the system resolver, so a
+DNS query for those two names may leave a Windows runner. A runner's lane
+shows whether it does.
+
+⛔ **Rule 12: the client writes keys the bundle scan does not name.** A first
+start writes `core.crypto.ecc.1.privatekey` and `.2`,
+`core.crypto.pw.1.persist_value`, `msgsync` private keys, the RSS plugin's
+`Pairing Session Key` and the simple API's `apikey` into `biglybt.config` and
+its `.bak`. It also writes a Java keystore and trust store, the DHT's node
+files and the anonymous `ID` the version check sends. So `stop` removes the
+whole config directory on every path out, after moving `logs/` to
+`biglybt-logs/`. It then removes any file in the workdir that holds one of
+those values, raw or in hex. `settings.txt` keeps what the session wrote.
+
+⭐ **Driven on the session host on 2026-10-21, as `ubuntu`, each lane with its
+own `HOME`, prefix, claim and `RUNNER_TEMP`, through `bit-check install-step`,
+on OpenJDK 21.0.12.1 from `JAVA_HOME`:**
+
+| step | release | source |
+| --- | --- | --- |
+| resolve | `resolve-release`: 34 releases, 1 selected, 32 superseded, `v1.8.00` `below_scheme_floor`; `digest_source=both` | `resolve-source`: 34 refs, `v4.1.0.0` selected, the same verdicts |
+| `install-step` | exit 0 in 5 seconds, `acquired=yes`, `package=java-tarball` | exit 0 in 59 seconds, and 36 on a second drive, `acquired=yes`, `package=java-source`, commit `9ea7ea8a...` |
+| the jar | 21258206 bytes, `ff2a3d1c...`, the vendor's | 19462436 bytes, `3671a601...`, then `c1a2ffc7...`: ⚠ the jar records each entry's time, so two builds of one tag digest apart |
+| the build's answer | `4.1.0.0`, `-BI4100-`, Java 21.0.12.1 | the same |
+| capture, 45 s, 3 sessions, in a loopback-only namespace as uid 1000 | exit 0: 6 announces, 6 peer streams, 30 segments, verified by `sha256sum` | the same |
+| tracker `peer_id` | `-BI4100-` and a new twelve-byte tail per session | the same |
+| tracker `user_agent` | `BiglyBT 4.1.0.0` | the same |
+| peer-wire `reserved` | `8000000000130004` | the same |
+| `stop` | `sigterm` in every session, stopped after 40 s with 5 s margin | the same |
+| bundle | `scan-bundle` clean; no config, no key, no file holding a secret value | the same |
+| `assemble-dispatch`, by hand | both records `publishable`, `classify_across` `build_equivalent`, 4 fields agreeing; refused only for the run manifests a dispatch writes | |
+
+⚠ `bit-check contained` asks `sudo -n`, which `ubuntu` has not got here. So
+root made the namespace and `contained --inner` dropped to uid 1000 before
+the capture, which is what `contained` does itself.
+
+⚠ The announce carries `supportcrypto=1`, `azudp=51413` (with no UDP
+listener), `corrupt=0`, `numwant=100`, `no_peer_id=1`, `compact=1`, an
+eight-character `key` and `azver=3`. Its headers are `User-Agent`,
+`Connection: close`, `Accept-Encoding: gzip`, `Host` and `Accept: */*`. The
+last is the JVM's. `Tracker Client Send OS and Java Version` is left at its
+default, 0, so the user agent carries neither. The extension handshake
+offers `upload_only`, `ut_metadata` and `ut_pex`, and `v` is `BiglyBT
+4.1.0.0`. ⚠ `ut_pex` is offered although the PEX peer source is off; that is
+the product's handshake and it is recorded.
+
+⛔ **What only a runner can prove.** Dispatch `capture-client` with `adapters:
+["biglybt"]`, `routes: ["release","source"]`, `windows_adapters: ["biglybt"]`
+and `windows_routes: ["release","package"]`. The workflow needs no change:
+the Linux source lane reads `compiles=source`. Check, in reading order:
+
+1. whether the Linux lanes find `ubuntu-24.04`'s `JAVA_HOME`, a Temurin JDK,
+   and whether its `javac` compiles `-source 8 -target 8`. `build-deps.txt`
+   and `version.err` name the JDK;
+2. whether the vendor's Windows installer installs unattended with `-q -dir`,
+   and whether it starts BiglyBT. `install4j-install.txt`, `install4j.log` and
+   `launched.txt` show it. Whether `%ProgramFiles%\BiglyBT` holds
+   `BiglyBT.jar`, `commons-cli.jar`, `jre\bin\java.exe` and
+   `BiglyBT.vmoptions`;
+3. whether winget installs the Temurin 25 JRE dependency and the NoJRE
+   installer, and which JVM `.install4j\inst_jre.cfg` names. `winget.log` and
+   `version.err` show it;
+4. whether both Windows jars digest alike, and what each JVM answers;
+5. whether `--closedown` ends the core within 20 seconds. `client/stop.txt`
+   says `closedown` or `killed`. And whether a DNS query for
+   `version.biglybt.com` leaves the runner;
+6. the four captures, then `assemble-bundle`: each platform's pair
+   `publishable` and `build_equivalent`.
+
 ## CLIENT-10: Tixati capture adapter
 
 Source: operator scope and August 2026 priority sample

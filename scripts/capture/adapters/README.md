@@ -16,6 +16,7 @@ their contract.** Each is a `bit-check` command, `bit-check adapter <name>
 | `deluge` | [`../../../tools/check/adapter_deluge.go`](../../../tools/check/adapter_deluge.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/deluge.go`](../../../tools/check/deluge.go) |
 | `qbittorrent-enhanced` | [`../../../tools/check/adapter_qbittorrent-enhanced.go`](../../../tools/check/adapter_qbittorrent-enhanced.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/qbtenhanced.go`](../../../tools/check/qbtenhanced.go) |
 | `rqbit` | [`../../../tools/check/adapter_rqbit.go`](../../../tools/check/adapter_rqbit.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/rqbit.go`](../../../tools/check/rqbit.go). An engine target |
+| `biglybt` | [`../../../tools/check/adapter_biglybt.go`](../../../tools/check/adapter_biglybt.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/biglybt.go`](../../../tools/check/biglybt.go) |
 
 The seven Linux adapters share their mechanics, and none of their decisions, in
 [`../../../tools/check/adapterkit.go`](../../../tools/check/adapterkit.go). The
@@ -258,6 +259,25 @@ in the running build. The `package` route compiles, so `describe` names
 `compiles=package`, and the Windows lane now reads `compiles` as the Linux one
 does. `ENGINE-03` in [`../../../TODO/engines.md`](../../../TODO/engines.md)
 carries the measurements.
+
+⭐ **`biglybt` is the one Java target, and the one whose build has no
+`--version`.** `version` writes a small class file, made byte by byte in
+[`../../../tools/check/biglybt.go`](../../../tools/check/biglybt.go), and runs
+it on the route's own JVM with the installed jar on the class path. It reads
+`Constants.BIGLYBT_VERSION` and `VERSION_ID` by reflection and prints them with
+the JVM's own properties, so the record carries the product, its peer ID prefix
+and the runtime from one answer. `start` runs the vendor's console UI,
+`com.biglybt.ui.Main --ui=console`, on `biglybt.config` written whole. The
+torrent is handed to the running instance by a second launch, the way the
+vendor's launcher hands one over, because a torrent on the first command line
+ends the JVM before the core starts. `stop` is SIGTERM on Linux and the
+vendor's `--closedown` on Windows. The scrub removes the whole config directory,
+which holds private keys the bundle scan does not recognise, and keeps its logs.
+Linux pairs the vendor's tarball with the tag compiled by the host's JDK, both
+on the host's JVM. Windows pairs the vendor's installer, which bundles a JRE,
+with winget's NoJRE install and its Temurin dependency. `CLIENT-09` in
+[`../../../TODO/clients.md`](../../../TODO/clients.md) carries the
+measurements.
 
 ## ⛔ The workdir IS the evidence bundle
 

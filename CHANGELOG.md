@@ -5,6 +5,27 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-22T01:30:39Z
+
+- ⭐ **BiglyBT has an adapter**, `biglybt`, on Linux and Windows, at 4.1.0.0.
+  It drives the vendor's console UI headless and hands the torrent to the
+  running instance the way the vendor's own launcher does. No remote UI is
+  enabled, so the adapter holds no credential.
+- The build has no `--version`, so `version` runs a small class file, written
+  by the adapter, on the route's own JVM against the installed jar. The answer
+  names the product, its peer ID prefix and the JVM.
+- The routes: on Linux the release tarball and the `v4.1.0.0` tag, compiled
+  here, on one JVM; on Windows the installer with its own JRE and winget's
+  install on Temurin. Every origin is https.
+- The settings turn off both DHTs, PEX, the LAN Peer Finder and LAN instance
+  discovery, UPnP and NAT-PMP, updates, version sending, I2P and Tor, chat and
+  every bundled plugin, uTP among them. `stop` removes the client's config
+  directory, which holds private keys the bundle scan does not recognise.
+- Driven on the session host, both Linux routes answered 4.1.0.0 and captured
+  `-BI4100-` and `BiglyBT 4.1.0.0`, `build_equivalent` across them.
+- Record: [`TODO/clients.md`](TODO/clients.md) `CLIENT-09`.
+  No version bump and no deploy.
+
 ### 2026-10-22T00:56:58Z
 
 - ⭐ **rqbit has an adapter, the first engine target**, on Linux and Windows.

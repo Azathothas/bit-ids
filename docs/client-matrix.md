@@ -42,7 +42,7 @@ Sources:
 | `transmission` | Linux, Windows where supported | open source | upstream release/build | distro/WinGet package | `CLIENT-06` |
 | `deluge` | Linux, Windows | open source | upstream/PyPI release | distro/Windows package | `CLIENT-07` |
 | `bittorrent` | Windows | proprietary | vendor installer | package registry | `CLIENT-08` |
-| `biglybt` | Linux, Windows | open source | GitHub release | distro/package registry | `CLIENT-09` |
+| `biglybt` | Linux, Windows | open source | its GitHub release: the Linux tarball, the Windows installer with its JRE ⭐ | source build at the matching tag (Linux), winget's NoJRE install with Temurin (Windows) ⭐ | `CLIENT-09` |
 | `tixati` | Linux, Windows | proprietary freeware | vendor package | package registry | `CLIENT-10` |
 | `ktorrent` | Linux | open source | KDE/Flatpak release | distro package | `CLIENT-11` |
 | `fdm` | Linux, Windows | proprietary | vendor package | package registry | `CLIENT-12` |

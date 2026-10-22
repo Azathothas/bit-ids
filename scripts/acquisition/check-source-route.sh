@@ -536,4 +536,39 @@ else
   fail "and would select the parent's release-5.3.0 (got [$(cat "$WORK/qbeparent.out" 2>/dev/null)])"
 fi
 
+# -- ⭐ BIGLYBT'S OWN TAGS, AND THE ONE THE FOUR-PART SCHEME CANNOT READ ------
+#
+# The 34 tag names the tags endpoint answered for `BiglySoftware/BiglyBT` on
+# 2026-10-21, every one `v` and four components except `v1.8.00`, which is
+# three under major 1. With exactly four components and no floor it fails the
+# source route closed; a floor of 2 releases it. `CLIENT-09`.
+BIGLYBT_TAGS='1.0.0.0 1.0.2.0 1.2.0.0 1.4.0.0 1.5.0.0 1.6.0.0 1.7.0.0 1.8.00
+1.9.0.0 2.0.0.0 2.1.0.0 2.2.0.0 2.2.0.2 2.3.0.0 2.4.0.0 2.5.0.0 2.6.0.0 2.7.0.0
+2.7.0.2 2.8.0.0 2.9.0.0 3.0.0.0 3.1.0.0 3.2.0.0 3.3.0.0 3.4.0.0 3.5.0.0 3.6.0.0
+3.7.0.0 3.8.0.0 3.8.0.2 3.9.0.0 4.0.0.0 4.1.0.0'
+for _t in $BIGLYBT_TAGS; do
+  ref_line "v$_t"
+done >"$WORK/refs-biglybt.txt"
+_count=$(wc -l <"$WORK/refs-biglybt.txt" | tr -d ' ')
+if [ "$_count" = 34 ]; then
+  pass "the replayed biglybt listing carries the 34 refs measured"
+else
+  fail "the replayed biglybt listing carries the 34 refs measured (got $_count)"
+fi
+BIT_IDS_STUB_MINC=4 BIT_IDS_STUB_MAXC=4 case_is 1 "failed closed" \
+  "with no floor, biglybt's v1.8.00 fails the refs closed" bbnofloor "$WORK/refs-biglybt.txt"
+BIT_IDS_STUB_MINC=4 BIT_IDS_STUB_MAXC=4 BIT_IDS_STUB_FLOOR=2 case_is 0 "" \
+  "with a floor of 2, biglybt's refs resolve" bbfloor "$WORK/refs-biglybt.txt"
+if [ "$(cat "$WORK/bbfloor.out" 2>/dev/null)" = "v4.1.0.0" ]; then
+  pass "and select v4.1.0.0, the release route's answer on 2026-10-21"
+else
+  fail "and select v4.1.0.0 (got [$(cat "$WORK/bbfloor.out" 2>/dev/null)])"
+fi
+_released=$(grep -c -F -e '"verdict": "below_scheme_floor"' "$WORK/bbfloor.work/resolution.json" 2>/dev/null)
+if [ "$_released" = 1 ]; then
+  pass "the floor released exactly v1.8.00"
+else
+  fail "the floor released exactly v1.8.00 (got [$_released])"
+fi
+
 store_report check-source-route/1 cases "$JSON"
