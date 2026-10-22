@@ -49,7 +49,10 @@ const (
 	libtorrentRepo   = "arvidn/libtorrent"
 	// libtorrentPin is the version both routes must install: RC_2_0's newest
 	// stable tag on 2026-10-22, and PyPI's newest 2.0 release the same day.
-	libtorrentPin          = "2.0.15"
+	libtorrentPin = "2.0.15"
+	// libtorrentSeries is the release series the scheme pins, which the pin
+	// stands inside: `describe` declares it and the resolver selects within it.
+	libtorrentSeries       = "2.0"
 	libtorrentPinTag       = "v2.0.15"
 	libtorrentPinnedCommit = "1eb18faeae156d8dbbab42935c082f8b81f50989"
 	// libtorrentLibraryVersion is `lt.__version__` at the pin, which carries
@@ -78,19 +81,25 @@ const (
 
 // libtorrentDescribe is everything `describe` prints after `binary=`.
 //
-// ⛔ THE SCHEME READS THE 2.0 SERIES ALONE. The prefix is `v2.0.` and a
-// version is one component, so `v2.1.2` and every `v1.2.x` are another
-// series's tags, `foreign_tag`, and `v2.0.15` is selected. ⚠ No
+// ⛔ THE SCHEME IS THE LIBRARY'S OWN, PINNED TO THE 2.0 SERIES. The prefix is
+// `v` and a version is three components, `2.0.15`, which is what the record's
+// `build.version` says and what the published view orders. `release_series=2.0`
+// is the pin: `v2.1.x` and `v1.2.x` are this library's releases of another
+// series, `other_series`, and `v2.0.15` is selected. ⚠ UNTIL 2026-10-22 the
+// pin was the prefix, `v2.0.` and one component, which selected the same tag
+// as the version `15`; the view could not order the record's `2.0.15` under
+// it and refused assemble-bundle run 39784872974 with `E-VIW-02`. ⚠ No
 // `release_asset`: the route that compiles is the tag, and the release's
 // tarball is not fetched.
 func libtorrentDescribe() string {
 	var b strings.Builder
 	b.WriteString("target_kind=library\n")
 	fmt.Fprintf(&b, "release_repo=%s\n", libtorrentRepo)
-	b.WriteString("release_tag_prefix=v2.0.\n")
-	b.WriteString("release_min_components=1\n")
-	b.WriteString("release_max_components=1\n")
+	b.WriteString("release_tag_prefix=v\n")
+	b.WriteString("release_min_components=3\n")
+	b.WriteString("release_max_components=3\n")
 	b.WriteString("release_floor_major=-\n")
+	fmt.Fprintf(&b, "release_series=%s\n", libtorrentSeries)
 	b.WriteString("compiles=source\n")
 	b.WriteString("routes=package,source\n")
 	return b.String()
@@ -449,11 +458,13 @@ func libtorrentSelftest(args []string) int {
 	}
 
 	d := libtorrentDescribe()
-	for _, want := range []string{"target_kind=library", "release_repo=arvidn/libtorrent", "release_tag_prefix=v2.0.",
-		"release_min_components=1", "release_max_components=1", "release_floor_major=-", "compiles=source",
-		"routes=package,source"} {
-		check("describe carries "+want, strings.Contains(d, want+"\n"))
+	for _, want := range []string{"target_kind=library", "release_repo=arvidn/libtorrent", "release_tag_prefix=v",
+		"release_min_components=3", "release_max_components=3", "release_floor_major=-", "release_series=2.0",
+		"compiles=source", "routes=package,source"} {
+		check("describe carries "+want, strings.Contains("\n"+d, "\n"+want+"\n"))
 	}
+	check("the pin stands inside the series", strings.HasPrefix(libtorrentPin, libtorrentSeries+".") &&
+		libtorrentPinTag == "v"+libtorrentPin)
 	check("describe declares no release asset", !strings.Contains(d, "release_asset"))
 	for _, c := range []struct {
 		route, want string

@@ -32,13 +32,14 @@ use crate::canonical::{Instant, Label, Sha256Digest, Slug, Url, Version};
 use crate::json::DocumentError;
 use crate::validate::{SchemaError, Violations, strictly_ascending};
 
-/// Identifier carried by every second-generation resolution.
+/// Identifier carried by every third-generation resolution.
 ///
-/// ⚠ **The second generation adds the scheme floor** and the verdict it gives,
-/// `below_scheme_floor`. A first-generation reader refuses both by
-/// `deny_unknown_fields`, which is why this is a new identifier rather than a
-/// field slipped into the old one. `CLIENT-06`.
-pub const RESOLUTION_SCHEMA: &str = "bit-ids/resolution/2";
+/// ⚠ **The second generation added the scheme floor** and the verdict it
+/// gives, `below_scheme_floor`. `CLIENT-06`. ⚠ **The third adds the release
+/// series** and its verdict, `other_series`. `ENGINE-01`. A reader of an older
+/// generation refuses each by `deny_unknown_fields`, which is why each is a new
+/// identifier rather than a field slipped into the old one.
+pub const RESOLUTION_SCHEMA: &str = "bit-ids/resolution/3";
 
 /// The schema identifier a resolution declares.
 ///
@@ -134,9 +135,164 @@ pub struct VersionScheme {
     /// over a winner of 3.x says nothing about a `3.99` it cannot read, so those
     /// stay unorderable and block, which is `E-RES-10` one layer down.
     pub floor_major: Option<u64>,
+    /// ⭐ The release series this scheme speaks for, when the target pins one:
+    /// the leading components every version it orders begins with.
+    ///
+    /// A project that maintains several stable series at once publishes the
+    /// newest of each side by side. Measured on 2026-10-22: `libtorrent`'s 136
+    /// refs carry `v1.2.20`, `v2.0.15` and `v2.1.2`, all three stable, and the
+    /// series the package index and the tags agree on is 2.0. A tag of another
+    /// series is [`Verdict::OtherSeries`], a release of this target that is
+    /// not this build line's, rather than a foreign tag or an older version.
+    ///
+    /// ⛔ **The view honours it too.** [`Self::components`] orders a version
+    /// only inside the series, so a record of another series is refused by the
+    /// latest view rather than compared across lines that both stay current.
+    pub series: Option<Series>,
+}
+
+/// The leading components a pinned release series fixes, such as `2.0`.
+///
+/// ⛔ **A type rather than a string, so a malformed series is unrepresentable
+/// rather than refused later.** Each component is a plain integer, as
+/// [`VersionScheme::components`] reads one: no empty part and no leading zero,
+/// so `2.`, `.0`, `02.0` and `2.x` are each refused where they are read.
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Series(Vec<u64>);
+
+impl Series {
+    /// Reads a series spelled as dotted plain integers.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an empty series, an empty component, a component
+    /// with a leading zero, or one that is not a plain integer.
+    pub fn parse(text: &str) -> Result<Self, crate::canonical::CanonicalError> {
+        let refuse = |why: &str| {
+            crate::canonical::CanonicalError::new("release-series", format!("{text:?}: {why}"))
+        };
+        if text.is_empty() {
+            return Err(refuse("a series names at least one component"));
+        }
+        text.split('.')
+            .map(|part| {
+                plain_integer(part)
+                    .ok_or_else(|| refuse("each component is a plain integer with no leading zero"))
+            })
+            .collect::<Result<Vec<u64>, _>>()
+            .map(Self)
+    }
+
+    /// The components the series fixes.
+    #[must_use]
+    pub fn components(&self) -> &[u64] {
+        &self.0
+    }
+
+    /// How many leading components it fixes.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Never true for a parsed series; present because `len` is.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl fmt::Display for Series {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (at, part) in self.0.iter().enumerate() {
+            if at > 0 {
+                f.write_str(".")?;
+            }
+            write!(f, "{part}")?;
+        }
+        Ok(())
+    }
+}
+
+impl Serialize for Series {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for Series {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        use serde::de::Error as _;
+        let text = String::deserialize(deserializer)?;
+        Self::parse(&text).map_err(D::Error::custom)
+    }
+}
+
+/// A dot-component read as [`VersionScheme::components`] reads one: digits
+/// only, and no leading zero.
+fn plain_integer(part: &str) -> Option<u64> {
+    if part.is_empty()
+        || !part.bytes().all(|b| b.is_ascii_digit())
+        || (part.len() > 1 && part.starts_with('0'))
+    {
+        return None;
+    }
+    part.parse().ok()
 }
 
 impl VersionScheme {
+    /// Whether the declarations are coherent with each other.
+    ///
+    /// ⛔ A series as long as the fewest components a version may have leaves
+    /// nothing to order: every version of it would be the series itself. So a
+    /// series fixes strictly fewer components than `min_components`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a sentence naming the incoherence.
+    pub fn check(&self) -> Result<(), String> {
+        if let Some(series) = &self.series
+            && series.len() >= usize::from(self.min_components)
+        {
+            return Err(format!(
+                "the series {series} fixes {} component(s) and a version has at least {}, \
+                 so nothing is left to order",
+                series.len(),
+                self.min_components
+            ));
+        }
+        Ok(())
+    }
+
+    /// Whether a tag's text belongs to a release series other than the one this
+    /// scheme pins.
+    ///
+    /// ⛔ **Only a difference that can be READ sets a tag aside.** The leading
+    /// components are compared one by one with the series; the first that is a
+    /// plain integer and differs puts the tag in another series. A component
+    /// that is not a plain integer before any difference, or a text that ends
+    /// while still agreeing, says nothing, so the tag goes on to be judged and
+    /// blocks if nothing can order it. `v2` under a series of `2.0` is that
+    /// case: it could be anything.
+    #[must_use]
+    pub fn outside_series(&self, text: &str) -> bool {
+        let Some(series) = &self.series else {
+            return false;
+        };
+        let mut parts = text.split('.');
+        for want in series.components() {
+            let Some(part) = parts.next() else {
+                return false;
+            };
+            match plain_integer(part) {
+                Some(found) if found == *want => {}
+                Some(_) => return true,
+                None => return false,
+            }
+        }
+        false
+    }
+
     /// Strips the prefix, or reports that the tag is not this target's.
     fn strip<'a>(&self, tag: &'a str) -> Option<&'a str> {
         match &self.tag_prefix {
@@ -163,7 +319,8 @@ impl VersionScheme {
     /// is a value in two places with nothing comparing them.
     ///
     /// Returns `None` for text this scheme cannot order, which is what lets a
-    /// caller block rather than guess.
+    /// caller block rather than guess, and for a version outside the series
+    /// the scheme pins.
     #[must_use]
     pub fn components(&self, text: &str) -> Option<Vec<u64>> {
         let parts: Vec<&str> = text.split('.').collect();
@@ -183,6 +340,15 @@ impl VersionScheme {
                 part.parse::<u64>().ok()
             })
             .collect::<Option<Vec<u64>>>()?;
+        // ⛔ Inside the series or not at all. A version of another series is
+        // not older or newer than this line's; it is on another line, and an
+        // ordering that compared them would let the view answer `2.1.2` for a
+        // build line pinned to 2.0. `ENGINE-01`.
+        if let Some(series) = &self.series
+            && !components.starts_with(series.components())
+        {
+            return None;
+        }
         // ⛔ Padded to the scheme's width before comparing. Without this, `4.1`
         // and `4.1.0` compare as different versions with the longer one newer,
         // because a shorter vector sorts first. They are the same release, and
@@ -296,6 +462,15 @@ pub enum Verdict {
     /// the floor the scheme declares, so it cannot be newer than a selection at
     /// or above that floor. See [`VersionScheme::floor_major`].
     BelowSchemeFloor,
+    /// ⭐ A stable release of this target in another release series than the
+    /// one the scheme pins, so it is neither this build line's newest nor older
+    /// than it. See [`VersionScheme::series`].
+    ///
+    /// ⚠ Not [`Self::ForeignTag`]: that says the tag is not this target's at
+    /// all, and `v2.1.2` is libtorrent's own release. Not
+    /// [`Self::Superseded`] either: 2.1.2 is newer than 2.0.15, and a record
+    /// saying it lost to it would be false.
+    OtherSeries,
     /// Compares equal to another candidate and is spelled differently, so
     /// "newest" has no single answer.
     Ambiguous,
@@ -314,6 +489,7 @@ impl Verdict {
         Self::Superseded,
         Self::PredatesSelection,
         Self::BelowSchemeFloor,
+        Self::OtherSeries,
         Self::Ambiguous,
         Self::Divergent,
     ];
@@ -336,6 +512,7 @@ impl Verdict {
             Self::Superseded => "superseded",
             Self::PredatesSelection => "predates_selection",
             Self::BelowSchemeFloor => "below_scheme_floor",
+            Self::OtherSeries => "other_series",
             Self::Ambiguous => "ambiguous",
             Self::Divergent => "divergent",
         }
@@ -703,6 +880,13 @@ fn judge(scheme: &VersionScheme, candidate: &Candidate) -> (Verdict, Option<Vers
     if text_marks_prerelease(text) {
         return (Verdict::PrereleaseByVersion, version);
     }
+    // ⚠ After stability, so another series's release candidate stays the
+    // prerelease it is, and before orderability, so a readable difference in
+    // the leading components sets a tag aside even where the rest of it could
+    // not be ordered.
+    if scheme.outside_series(text) {
+        return (Verdict::OtherSeries, version);
+    }
     if scheme.components(text).is_none() {
         return (Verdict::Unorderable, version);
     }
@@ -723,7 +907,56 @@ pub fn validate_resolution(resolution: &Resolution) -> Result<(), Violations> {
     check_sources(resolution, &mut out);
     check_selection(resolution, &mut out);
     check_floor(resolution, &mut out);
+    check_series(resolution, &mut out);
     Violations::from_errors(out)
+}
+
+/// ⛔ An `other_series` verdict is re-derived, never trusted, and a selection
+/// stands inside the series the scheme pins. `ENGINE-01`.
+fn check_series(resolution: &Resolution, out: &mut Vec<SchemaError>) {
+    let scheme = &resolution.scheme;
+    if let Err(why) = scheme.check() {
+        out.push(SchemaError::new("E-RES-13", "scheme.series", why));
+    }
+    for (index, entry) in resolution.considered.iter().enumerate() {
+        match entry.verdict {
+            Verdict::OtherSeries => {
+                let outside = scheme
+                    .strip(entry.candidate.tag.as_str())
+                    .is_some_and(|text| scheme.outside_series(text));
+                if !outside {
+                    out.push(SchemaError::new(
+                        "E-RES-11",
+                        format!("considered[{index}].verdict"),
+                        format!(
+                            "{} is marked another series and the recorded scheme does not put it there",
+                            entry.candidate.tag
+                        ),
+                    ));
+                }
+            }
+            // ⚠ A candidate that won or lost on ordering was ordered, so under a
+            // pinned series it is inside it. One outside it was compared across
+            // two lines.
+            Verdict::Selected | Verdict::Superseded if scheme.series.is_some() => {
+                let inside = entry
+                    .version
+                    .as_ref()
+                    .is_some_and(|version| scheme.components(version.as_str()).is_some());
+                if !inside {
+                    out.push(SchemaError::new(
+                        "E-RES-12",
+                        format!("considered[{index}].verdict"),
+                        format!(
+                            "{} was ordered and lies outside the series the scheme pins",
+                            entry.candidate.tag
+                        ),
+                    ));
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 /// ⛔ A `below_scheme_floor` verdict is re-derived, never trusted: the scheme
@@ -1326,7 +1559,7 @@ pub mod sources {
 
 #[cfg(test)]
 mod tests {
-    use super::{AssetPattern, VersionScheme, text_marks_prerelease};
+    use super::{AssetPattern, Series, VersionScheme, text_marks_prerelease};
     use crate::canonical::Label;
 
     fn pattern(text: &str, version: &str) -> AssetPattern {
@@ -1339,6 +1572,7 @@ mod tests {
             min_components: min,
             max_components: max,
             floor_major: None,
+            series: None,
         }
     }
 
@@ -1383,6 +1617,74 @@ mod tests {
         for text in ["4.0", "4", "10.1", "03.1", "3x.1", "", ".3", "x"] {
             assert!(!s.below_floor(text), "{text} is not below 4");
         }
+    }
+
+    /// libtorrent's own scheme: `v`, three components, the 2.0 series.
+    fn pinned() -> VersionScheme {
+        VersionScheme {
+            series: Some(Series::parse("2.0").expect("a series")),
+            ..scheme(Some("v"), 3, 3)
+        }
+    }
+
+    #[test]
+    fn a_series_is_dotted_plain_integers_and_nothing_else() {
+        for text in ["2.0", "2", "10.4.1", "0"] {
+            let series = Series::parse(text).expect(text);
+            assert_eq!(series.to_string(), text, "{text} spells itself back");
+        }
+        // ⛔ Each refused where it is read, so no scheme ever carries one.
+        for text in [
+            "", "2.", ".0", "2..0", "02.0", "2.x", "v2.0", "2.0-rc", " 2.0",
+        ] {
+            assert!(Series::parse(text).is_err(), "{text:?} is not a series");
+        }
+    }
+
+    #[test]
+    fn a_series_leaves_at_least_one_component_to_order() {
+        assert!(pinned().check().is_ok());
+        let mut s = pinned();
+        s.min_components = 2;
+        assert!(
+            s.check().is_err(),
+            "2.0 under a minimum of two orders nothing"
+        );
+        s.series = Some(Series::parse("2.0.1").expect("a series"));
+        s.min_components = 3;
+        assert!(s.check().is_err());
+        assert!(scheme(None, 1, 1).check().is_ok(), "no series is coherent");
+    }
+
+    #[test]
+    fn a_pinned_series_orders_inside_it_and_nothing_outside() {
+        let s = pinned();
+        assert_eq!(s.components("2.0.15"), Some(vec![2, 0, 15]));
+        assert!(s.components("2.0.15") > s.components("2.0.9"));
+        // ⛔ Readable as three numbers, and on another line.
+        for text in ["2.1.2", "1.2.20", "3.0.0"] {
+            assert!(s.components(text).is_none(), "{text} is another series");
+        }
+        // And the same scheme without a series orders all of them.
+        let free = scheme(Some("v"), 3, 3);
+        assert!(free.components("2.1.2") > free.components("2.0.15"));
+    }
+
+    #[test]
+    fn only_a_readable_difference_puts_a_tag_in_another_series() {
+        let s = pinned();
+        for text in ["2.1.2", "1.2.20", "2.1", "3", "2.1.0+1", "1.2"] {
+            assert!(s.outside_series(text), "{text} is another series");
+        }
+        // ⛔ Agreeing, unreadable before a difference, or ending while agreeing:
+        // none of these says which series it is.
+        for text in ["2.0.15", "2.0", "2", "2x.1.0", "02.1.0", "", "2.0x.1"] {
+            assert!(!s.outside_series(text), "{text:?} is not set aside");
+        }
+        assert!(
+            !scheme(Some("v"), 3, 3).outside_series("2.1.2"),
+            "no series declared, nothing is outside it"
+        );
     }
 
     #[test]

@@ -31,7 +31,8 @@
 // declared, never defaulted: an adapter says which asset carries the vendor's
 // checksums or, in as many words, that the vendor publishes none, and one that
 // says neither or both is refused. ⛔ The floor is declared, `-` for none: a
-// floor this invented would be a selection this made. `CLIENT-06`.
+// floor this invented would be a selection this made. `CLIENT-06`. ⛔ So is
+// the release series, `release_series`, for the same reason. `ENGINE-01`.
 //
 // -- ⚠ RECORDED SOURCES ARE SAID OUT LOUD ------------------------------------
 //
@@ -72,6 +73,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -254,24 +256,41 @@ func readScheme(desc []byte, route string) (scheme, error) {
 }
 
 // The checks that follow the asset declarations in the release route and
-// directly follow the component counts in the source route.
-func (s scheme) checkNumbers(desc []byte) (string, error) {
+// directly follow the component counts in the source route. They answer the
+// floor and the series, each `-` for none.
+func (s scheme) checkNumbers(desc []byte) (string, string, error) {
 	cannot := func(f string, a ...any) error { return resolveExit{2, fmt.Sprintf(f, a...)} }
 	for _, n := range []string{s.minc, s.maxc} {
 		if n == "" || strings.Trim(n, "0123456789") != "" {
-			return "", cannot("%s declares a non-numeric component count [%s]", s.target, n)
+			return "", "", cannot("%s declares a non-numeric component count [%s]", s.target, n)
 		}
 	}
 	floor := keyField(desc, "release_floor_major")
 	switch {
 	case floor == "":
-		return "", cannot("%s declares no release_floor_major; - says it has none", s.target)
+		return "", "", cannot("%s declares no release_floor_major; - says it has none", s.target)
 	case floor == "-":
 	case strings.Trim(floor, "0123456789") != "":
-		return "", cannot("%s declares a non-numeric release_floor_major [%s]", s.target, floor)
+		return "", "", cannot("%s declares a non-numeric release_floor_major [%s]", s.target, floor)
 	}
-	return floor, nil
+	// ⛔ THE SERIES IS DECLARED, NEVER DEFAULTED, as the floor is: a pin that
+	// fell away silently would select across every series a target keeps, and
+	// one this invented would be a selection this made. `ENGINE-01`. ⚠ The
+	// shape is asked here so the refusal names the declaration; the resolver
+	// asks it again, with whether it leaves a component to order.
+	series := keyField(desc, "release_series")
+	switch {
+	case series == "":
+		return "", "", cannot("%s declares no release_series; - says it pins none", s.target)
+	case series == "-":
+	case !seriesShape.MatchString(series):
+		return "", "", cannot("%s declares a release_series that is not dotted plain integers [%s]", s.target, series)
+	}
+	return floor, series, nil
 }
+
+// seriesShape is a release series: dotted plain integers, no leading zero.
+var seriesShape = regexp.MustCompile(`^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))*$`)
 
 // indentFile is `sed 's/^/          /' FILE >&2`.
 func indentFile(path string) {
@@ -456,7 +475,7 @@ func runResolveRelease(args []string) error {
 	if digestPattern == "" && digestNone == "" {
 		return cannot("%s declares neither release_digest_asset nor release_digest_unpublished", s.target)
 	}
-	floor, err := s.checkNumbers(desc)
+	floor, series, err := s.checkNumbers(desc)
 	if err != nil {
 		return err
 	}
@@ -514,7 +533,7 @@ func runResolveRelease(args []string) error {
 	// selection is re-derivable rather than asserted.
 	resolution := filepath.Join(a.workdir, "resolution.json")
 	rerr := filepath.Join(a.workdir, "resolve.err")
-	switch rc := runExample(resolution, rerr, resolver, s.target, s.prefix, s.minc, s.maxc, floor,
+	switch rc := runExample(resolution, rerr, resolver, s.target, s.prefix, s.minc, s.maxc, floor, series,
 		"github-releases", url, listing); rc {
 	case 0:
 	case 1:
@@ -769,7 +788,7 @@ func runResolveSource(args []string) error {
 	if err != nil {
 		return err
 	}
-	floor, err := s.checkNumbers(desc)
+	floor, series, err := s.checkNumbers(desc)
 	if err != nil {
 		return err
 	}
@@ -817,7 +836,7 @@ func runResolveSource(args []string) error {
 	// on a refusal: the first shell version swallowed them for exit 2, so a
 	// listing this project could not read reported "could not run" with the
 	// sentence naming the bad line in a workdir file nobody opens.
-	switch rc := runExample(resolution, rerr, resolver, s.target, s.prefix, s.minc, s.maxc, floor,
+	switch rc := runExample(resolution, rerr, resolver, s.target, s.prefix, s.minc, s.maxc, floor, series,
 		"git-refs", url, refs); rc {
 	case 0:
 	case 1:

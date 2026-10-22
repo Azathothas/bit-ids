@@ -399,7 +399,7 @@ fn push_lookups(profile: &Profile, path: &RelPath, rows: &mut BTreeMap<IndexKind
 /// | code | refused |
 /// | --- | --- |
 /// | `E-VIW-01` | a publishable record whose target declares no version scheme |
-/// | `E-VIW-02` | a publishable record whose version its own scheme cannot order |
+/// | `E-VIW-02` | a publishable record whose version its own scheme cannot order, including one outside the release series the scheme pins |
 /// | `E-VIW-03` | two publishable records correcting the same record |
 /// | `E-VIW-04` | a correction chain that returns to where it started |
 ///
@@ -927,6 +927,7 @@ pub(crate) mod tests {
                 min_components: 3,
                 max_components: 3,
                 floor_major: None,
+                series: None,
             },
         )])
     }
@@ -1448,6 +1449,51 @@ pub(crate) mod tests {
         assert_eq!(versions.rows.len(), 3);
     }
 
+    /// ⭐ libtorrent's scheme, `v`, three components, the 2.0 series, orders
+    /// the records its routes installed. `ENGINE-01`.
+    ///
+    /// ⛔ And the view never compares across series: a record of 2.1 under a
+    /// target pinned to 2.0 is refused rather than named the latest, because
+    /// both series stay current and "newest" across them is not this line's.
+    #[test]
+    fn a_series_pinned_scheme_orders_its_series_and_refuses_another() {
+        let pinned = |min: u8, max: u8, series: &str| {
+            BTreeMap::from([(
+                slug("fixture-client"),
+                VersionScheme {
+                    tag_prefix: Some(crate::canonical::Label::parse("v").expect("a label")),
+                    min_components: min,
+                    max_components: max,
+                    floor_major: None,
+                    series: Some(crate::resolution::Series::parse(series).expect("a series")),
+                },
+            )])
+        };
+        let corpus = corpus_at(&["2.0.9", "2.0.15", "2.0.10"]);
+        let indexes = build(&corpus, &pinned(3, 3, "2.0")).expect("the 2.0 series orders");
+        assert_eq!(indexes.latest.len(), 1);
+        assert_eq!(indexes.latest[0].version.as_str(), "2.0.15");
+
+        // ⛔ The scheme the first capture carried, `v2.0.` and one component,
+        // is what refused the bundle in assemble-bundle run 39784872974.
+        let old = BTreeMap::from([(
+            slug("fixture-client"),
+            VersionScheme {
+                tag_prefix: Some(crate::canonical::Label::parse("v2.0.").expect("a label")),
+                min_components: 1,
+                max_components: 1,
+                floor_major: None,
+                series: None,
+            },
+        )]);
+        let violations = build(&corpus, &old).expect_err("2.0.15 is not one component");
+        assert!(violations.has("E-VIW-02"), "{violations}");
+
+        let across = corpus_at(&["2.0.15", "2.1.2"]);
+        let violations = build(&across, &pinned(3, 3, "2.0")).expect_err("2.1.2 is another line");
+        assert!(violations.has("E-VIW-02"), "{violations}");
+    }
+
     /// ⛔ Fails closed. An unorderable version blocks the view rather than being
     /// skipped, because a skip yields an older record selected confidently.
     #[test]
@@ -1459,6 +1505,7 @@ pub(crate) mod tests {
                 min_components: 4,
                 max_components: 4,
                 floor_major: None,
+                series: None,
             },
         )]);
         let violations = build(&corpus(), &strict).expect_err("1.2.3 is not four numbers");

@@ -16,8 +16,8 @@
 //! ⚠ **A version scheme is given, never defaulted.** A target declares how it
 //! spells versions, and this project has no general rule that reads every
 //! target's spelling; `resolve-stable` takes one on the command line for the
-//! same reason. `--scheme TARGET:PREFIX:MIN:MAX` declares one, with `-` for no
-//! prefix. A record whose target has no scheme blocks the latest view and this
+//! same reason. `--scheme TARGET:PREFIX:MIN:MAX[:SERIES]` declares one, with
+//! `-` for no prefix and an optional pinned release series. A record whose target has no scheme blocks the latest view and this
 //! exits 1 naming it, rather than being ordered under an assumed three-component
 //! shape.
 //!
@@ -58,7 +58,10 @@ fn parse_args() -> Result<Request, ExitCode> {
             continue;
         }
         let Some(text) = args.next().and_then(|value| value.into_string().ok()) else {
-            let _ = writeln!(std::io::stderr(), "--scheme needs TARGET:PREFIX:MIN:MAX");
+            let _ = writeln!(
+                std::io::stderr(),
+                "--scheme needs TARGET:PREFIX:MIN:MAX[:SERIES]"
+            );
             return Err(ExitCode::from(2));
         };
         match scheme(&text) {
@@ -78,7 +81,7 @@ fn parse_args() -> Result<Request, ExitCode> {
         _ => {
             let _ = writeln!(
                 std::io::stderr(),
-                "usage: build-indexes [--scheme TARGET:PREFIX:MIN:MAX]... STORE [OUT]\n\
+                "usage: build-indexes [--scheme TARGET:PREFIX:MIN:MAX[:SERIES]]... STORE [OUT]\n\
                  builds the lookup indexes and the latest view over a store"
             );
             return Err(ExitCode::from(2));

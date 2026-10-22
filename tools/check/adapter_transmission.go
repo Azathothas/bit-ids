@@ -122,6 +122,7 @@ func transmissionAdapter(k *adapterKit, sub string, args []string) {
 		// before it, from 0.5 to 3.00, that it cannot order and no date releases.
 		// Measured on 2026-10-15; `CLIENT-06`.
 		fmt.Print("release_floor_major=4\n")
+		fmt.Print("release_series=-\n")
 		fmt.Print("release_asset=transmission-{version}.tar.xz\n")
 		// ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE, AND IT IS
 		// ABOUT THE VENDOR'S OWN CHECKSUMS DOCUMENT; `aria2` says why at length.

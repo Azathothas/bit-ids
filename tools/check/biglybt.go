@@ -81,6 +81,7 @@ func bbDescribeScheme(asset string) string {
 		"release_min_components=4\n" +
 		"release_max_components=4\n" +
 		"release_floor_major=2\n" +
+		"release_series=-\n" +
 		"release_asset=" + asset + "\n" +
 		"release_digest_asset=" + bbDigestAsset + "\n"
 }
@@ -986,7 +987,7 @@ func biglybtSelftest(args []string) int {
 	s := bbDescribeScheme(bbLinuxAsset)
 	check("the scheme is v, four components, floor 2", strings.Contains(s, "release_tag_prefix=v\n") &&
 		strings.Contains(s, "release_min_components=4\n") && strings.Contains(s, "release_max_components=4\n") &&
-		strings.Contains(s, "release_floor_major=2\n") && strings.Contains(s, "release_repo=BiglySoftware/BiglyBT\n"))
+		strings.Contains(s, "release_floor_major=2\n") && strings.Contains(s, "release_series=-\n") && strings.Contains(s, "release_repo=BiglySoftware/BiglyBT\n"))
 	check("the release digest is the vendor's checksums document", strings.Contains(s, "release_digest_asset=*sha256sum.txt\n") &&
 		!strings.Contains(s, "release_digest_unpublished"))
 	for _, a := range []string{"GitHub_BiglyBT_unix.tar.gz", "Github_BiglyBT_unix.tar.gz"} {

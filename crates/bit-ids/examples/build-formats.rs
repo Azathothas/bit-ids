@@ -1,7 +1,7 @@
 //! Render every published format over a store.
 //!
 //! ```text
-//! cargo run -p bit-ids --example build-formats -- [--scheme T:P:MIN:MAX]... STORE OUT
+//! cargo run -p bit-ids --example build-formats -- [--scheme T:P:MIN:MAX[:SERIES]]... STORE OUT
 //! ```
 //!
 //! This is the driving surface for `PUB-03`. `OUT` is a directory the format
@@ -61,7 +61,10 @@ fn parse_args() -> Result<Request, ExitCode> {
             continue;
         }
         let Some(text) = args.next().and_then(|value| value.into_string().ok()) else {
-            let _ = writeln!(std::io::stderr(), "--scheme needs TARGET:PREFIX:MIN:MAX");
+            let _ = writeln!(
+                std::io::stderr(),
+                "--scheme needs TARGET:PREFIX:MIN:MAX[:SERIES]"
+            );
             return Err(ExitCode::from(2));
         };
         match scheme(&text) {
@@ -77,7 +80,7 @@ fn parse_args() -> Result<Request, ExitCode> {
     let [store, out] = positional.as_slice() else {
         let _ = writeln!(
             std::io::stderr(),
-            "usage: build-formats [--scheme TARGET:PREFIX:MIN:MAX]... STORE OUT\n\
+            "usage: build-formats [--scheme TARGET:PREFIX:MIN:MAX[:SERIES]]... STORE OUT\n\
              renders every published format over the records the views include"
         );
         return Err(ExitCode::from(2));

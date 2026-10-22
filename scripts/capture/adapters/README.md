@@ -287,8 +287,9 @@ series.** PyPI's wheel delivers the library's Python binding and nothing else
 that runs, so the product is
 [`../../../tools/harness/libtorrent/harness.py`](../../../tools/harness/libtorrent/harness.py),
 `lt.session` on the library's default settings. `describe` prints
-`target_kind=library` and reads the tags with prefix `v2.0.` and one
-component, so 2.1 and 1.2 are other series. The `package` route asks PyPI for
+`target_kind=library` and reads the library's own tags, prefix `v` and three
+components, with `release_series=2.0`, so 2.1 and 1.2 are other series and
+the record's `2.0.15` is what the view orders. The `package` route asks PyPI for
 `libtorrent>=2.0,<2.1`, wheels only; the `source` route builds the tag with
 its own `setup.py` against Boost 1.83.0 from archives.boost.io, which is the
 vendor's wheel build, and `compiles=source`. Both install into a venv under
@@ -427,7 +428,7 @@ route the adapter declares in `compiles`.
 ### The release route's artifact, declared where the target is known
 
 ⛔ **A release route needs an artifact chosen and `describe` is where the target
-says which.** Six more keys, printed by `describe` and read by
+says which.** The keys below, printed by `describe` and read by
 `bit-check resolve-release`, in [`../../../tools/check/resolve.go`](../../../tools/check/resolve.go).
 An adapter with no release route prints none of them, which is an answer: the
 caller learns this target has no second route rather than watching a fetch fail
@@ -440,6 +441,7 @@ with something that names nothing.
 | `release_min_components` | the fewest dot-separated components a version of this target has |
 | `release_max_components` | the most |
 | `release_floor_major` | the first major version the scheme speaks for, or `-` for none: a tag the scheme cannot order whose leading component is a plain integer below it is released as `below_scheme_floor` rather than blocking, and only against a selection at or above it |
+| `release_series` | the release series the scheme pins, as dotted plain integers such as `2.0`, or `-` for none: a stable tag whose leading components differ readably from it is `other_series`, a release of this target on another line, and the published view orders only versions inside it. It fixes fewer components than `release_min_components` |
 | `release_asset` | which artifact of a release is the installable one |
 | one of `release_digest_asset` / `release_digest_unpublished` | how this vendor publishes a digest, or the measured reason it publishes none |
 

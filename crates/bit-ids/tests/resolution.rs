@@ -6,8 +6,8 @@
 
 use bit_ids::canonical::{Instant, Label, Sha256Digest, Slug, Url, Version};
 use bit_ids::resolution::{
-    Candidate, Considered, RESOLUTION_SCHEMA, Resolution, SourceResponse, Verdict, VersionScheme,
-    resolve, validate_resolution,
+    Candidate, Considered, RESOLUTION_SCHEMA, Resolution, Series, SourceResponse, Verdict,
+    VersionScheme, resolve, validate_resolution,
 };
 use serde_json::{Value, json};
 
@@ -50,6 +50,7 @@ fn prefixed_scheme() -> VersionScheme {
         min_components: 3,
         max_components: 4,
         floor_major: None,
+        series: None,
     }
 }
 
@@ -60,6 +61,7 @@ fn bare_scheme() -> VersionScheme {
         min_components: 3,
         max_components: 3,
         floor_major: None,
+        series: None,
     }
 }
 
@@ -397,6 +399,120 @@ fn resolution_reads_deluges_pep440_betas_as_prereleases() {
     found.to_json().expect("the decision validates");
 }
 
+/// ⭐ `libtorrent`'s own shape, measured on 2026-10-22: three stable series
+/// tagged side by side, `v1.2.x`, `v2.0.x` and `v2.1.x`, beside a history of
+/// `libtorrent-` and `RC_` tags in other spellings. `ENGINE-01`.
+fn libtorrent_refs() -> Vec<Candidate> {
+    [
+        "2.0",
+        "RC_0_11",
+        "c1.2.10",
+        "libtorrent-1_2_3",
+        "libtorrent-2.0-RC2",
+        "libtorrent=2_0_0-RC",
+        "v1.2.10",
+        "v1.2.20",
+        "v2.0.0",
+        "v2.0.9",
+        "v2.0.15",
+        "v2.0.10",
+        "v2.1.0",
+        "v2.1.0-rc1",
+        "v2.1.1",
+        "v2.1.2",
+    ]
+    .into_iter()
+    .map(undated)
+    .collect()
+}
+
+fn libtorrent_scheme(series: Option<&str>) -> VersionScheme {
+    VersionScheme {
+        tag_prefix: Some(label("v")),
+        series: series.map(|text| Series::parse(text).expect("a series")),
+        ..bare_scheme()
+    }
+}
+
+#[test]
+fn resolution_selects_within_a_pinned_series_and_sets_the_others_aside() {
+    let found = run(libtorrent_scheme(Some("2.0")), libtorrent_refs());
+    assert_eq!(found.selected.as_ref().map(Version::as_str), Some("2.0.15"));
+    let other: Vec<&str> = found
+        .with_verdict(Verdict::OtherSeries)
+        .iter()
+        .map(|entry| entry.candidate.tag.as_str())
+        .collect();
+    assert_eq!(other, ["v1.2.10", "v1.2.20", "v2.1.0", "v2.1.1", "v2.1.2"]);
+    // ⚠ Another series's release candidate is still the prerelease it is.
+    assert_eq!(found.with_verdict(Verdict::PrereleaseByVersion).len(), 1);
+    assert_eq!(found.with_verdict(Verdict::ForeignTag).len(), 6);
+    assert_eq!(found.with_verdict(Verdict::Superseded).len(), 3);
+    assert!(found.with_verdict(Verdict::Unorderable).is_empty());
+    let text = found.to_json().expect("a pinned decision validates");
+    assert!(text.contains("\"series\": \"2.0\""), "{text}");
+    assert_eq!(
+        Resolution::from_json(&text)
+            .expect("reads")
+            .to_json()
+            .expect("writes"),
+        text,
+        "and round-trips byte for byte"
+    );
+
+    // ⛔ The same refs with no series select the newest series's release,
+    // which is what the pin exists to prevent.
+    let free = run(libtorrent_scheme(None), libtorrent_refs());
+    assert_eq!(free.selected.as_ref().map(Version::as_str), Some("2.1.2"));
+    assert!(free.with_verdict(Verdict::OtherSeries).is_empty());
+}
+
+#[test]
+fn resolution_under_a_series_still_blocks_on_what_it_cannot_place() {
+    // ⛔ `v2.0` and `v2` agree with the series as far as they go and cannot be
+    // ordered, so they could be its newest; `v2.0x.1` is unreadable before any
+    // difference. Each blocks, as an unorderable tag does without a series.
+    for tag in ["v2.0", "v2", "v2.0x.1", "v2x.1.0"] {
+        let mut offered = libtorrent_refs();
+        offered.push(undated(tag));
+        let found = run(libtorrent_scheme(Some("2.0")), offered);
+        assert!(!found.resolved(), "{tag} cannot be placed");
+        assert_eq!(found.with_verdict(Verdict::Unorderable).len(), 1, "{tag}");
+    }
+    // ⭐ And a readable difference sets one aside even where the rest of it
+    // could not be ordered.
+    let mut offered = libtorrent_refs();
+    offered.push(undated("v2.1"));
+    let found = run(libtorrent_scheme(Some("2.0")), offered);
+    assert_eq!(found.selected.as_ref().map(Version::as_str), Some("2.0.15"));
+    assert_eq!(found.with_verdict(Verdict::OtherSeries).len(), 6);
+}
+
+#[test]
+fn resolution_refuses_a_malformed_series_where_it_is_read() {
+    let found = run(libtorrent_scheme(Some("2.0")), libtorrent_refs());
+    for bad in ["", "2.", "02.0", "2.x", "v2.0"] {
+        let mut document: Value =
+            serde_json::from_str(&found.to_json().expect("writes")).expect("parses");
+        document["scheme"]["series"] = json!(bad);
+        let error = Resolution::from_json(&serde_json::to_string(&document).expect("writes"))
+            .expect_err("a malformed series");
+        assert!(
+            error.to_string().contains("release-series"),
+            "{bad:?}: {error}"
+        );
+    }
+    // ⚠ Absent is not none: the third generation states the series, `null`
+    // for none, and a document that omits it is refused.
+    let mut document: Value =
+        serde_json::from_str(&found.to_json().expect("writes")).expect("parses");
+    document["scheme"]
+        .as_object_mut()
+        .expect("an object")
+        .remove("series");
+    assert!(Resolution::from_json(&serde_json::to_string(&document).expect("writes")).is_err());
+}
+
 /// A tag that is not this target's release at all does not block. A repository
 /// carrying `nox-5.2.3` beside `release-5.2.3` is ordinary.
 #[test]
@@ -421,6 +537,7 @@ fn resolution_fails_closed_on_two_spellings_of_one_version() {
             min_components: 2,
             max_components: 3,
             floor_major: None,
+            series: None,
         },
         vec![
             candidate("github-releases", "4.1.0", false, false),
@@ -466,18 +583,20 @@ fn resolution_reports_an_unknown_schema_version_before_any_field() {
         bare_scheme(),
         vec![candidate("github-releases", "4.1.3", false, false)],
     );
-    let mut document: Value =
-        serde_json::from_str(&found.to_json().expect("writes")).expect("parses");
-    // ⚠ The first generation, which this build no longer reads: it carries no
-    // scheme floor and no verdict for one.
-    document["schema"] = json!("bit-ids/resolution/1");
-    document["sources"] = json!([]);
-    let error = Resolution::from_json(&serde_json::to_string(&document).expect("writes"))
-        .expect_err("another generation");
-    assert!(
-        error.to_string().contains("unsupported schema"),
-        "the version is answered first: {error}"
-    );
+    // ⚠ The first generation carries no scheme floor and the second no series,
+    // and this build reads neither.
+    for older in ["bit-ids/resolution/1", "bit-ids/resolution/2"] {
+        let mut document: Value =
+            serde_json::from_str(&found.to_json().expect("writes")).expect("parses");
+        document["schema"] = json!(older);
+        document["sources"] = json!([]);
+        let error = Resolution::from_json(&serde_json::to_string(&document).expect("writes"))
+            .expect_err("another generation");
+        assert!(
+            error.to_string().contains("unsupported schema"),
+            "the version is answered first: {error}"
+        );
+    }
 }
 
 type Mutation = fn(&mut Value);
@@ -521,6 +640,18 @@ const PLANTED: &[(&str, Mutation)] = &[
         document["scheme"]["floor_major"] = json!(5);
         document["considered"][1]["candidate"]["tag"] = json!("3.00");
         document["considered"][1]["verdict"] = json!("below_scheme_floor");
+    }),
+    // Another series, by a scheme that pins none.
+    ("E-RES-11", |document| {
+        document["considered"][1]["verdict"] = json!("other_series");
+    }),
+    // ⛔ A selection outside the series the scheme pins.
+    ("E-RES-12", |document| {
+        document["scheme"]["series"] = json!("4.0");
+    }),
+    // A series that leaves nothing to order.
+    ("E-RES-13", |document| {
+        document["scheme"]["series"] = json!("4.1.3");
     }),
 ];
 
@@ -626,7 +757,7 @@ fn resolution_verdict_spellings_agree_with_the_serialized_form() {
     }
     assert_eq!(
         Verdict::ALL.len(),
-        10,
+        11,
         "a variant was added without a spelling"
     );
 }

@@ -5,6 +5,24 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-22T13:41:02Z
+
+- ⛔ **libtorrent's first runner capture was refused by the published view.**
+  capture-client run 39783974176 captured both Linux lanes, and assemble-bundle
+  run 39784872974 found both records publishable and build-equivalent, then
+  refused them: the scheme pinned the 2.0 series as a tag prefix, so the view
+  could not order the records' `2.0.15`.
+- ⭐ **A target can now pin a release series.** libtorrent reads its own tags,
+  `v` and three components, with `release_series=2.0`; its 1.2 and 2.1
+  releases are recorded as another series and never compete, and the latest
+  view never compares across series. Every other adapter declares no series,
+  and over every adapter's live tags and listings nothing else moved. The
+  resolution document is `bit-ids/resolution/3`.
+- The published 36 records rebuild the same view. libtorrent needs a new
+  capture, because the old run's resolutions carry the old scheme.
+- Record: [`TODO/engines.md`](TODO/engines.md) `ENGINE-01`. No version bump and
+  no deploy.
+
 ### 2026-10-22T13:40:00Z
 
 - ⭐ **Four entries closed, on runner captures published to `data`**:

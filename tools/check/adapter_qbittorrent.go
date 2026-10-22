@@ -328,6 +328,7 @@ func qbittorrentAdapter(k *adapterKit, sub string, args []string) {
 		fmt.Print("release_min_components=3\n")
 		fmt.Print("release_max_components=4\n")
 		fmt.Print("release_floor_major=-\n")
+		fmt.Print("release_series=-\n")
 		// ⛔ THE `_lt20` ASSET, settled by the operator on 2026-10-15 once both were
 		// measured: the unsuffixed AppImage carries libtorrent 1.2.20 and this one
 		// 2.0.15, and the reserved bytes a pair compares are libtorrent's.

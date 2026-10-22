@@ -197,6 +197,7 @@ func trWinDescribe() error {
 	b.WriteString("release_min_components=3\n")
 	b.WriteString("release_max_components=3\n")
 	b.WriteString("release_floor_major=4\n")
+	b.WriteString("release_series=-\n")
 	// ⛔ THE x64 MSI WITHOUT `qt5`. Measured through rule 8's route on
 	// 2026-10-15: 4.1.3 carries four MSIs, `-x64`, `-x86`, `-qt5-x64` and
 	// `-qt5-x86`, and this literal matches the first alone. ⭐ It is the one

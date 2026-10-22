@@ -108,6 +108,7 @@ func delugeAdapter(k *adapterKit, sub string, args []string) {
 		fmt.Print("release_min_components=3\n")
 		fmt.Print("release_max_components=3\n")
 		fmt.Print("release_floor_major=2\n")
+		fmt.Print("release_series=-\n")
 		fmt.Print("routes=package,source\n")
 
 	case "install":

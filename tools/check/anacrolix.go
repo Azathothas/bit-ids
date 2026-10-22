@@ -114,6 +114,7 @@ func anacrolixDescribe() string {
 	b.WriteString("release_min_components=3\n")
 	b.WriteString("release_max_components=3\n")
 	b.WriteString("release_floor_major=-\n")
+	b.WriteString("release_series=-\n")
 	// ⚠ Both routes compile the harness.
 	b.WriteString("compiles=package,source\n")
 	b.WriteString("routes=package,source\n")
@@ -995,7 +996,7 @@ func anacrolixSelftest(args []string) int {
 	// The description.
 	d := anacrolixDescribe()
 	for _, want := range []string{"target_kind=library", "release_repo=anacrolix/torrent", "release_tag_prefix=v",
-		"release_min_components=3", "release_max_components=3", "release_floor_major=-",
+		"release_min_components=3", "release_max_components=3", "release_floor_major=-", "release_series=-",
 		"compiles=package,source", "routes=package,source"} {
 		check("describe carries "+want, strings.Contains(d, want+"\n"))
 	}

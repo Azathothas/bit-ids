@@ -1205,7 +1205,7 @@ func checkAssemble(r *repo) (verdict, error) {
 	// ⛔ The good pair again, under the names a dispatch uploads them as, with the
 	// `resolution.json` each resolver writes beside its text record. `CI-09`.
 	// ⭐ It finds the repository from where it is run, hence the root below.
-	const resolutionJSON = `{"schema": "bit-ids/resolution/2", "target": "fixture-client", "scheme": {"tag_prefix": "v", "min_components": 3, "max_components": 3, "floor_major": null}}` + "\n"
+	const resolutionJSON = `{"schema": "bit-ids/resolution/3", "target": "fixture-client", "scheme": {"tag_prefix": "v", "min_components": 3, "max_components": 3, "floor_major": null, "series": null}}` + "\n"
 	artifacts := func(dir, ra string, routes ...string) error {
 		if err := os.RemoveAll(dir); err != nil {
 			return err

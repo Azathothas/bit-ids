@@ -46,6 +46,7 @@ fn scheme() -> VersionScheme {
         min_components: 3,
         max_components: 3,
         floor_major: None,
+        series: None,
     }
 }
 
@@ -307,6 +308,7 @@ fn staleness_declines_when_two_spellings_of_one_release_compare_equal() {
         min_components: 3,
         max_components: 4,
         floor_major: None,
+        series: None,
     };
     let resolution = resolve(
         slug("fixture-client"),

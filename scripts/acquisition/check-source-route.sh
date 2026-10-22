@@ -105,6 +105,7 @@ case "${1:-}" in
     printf "release_min_components=${BIT_IDS_STUB_MINC-3}\n"
     printf "release_max_components=${BIT_IDS_STUB_MAXC-3}\n"
     printf "release_floor_major=${BIT_IDS_STUB_FLOOR--}\n"
+    printf "release_series=${BIT_IDS_STUB_SERIES--}\n"
     ;;
   *) exit 2 ;;
 esac
@@ -263,6 +264,18 @@ BIT_IDS_STUB_FLOOR='' case_is 2 "no release_floor_major" \
   "an adapter declaring no scheme floor cannot run" nofloor "$WORK/refs-good.txt"
 BIT_IDS_STUB_FLOOR=4x case_is 2 "non-numeric release_floor_major" \
   "a non-numeric scheme floor cannot run" badfloor "$WORK/refs-good.txt"
+
+# ⛔ AND THE RELEASE SERIES, `ENGINE-01`: declared, `-` for none, and a pin that
+# is not dotted plain integers, or that leaves no component to order, cannot
+# run rather than falling away to no pin.
+BIT_IDS_STUB_SERIES='' case_is 2 "no release_series" \
+  "an adapter declaring no release series cannot run" noseries "$WORK/refs-good.txt"
+for _bad in 2. .0 02.0 2.x v2.0; do
+  BIT_IDS_STUB_SERIES=$_bad case_is 2 "not dotted plain integers" \
+    "a release series spelled [$_bad] cannot run" "badseries$_bad" "$WORK/refs-good.txt"
+done
+BIT_IDS_STUB_SERIES=1.2.3 case_is 2 "nothing is left to order" \
+  "a release series as long as a version cannot run" longseries "$WORK/refs-good.txt"
 
 # -- ⭐ aria2'S OWN TAGS, AND THE FLOOR ITS SOURCE ROUTE NEEDS ----------------
 #
@@ -569,6 +582,94 @@ if [ "$_released" = 1 ]; then
   pass "the floor released exactly v1.8.00"
 else
   fail "the floor released exactly v1.8.00 (got [$_released])"
+fi
+
+# -- ⭐ LIBTORRENT'S OWN TAGS: THREE STABLE SERIES, AND THE PIN TO ONE --------
+#
+# The 136 tag names `git ls-remote --tags --refs` answered for
+# `arvidn/libtorrent` on 2026-10-22. Three stable series stand side by side,
+# `v1.2.20`, `v2.0.15` and `v2.1.2`, beside 103 tags in older spellings. The
+# target is the 2.0 series, where PyPI and the tags agree, so the scheme is the
+# library's own, `v` and three components, with `release_series=2.0`.
+# `ENGINE-01`.
+LIBTORRENT_TAGS='2.0 LIBTORRENT_0_11 RC2_0_11 RC_0_11 c1.2.10 libtorrent-0_12
+libtorrent-0_12_1 libtorrent-0_13 libtorrent-0_13_1 libtorrent-0_13_2
+libtorrent-0_14 libtorrent-0_14_1 libtorrent-0_14_10 libtorrent-0_14_11
+libtorrent-0_14_12 libtorrent-0_14_2 libtorrent-0_14_3 libtorrent-0_14_7
+libtorrent-0_14_8 libtorrent-0_14_9 libtorrent-0_15_0 libtorrent-0_15_1
+libtorrent-0_15_10 libtorrent-0_15_2 libtorrent-0_15_3 libtorrent-0_15_4
+libtorrent-0_15_5 libtorrent-0_15_6 libtorrent-0_15_7 libtorrent-0_15_8
+libtorrent-0_15_9 libtorrent-0_16_10 libtorrent-0_16_11 libtorrent-0_16_12
+libtorrent-0_16_13 libtorrent-0_16_14 libtorrent-0_16_15 libtorrent-0_16_16
+libtorrent-0_16_17 libtorrent-0_16_18 libtorrent-0_16_19 libtorrent-0_16_7
+libtorrent-0_16_8 libtorrent-0_16_9 libtorrent-0_9 libtorrent-0_9-rc2
+libtorrent-1.2.10 libtorrent-1.2.8 libtorrent-1.2.9 libtorrent-1_0
+libtorrent-1_0-rc libtorrent-1_0-rc3 libtorrent-1_0_1 libtorrent-1_0_10
+libtorrent-1_0_11 libtorrent-1_0_2 libtorrent-1_0_3 libtorrent-1_0_4
+libtorrent-1_0_5 libtorrent-1_0_6 libtorrent-1_0_7 libtorrent-1_0_8
+libtorrent-1_0_9 libtorrent-1_1 libtorrent-1_1_1 libtorrent-1_1_10
+libtorrent-1_1_13 libtorrent-1_1_14 libtorrent-1_1_2 libtorrent-1_1_3
+libtorrent-1_1_4 libtorrent-1_1_5 libtorrent-1_1_6 libtorrent-1_1_7
+libtorrent-1_1_8 libtorrent-1_1_9 libtorrent-1_2-RC2 libtorrent-1_2_0_RC
+libtorrent-1_2_1 libtorrent-1_2_2 libtorrent-1_2_3 libtorrent-1_2_4
+libtorrent-1_2_5 libtorrent-1_2_6 libtorrent-2.0-RC2 libtorrent-2.0-RC3
+libtorrent-aio-stage1 libtorrent=2_0_0-RC libtorrent_0_14_4 libtorrent_0_14_5
+libtorrent_0_14_6 libtorrent_0_16_0 libtorrent_0_16_1 libtorrent_0_16_2
+libtorrent_0_16_3 libtorrent_0_16_4 libtorrent_0_16_5 libtorrent_0_16_6
+libtorrent_1_1_11 libtorrent_1_1_12 libtorrent_1_2_0 libtorrent_1_2_7
+libtorrent_asio_bp v1.2.10 v1.2.11 v1.2.12 v1.2.13 v1.2.14 v1.2.15 v1.2.16
+v1.2.17 v1.2.18 v1.2.19 v1.2.20 v2.0.0 v2.0.1 v2.0.10 v2.0.11 v2.0.12 v2.0.13
+v2.0.14 v2.0.15 v2.0.2 v2.0.3 v2.0.4 v2.0.5 v2.0.6 v2.0.7 v2.0.8 v2.0.9
+v2.1.0 v2.1.0-rc1 v2.1.0-rc2 v2.1.0-rc3 v2.1.1 v2.1.2'
+for _t in $LIBTORRENT_TAGS; do
+  ref_line "$_t"
+done >"$WORK/refs-libtorrent.txt"
+_count=$(wc -l <"$WORK/refs-libtorrent.txt" | tr -d ' ')
+if [ "$_count" = 136 ]; then
+  pass "the replayed libtorrent listing carries the 136 refs measured"
+else
+  fail "the replayed libtorrent listing carries the 136 refs measured (got $_count)"
+fi
+BIT_IDS_STUB_SERIES=2.0 case_is 0 "" \
+  "with release_series=2.0, libtorrent's refs resolve" ltseries "$WORK/refs-libtorrent.txt"
+if [ "$(cat "$WORK/ltseries.out" 2>/dev/null)" = "v2.0.15" ] &&
+  grep -q -F -e 'selected_version=2.0.15' "$WORK/ltseries.rec" 2>/dev/null; then
+  pass "and select v2.0.15 as version 2.0.15, PyPI's newest 2.0 release on 2026-10-22"
+else
+  fail "and select v2.0.15 as 2.0.15 (got [$(cat "$WORK/ltseries.out" 2>/dev/null)])"
+fi
+_other=$(grep -c -F -e '"verdict": "other_series"' "$WORK/ltseries.work/resolution.json" 2>/dev/null)
+if [ "$_other" = 14 ]; then
+  pass "and set aside the 14 stable tags of 1.2 and 2.1 as another series"
+else
+  fail "and set aside the 14 stable tags of 1.2 and 2.1 as another series (got [$_other])"
+fi
+_pre=$(grep -c -F -e '"verdict": "prerelease_by_version"' "$WORK/ltseries.work/resolution.json" 2>/dev/null)
+_foreign=$(grep -c -F -e '"verdict": "foreign_tag"' "$WORK/ltseries.work/resolution.json" 2>/dev/null)
+_older=$(grep -c -F -e '"verdict": "superseded"' "$WORK/ltseries.work/resolution.json" 2>/dev/null)
+if [ "$_pre" = 3 ] && [ "$_foreign" = 103 ] && [ "$_older" = 15 ]; then
+  pass "with 2.1's 3 release candidates prereleases, 103 foreign tags and 15 older 2.0 releases"
+else
+  fail "with 3 prereleases, 103 foreign and 15 superseded (got [$_pre] [$_foreign] [$_older])"
+fi
+# ⛔ WITHOUT THE PIN THE NEWEST SERIES WINS, which is what the pin is for: PyPI
+# carries no 2.1.2, so a pair resolved this way could not agree on a version.
+case_is 0 "" "with no release series, libtorrent's refs select across series" \
+  ltfree "$WORK/refs-libtorrent.txt"
+if [ "$(cat "$WORK/ltfree.out" 2>/dev/null)" = "v2.1.2" ]; then
+  pass "and would select v2.1.2, which is why the target pins its series"
+else
+  fail "and would select v2.1.2 (got [$(cat "$WORK/ltfree.out" 2>/dev/null)])"
+fi
+# ⚠ AND THE PIN IS NOT A PREFIX ANY MORE. The first describe spelled it as
+# `v2.0.` and one component, which selects the same tag as the version `15`:
+# what the view refused, `E-VIW-02`, in assemble-bundle run 39784872974.
+BIT_IDS_STUB_PREFIX=v2.0. BIT_IDS_STUB_MINC=1 BIT_IDS_STUB_MAXC=1 case_is 0 "" \
+  "the old prefix pin resolves the same tag" ltprefix "$WORK/refs-libtorrent.txt"
+if grep -q -F -e 'selected_version=15' "$WORK/ltprefix.rec" 2>/dev/null; then
+  pass "and records its version as 15, which no record of 2.0.15 can be ordered against"
+else
+  fail "and records its version as 15 (got [$(grep selected_version "$WORK/ltprefix.rec" 2>/dev/null)])"
 fi
 
 store_report check-source-route/1 cases "$JSON"

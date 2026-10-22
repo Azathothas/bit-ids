@@ -184,6 +184,7 @@ func a2nWinDescribe() error {
 	b.WriteString("release_min_components=3\n")
 	b.WriteString("release_max_components=3\n")
 	b.WriteString("release_floor_major=-\n")
+	b.WriteString("release_series=-\n")
 	// ⭐ ONE MATCH. Measured through rule 8's route on 2026-10-15: v3.0.3 and
 	// v3.0.4 each carry eight assets, two of them Windows builds,
 	// `-windows-x86_64.exe` and `-windows-arm64.exe`, and this literal matches

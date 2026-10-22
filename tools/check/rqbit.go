@@ -98,6 +98,7 @@ func rqbitDescribe(asset string) string {
 	fmt.Fprintf(&b, "release_min_components=%d\n", rqbitMinComponents)
 	fmt.Fprintf(&b, "release_max_components=%d\n", rqbitMaxComponents)
 	b.WriteString("release_floor_major=-\n")
+	b.WriteString("release_series=-\n")
 	fmt.Fprintf(&b, "release_asset=%s\n", asset)
 	fmt.Fprintf(&b, "release_digest_unpublished=%s\n", rqbitDigestUnpublished)
 	// ⚠ The `package` route is `cargo install`, which compiles.
@@ -558,7 +559,7 @@ func rqbitSelftest(args []string) int {
 	// The description: a harness-labeled target, this repository's scheme.
 	d := rqbitDescribe(rqbitLinuxAsset)
 	for _, want := range []string{"target_kind=library", "release_repo=ikatson/rqbit", "release_tag_prefix=v",
-		"release_min_components=3", "release_max_components=3", "release_floor_major=-",
+		"release_min_components=3", "release_max_components=3", "release_floor_major=-", "release_series=-",
 		"release_asset=rqbit-linux-amd64", "compiles=package", "routes=package,release"} {
 		check("describe carries "+want, strings.Contains(d, want+"\n"))
 	}

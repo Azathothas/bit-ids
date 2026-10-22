@@ -85,6 +85,7 @@ func qbeDescribeScheme(asset string) string {
 	fmt.Fprintf(&b, "release_min_components=%d\n", qbeMinComponents)
 	fmt.Fprintf(&b, "release_max_components=%d\n", qbeMaxComponents)
 	fmt.Fprintf(&b, "release_floor_major=%d\n", qbeFloorMajor)
+	b.WriteString("release_series=-\n")
 	fmt.Fprintf(&b, "release_asset=%s\n", asset)
 	fmt.Fprintf(&b, "release_digest_unpublished=%s\n", qbeDigestUnpublished)
 	return b.String()
@@ -401,7 +402,7 @@ func qbittorrentEnhancedSelftest(args []string) int {
 	// The scheme: four components, a floor of 4, this repository and no other.
 	d := qbeDescribeScheme(qbeLinuxAsset)
 	for _, want := range []string{"release_repo=c0re100/qBittorrent-Enhanced-Edition", "release_tag_prefix=release-",
-		"release_min_components=4", "release_max_components=4", "release_floor_major=4",
+		"release_min_components=4", "release_max_components=4", "release_floor_major=4", "release_series=-",
 		"release_asset=qbittorrent-enhanced-nox_x86_64-linux-musl_static.zip"} {
 		check("describe carries "+want, strings.Contains(d, want+"\n"))
 	}

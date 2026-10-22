@@ -216,8 +216,20 @@ unorderable tag whose leading component is a plain integer below 4 is recorded
 as `below_scheme_floor` and does not block, and only against a winner at or
 above the floor. `E-RES-09` re-derives each such verdict from the recorded
 scheme and `E-RES-10` refuses a selection below the floor that released
-anything. It is `bit-ids/resolution/2`. Every other adapter declares `-`.
+anything. It was `bit-ids/resolution/2`. Every other adapter declares `-`.
 Record: [`clients.md`](clients.md) `CLIENT-06`.
+
+⭐ **And a release series, for a target that keeps several stable series
+current.** `release_series=2.0` says the scheme speaks for the 2.0 line alone:
+a stable tag whose leading components differ readably from it is
+`other_series`, and does not block or compete, and a version outside it is
+one the scheme cannot order, so the published view never picks across series.
+`E-RES-11` re-derives each such verdict, `E-RES-12` refuses an ordered
+candidate outside the series and `E-RES-13` a series that leaves nothing to
+order. It is `bit-ids/resolution/3`. `libtorrent` declares `2.0`; every other
+adapter declares `-`, and over every adapter's live refs and listings on
+2026-10-22 no other verdict moved. Record: [`engines.md`](engines.md)
+`ENGINE-01`.
 
 ⚠ **`git ls-remote` is git-over-HTTPS rather than a REST read**, so `AGENTS.md`
 rule 8's route does not apply. Measured on 2026-09-09: the direct call answered,

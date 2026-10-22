@@ -9,12 +9,13 @@
 //! reconstructed.
 //!
 //! ```text
-//! resolve-stable <target> <tag-prefix|-> <min> <max> <floor-major|-> <source-id> <url> <body-file> [more...]
+//! resolve-stable <target> <tag-prefix|-> <min> <max> <floor-major|-> <series|-> <source-id> <url> <body-file> [more...]
 //! ```
 //!
 //! ⚠ **The floor is positional and always given**, `-` for none, so a caller
 //! that forgot it is a usage error rather than a source id read as a number.
-//! `CLIENT-06`.
+//! `CLIENT-06`. ⚠ **So is the release series**, `-` for none, for the same
+//! reason. `ENGINE-01`.
 //!
 //! ⛔ **The source id names the FORMAT the body is read as**, and the set is
 //! closed: `github-releases` for a releases listing, `git-refs` for
@@ -31,20 +32,23 @@
 use std::process::ExitCode;
 
 use bit_ids::canonical::{Instant, Label, Sha256Digest, Slug, Url};
-use bit_ids::resolution::{Candidate, SourceResponse, VersionScheme, resolve, sources};
+use bit_ids::resolution::{Candidate, Series, SourceResponse, VersionScheme, resolve, sources};
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.len() < 8 || !(args.len() - 5).is_multiple_of(3) {
+    if args.len() < 9 || !(args.len() - 6).is_multiple_of(3) {
         eprintln!(
-            "usage: resolve-stable <target> <tag-prefix|-> <min> <max> <floor-major|-> \
+            "usage: resolve-stable <target> <tag-prefix|-> <min> <max> <floor-major|-> <series|-> \
              (<source-id> <url> <body-file>)..."
         );
         return ExitCode::from(2);
     }
-    let Ok(scheme) = build_scheme(&args) else {
-        eprintln!("the tag scheme is not usable");
-        return ExitCode::from(2);
+    let scheme = match build_scheme(&args) {
+        Ok(scheme) => scheme,
+        Err(why) => {
+            eprintln!("the tag scheme is not usable: {why}");
+            return ExitCode::from(2);
+        }
     };
     let Ok(target) = Slug::parse(&args[0]) else {
         eprintln!("target {:?} is not a slug", args[0]);
@@ -53,7 +57,7 @@ fn main() -> ExitCode {
 
     let mut responses = Vec::new();
     let mut candidates = Vec::new();
-    for group in args[5..].chunks(3) {
+    for group in args[6..].chunks(3) {
         match read_source(&group[0], &group[1], &group[2]) {
             Ok((response, found)) => {
                 responses.push(response);
@@ -98,23 +102,41 @@ fn main() -> ExitCode {
     }
 }
 
-fn build_scheme(args: &[String]) -> Result<VersionScheme, ()> {
+fn build_scheme(args: &[String]) -> Result<VersionScheme, String> {
     let tag_prefix = if args[1] == "-" {
         None
     } else {
-        Some(Label::parse(&args[1]).map_err(|_| ())?)
+        Some(Label::parse(&args[1]).map_err(|error| format!("prefix: {error}"))?)
     };
     let floor_major = if args[4] == "-" {
         None
     } else {
-        Some(args[4].parse().map_err(|_| ())?)
+        Some(
+            args[4]
+                .parse()
+                .map_err(|_| format!("floor {:?} is not a number", args[4]))?,
+        )
     };
-    Ok(VersionScheme {
+    // ⛔ A malformed series is refused here, never read as none: a pin that
+    // silently fell away would select across every series the target keeps.
+    let series = if args[5] == "-" {
+        None
+    } else {
+        Some(Series::parse(&args[5]).map_err(|error| error.to_string())?)
+    };
+    let scheme = VersionScheme {
         tag_prefix,
-        min_components: args[2].parse().map_err(|_| ())?,
-        max_components: args[3].parse().map_err(|_| ())?,
+        min_components: args[2]
+            .parse()
+            .map_err(|_| format!("min {:?} is not a number", args[2]))?,
+        max_components: args[3]
+            .parse()
+            .map_err(|_| format!("max {:?} is not a number", args[3]))?,
         floor_major,
-    })
+        series,
+    };
+    scheme.check()?;
+    Ok(scheme)
 }
 
 fn read_source(

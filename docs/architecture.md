@@ -910,11 +910,17 @@ per route for `build_equivalent`.
 
 Before any of that, something has to decide what the newest stable release *is*,
 and [`../crates/bit-ids/src/resolution.rs`](../crates/bit-ids/src/resolution.rs)
-is where that happens. `ACQ-02` owns it and `bit-ids/resolution/2` is the
-document it writes. ⚠ The second generation adds a target's declared scheme
+is where that happens. `ACQ-02` owns it and `bit-ids/resolution/3` is the
+document it writes. ⚠ The second generation added a target's declared scheme
 floor and the `below_scheme_floor` verdict it gives, `CLIENT-06`; a capture
 resolved under the first still assembles, because the floor never changes how
-two versions order.
+two versions order. ⚠ The third adds a declared release series and the
+`other_series` verdict, `ENGINE-01`. A series does change how versions order:
+a scheme orders only versions inside it, so the latest view never compares a
+record across two series a target keeps current, and the series travels with
+the scheme into `indexes/v1/schemes.txt` as a fifth field. A scheme with no
+series keeps its four fields, so a capture resolved under either earlier
+generation still assembles.
 
 ⛔ **Version strings are not comparable in general.** Sorting tags as text puts
 `4.1.10` before `4.1.9`. A channel label is no better: a project can publish a

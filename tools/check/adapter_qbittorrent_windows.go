@@ -176,6 +176,7 @@ func qbtWinDescribe() error {
 	b.WriteString("release_min_components=3\n")
 	b.WriteString("release_max_components=4\n")
 	b.WriteString("release_floor_major=-\n")
+	b.WriteString("release_series=-\n")
 	// ⛔ THE `_lt20` INSTALLER, settled by the operator on 2026-10-15. ⭐
 	// `{version}` pins it: release-5.2.4 carries `qbittorrent_5.2.4_x64_setup.exe`
 	// beside it, and a pattern with a run where the version goes would match both

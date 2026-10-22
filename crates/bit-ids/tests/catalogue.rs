@@ -114,6 +114,7 @@ fn publication() -> (Bundle, Sha256Digest) {
             min_components: 1,
             max_components: 4,
             floor_major: None,
+            series: None,
         },
     )]);
     let indexes: Indexes = build(&corpus, &schemes).expect("the views build");

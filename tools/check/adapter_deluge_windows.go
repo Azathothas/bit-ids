@@ -203,6 +203,7 @@ func dlWinDescribe() error {
 	b.WriteString("release_min_components=3\n")
 	b.WriteString("release_max_components=3\n")
 	b.WriteString("release_floor_major=2\n")
+	b.WriteString("release_series=-\n")
 	b.WriteString("routes=package,source\n")
 	if h := dlWinHelpers(console, route); len(h) > 0 {
 		fmt.Fprintf(&b, "helpers=%s\n", strings.Join(h, "|"))

@@ -2273,6 +2273,33 @@ func (b *bitcheck) plantedLibtorrentCrypto() {
 		"FAILED the b2 line is held")
 }
 
+// plantedLibtorrentSeries takes the release-series pin out of the scheme the
+// `libtorrent` adapter describes, in a scratch copy, and asks the selftest,
+// which must refuse the describe that is left. ⛔ The pin is the plant because
+// without it the scheme still parses and the resolver selects `v2.1.2`, a
+// release PyPI does not carry, so a dispatch would fail only after both routes
+// had run. `ENGINE-01`.
+func (b *bitcheck) plantedLibtorrentSeries() {
+	const lt = "tools/check/libtorrent.go"
+	const line = "\tfmt.Fprintf(&b, \"release_series=%s\\n\", libtorrentSeries)"
+	b.save(lt, "libtorrent.orig")
+	defer b.put("libtorrent.orig", lt)
+	landed := false
+	b.rewrite("libtorrent.orig", lt, func(l string) (string, bool) {
+		if l == line && !landed {
+			landed = true
+			return "\tb.WriteString(\"release_series=-\\n\")", true
+		}
+		return l, true
+	})
+	if !landed {
+		b.h.bad("adapters libtorrent's release series could not be planted: libtorrent.go no longer has [" + strings.TrimSpace(line) + "]")
+		return
+	}
+	b.plantedSelftestOf("libtorrent's release series, unpinned,", []string{libtorrentTarget, "--selftest"},
+		"FAILED describe carries release_series=2.0")
+}
+
 // anacrolixHarnessPin holds the harness this tree commits to the adapter's
 // pin: the library's version and sum.golang.org's hashes in its go.mod and
 // go.sum, and the toolchain. ⛔ The routes build the harness's files and the
@@ -2458,6 +2485,7 @@ func (b *bitcheck) adapters() {
 	}
 	b.plantedLibtorrentSwitch()
 	b.plantedLibtorrentCrypto()
+	b.plantedLibtorrentSeries()
 
 	// ⛔ A RELEASE FETCH WITH NO TIME LIMIT. ⚠ Planted in the installer, because
 	// `ACQ-06` moved every release retrieval there, and in its Go file since

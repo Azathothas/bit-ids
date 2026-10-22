@@ -128,8 +128,10 @@ func checkStaleness(r *repo) (verdict, error) {
 		out := at(name + ".resolution.json")
 		// ⚠ The fifth argument is the scheme floor, `-` for none. `CLIENT-06`
 		// added it, and this caller was missed until a review found the gate
-		// reporting this harness as a skip.
-		runTo(out, null, resolver, "fixture-client", "-", "3", "3", "-", "github-releases",
+		// reporting this harness as a skip. ⚠ The sixth is the release series,
+		// `-` for none, `ENGINE-01`, and this caller was found by searching for
+		// every one before the change rather than after.
+		runTo(out, null, resolver, "fixture-client", "-", "3", "3", "-", "-", "github-releases",
 			"https://example.invalid/releases", body)
 		st, err := os.Stat(out)
 		return err == nil && st.Size() > 0

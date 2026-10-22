@@ -150,6 +150,7 @@ func aria2Adapter(k *adapterKit, sub string, args []string) {
 		// lowest floor that releases them. ⚠ The release listing's selection does
 		// not move: 1.37.0 stands above it. `CLIENT-05`.
 		fmt.Print("release_floor_major=1\n")
+		fmt.Print("release_series=-\n")
 		fmt.Print("release_asset=aria2-{version}.tar.bz2\n")
 		// ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE, AND IT IS
 		// ABOUT THE VENDOR'S OWN CHECKSUMS DOCUMENT. ⚠ That is a narrower sentence

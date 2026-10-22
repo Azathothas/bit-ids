@@ -126,7 +126,10 @@ build one feature set.** The 2.0 series is the one where PyPI and the tags
 agree, at 2.0.15. On 2026-10-22 PyPI's wheel and the tag built by its own
 `setup.py` reported the same compiled-in features and the same 258 default
 settings, and both captures assembled `build_equivalent`. ⚠ They link
-different OpenSSL releases, both statically. ⛔ Windows has the PyPI route
+different OpenSSL releases, both statically. ⚠ The first runner capture's
+bundle was refused by the published view on its scheme, which read the series
+as a tag prefix; the scheme now pins it with `release_series=2.0`, and a new
+dispatch is next. ⛔ Windows has the PyPI route
 measured and no adapter half. The same gap as rqbit's: the harness's digest,
 the b2 line and the tag's commit are evidence files beside the capture.
 `ENGINE-01` records it.

@@ -47,9 +47,13 @@
 // ⛔ THE VERSION SCHEME IS NEVER DECLARED HERE. Each route's resolver records
 // the scheme it ordered tags under in its `resolution.json`, and this reads it
 // from there. Two resolutions that order one target differently are refused,
-// because the latest view would depend on which was read first. ⚠ Both
-// generations are read: the scheme floor `bit-ids/resolution/2` added releases
-// candidates and never changes how two versions order. `CLIENT-06`.
+// because the latest view would depend on which was read first. ⚠ Every
+// generation is read: the scheme floor `bit-ids/resolution/2` added releases
+// candidates and never changes how two versions order. `CLIENT-06`. ⭐ The
+// release series `bit-ids/resolution/3` added DOES order, so it travels in the
+// scheme line as a fifth field, `libtorrent:v:3:3:2.0`; a scheme with no series
+// keeps the four fields it always had, so every line published before reads
+// back byte for byte. `ENGINE-01`.
 //
 // ⛔ ONLY `profiles/` AND `raw/` ARE COPIED, AND ANYTHING ELSE IS REFUSED. A
 // store carrying an index or a manifest of its own was published or assembled
@@ -122,8 +126,9 @@ const bundleUsage = "usage: bit-check assemble-bundle [--published DIR] --resolu
 // reads back. `CI-09`.
 const schemesFile = "indexes/v1/schemes.txt"
 
-// schemeShape is the one shape a scheme line has, `target:prefix:min:max`.
-var schemeShape = regexp.MustCompile(`^[^:]+:[^:]+:[0-9]+:[0-9]+$`)
+// schemeShape is the one shape a scheme line has, `target:prefix:min:max`,
+// and `:series` after it where the target pins a release series.
+var schemeShape = regexp.MustCompile(`^[^:]+:[^:]+:[0-9]+:[0-9]+(:(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))*)?$`)
 
 // helperRoot is the repository the binary was run in, found without changing
 // directory, because every path a caller passes is relative to where it stands.
@@ -406,7 +411,7 @@ func schemeLine(path string) (string, bool) {
 		return "", false
 	}
 	schema, _ := doc["schema"].(string)
-	if schema != "bit-ids/resolution/1" && schema != "bit-ids/resolution/2" {
+	if schema != "bit-ids/resolution/1" && schema != "bit-ids/resolution/2" && schema != "bit-ids/resolution/3" {
 		return "", false
 	}
 	scheme, _ := doc["scheme"].(map[string]any)
@@ -446,6 +451,22 @@ func schemeLine(path string) (string, bool) {
 		return "", false
 	}
 	line := target + ":" + prefix + ":" + minc + ":" + maxc
+	// ⛔ THE THIRD GENERATION STATES ITS SERIES, `null` for none, and a document
+	// of it that omits the field is no scheme: an absent pin read as none would
+	// order a series-pinned target across its series.
+	if schema == "bit-ids/resolution/3" {
+		raw, present := scheme["series"]
+		if !present {
+			return "", false
+		}
+		switch v := raw.(type) {
+		case nil:
+		case string:
+			line += ":" + v
+		default:
+			return "", false
+		}
+	}
 	if !schemeShape.MatchString(line) {
 		return "", false
 	}

@@ -57,12 +57,15 @@ trap 'rm -rf "$WORK"' EXIT INT TERM
 BITCHECK=$(store_bitcheck "$ROOT" "$WORK") || exit 2
 
 # A resolution as `bit-check resolve-release` writes it, carrying only what is read.
-# ⚠ The generation is the sixth argument, `bit-ids/resolution/2` by default.
-resolution() { # file target prefix-or-null min max [schema]
+# ⚠ The generation is the sixth argument, `bit-ids/resolution/3` by default,
+# and the release series the seventh, `null` by default, which only the third
+# generation carries. `ENGINE-01`.
+resolution() { # file target prefix-or-null min max [schema] [series-or-null]
   jq -n --arg t "$2" --argjson p "$3" --argjson a "$4" --argjson b "$5" \
-    --arg s "${6:-bit-ids/resolution/2}" \
+    --arg s "${6:-bit-ids/resolution/3}" --argjson r "${7:-null}" \
     '{schema: $s, target: $t,
-      scheme: {tag_prefix: $p, min_components: $a, max_components: $b}}' >"$1"
+      scheme: {tag_prefix: $p, min_components: $a, max_components: $b}}
+     | if $s == "bit-ids/resolution/3" then .scheme.series = $r else . end' >"$1"
 }
 
 fresh_store() {
@@ -85,9 +88,16 @@ resolution "$WORK/res-a.json" fixture-client null 3 3
 # ⭐ A first-generation resolution beside a second, as a re-assembly of a capture
 # made before the scheme floor meets one made after it.
 resolution "$WORK/res-b.json" fixture-client null 3 3 bit-ids/resolution/1
-resolution "$WORK/res-gen3.json" fixture-client null 3 3 bit-ids/resolution/3
+resolution "$WORK/res-gen2.json" fixture-client null 3 3 bit-ids/resolution/2
+resolution "$WORK/res-gen4.json" fixture-client null 3 3 bit-ids/resolution/4
 resolution "$WORK/res-other.json" fixture-client '"v"' 3 3
-printf '{"schema": "bit-ids/resolution/2", "target": "fixture-client"}\n' >"$WORK/res-none.json"
+printf '{"schema": "bit-ids/resolution/3", "target": "fixture-client"}\n' >"$WORK/res-none.json"
+# ⭐ A pinned release series, inside which the fixture's 1.2.3 stands, and one
+# it does not. ⛔ And a third-generation scheme that omits its series, which
+# is no scheme: an absent pin read as none orders across series.
+resolution "$WORK/res-series.json" fixture-client null 3 3 bit-ids/resolution/3 '"1.2"'
+resolution "$WORK/res-elsewhere.json" fixture-client null 3 3 bit-ids/resolution/3 '"1.3"'
+jq 'del(.scheme.series)' "$WORK/res-a.json" >"$WORK/res-noseries.json"
 
 fresh_store || {
   printf 'check-bundle: cannot build the fixture store\n' >&2
@@ -158,11 +168,57 @@ else
 fi
 
 # ⛔ A generation this assembler has never read is refused, not read as a guess.
-run_bundle --resolution "$WORK/res-gen3.json"
+run_bundle --resolution "$WORK/res-gen4.json"
 if [ "$RC" = "1" ] && grep -q 'states no target and version scheme' "$WORK/out" && [ ! -e "$WORK/bundle" ]; then
   pass "scheme   a resolution of an unknown generation is refused"
 else
   fail "scheme   exit $RC, $(left): $(head -2 "$WORK/out" | tr '\n' ' ')"
+fi
+
+# ⭐ The second generation beside the third, as a re-assembly of a capture made
+# before the release series meets one made after: no series is the same line.
+fresh_store
+run_bundle --resolution "$WORK/res-gen2.json" --resolution "$WORK/res-a.json"
+if [ "$RC" = "0" ] && grep -q 'scheme fixture-client:-:3:3$' "$WORK/out"; then
+  pass "series   a third-generation scheme with no series is the line the second wrote"
+else
+  fail "series   exit $RC: $(head -3 "$WORK/out" | tr '\n' ' ')"
+fi
+
+fresh_store
+run_bundle --resolution "$WORK/res-series.json"
+if [ "$RC" = "0" ] && grep -q 'scheme fixture-client:-:3:3:1.2' "$WORK/out" &&
+  [ "$(cat "$WORK/bundle/indexes/v1/schemes.txt" 2>/dev/null)" = "fixture-client:-:3:3:1.2" ]; then
+  pass "series   a pinned series travels as the scheme's fifth field and orders its record"
+else
+  fail "series   exit $RC: $(head -3 "$WORK/out" | tr '\n' ' ')"
+fi
+
+# ⛔ A record outside the pinned series is refused by the view, never ordered
+# across series.
+fresh_store
+run_bundle --resolution "$WORK/res-elsewhere.json"
+if [ "$RC" = "1" ] && grep -q 'E-VIW-02' "$WORK/out" && [ ! -e "$WORK/bundle" ]; then
+  pass "series   a record outside the pinned series is refused by the view"
+else
+  fail "series   exit $RC, $(left): $(head -3 "$WORK/out" | tr '\n' ' ')"
+fi
+
+fresh_store
+run_bundle --resolution "$WORK/res-noseries.json"
+if [ "$RC" = "1" ] && grep -q 'states no target and version scheme' "$WORK/out" && [ ! -e "$WORK/bundle" ]; then
+  pass "series   a third-generation scheme that omits its series is refused"
+else
+  fail "series   exit $RC, $(left): $(head -2 "$WORK/out" | tr '\n' ' ')"
+fi
+
+# ⛔ Pinning a series is a scheme change, so it meets the unpinned one as two.
+fresh_store
+run_bundle --resolution "$WORK/res-a.json" --resolution "$WORK/res-series.json"
+if [ "$RC" = "1" ] && grep -q 'under two schemes' "$WORK/out" && [ ! -e "$WORK/bundle" ]; then
+  pass "series   a pinned and an unpinned scheme for one target are two schemes"
+else
+  fail "series   exit $RC, $(left): $(head -2 "$WORK/out" | tr '\n' ' ')"
 fi
 
 run_bundle

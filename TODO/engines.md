@@ -83,19 +83,20 @@ neither route installs, so a third build would be measured.
 [`../tools/check/adapter_libtorrent.go`](../tools/check/adapter_libtorrent.go)
 registers `libtorrent` on Linux. Its pure decisions are
 [`../tools/check/libtorrent.go`](../tools/check/libtorrent.go), and `bit-check
-libtorrent --selftest` asks them on any host: 123 cases, all held.
+libtorrent --selftest` asks them on any host: 125 cases, all held.
 
 ⭐ **The routes, every origin https, both rootless:**
 
 | route | resolver | delivery | `package` |
 | --- | --- | --- | --- |
 | `package` | PyPI's index, asked for `libtorrent>=2.0,<2.1`, wheels only. pip's report must name 2.0.15 | the cp3XX manylinux wheel from files.pythonhosted.org into a venv at `<prefix>/opt/libtorrent` | `python-wheel` |
-| `source` | `resolve-source` over the repository's refs, prefix `v2.0.`, one component | `git clone --depth 1` of `v2.0.15`, commit held to `1eb18fae...`, `deps/try_signal` alone; Boost 1.83.0 from archives.boost.io held to its digest; `pip wheel -v` of the tag with no option; the wheel installed into the same venv path | `python-source` |
+| `source` | `resolve-source` over the repository's refs, prefix `v`, three components, `release_series=2.0` | `git clone --depth 1` of `v2.0.15`, commit held to `1eb18fae...`, `deps/try_signal` alone; Boost 1.83.0 from archives.boost.io held to its digest; `pip wheel -v` of the tag with no option; the wheel installed into the same venv path | `python-source` |
 
-- ⛔ **The scheme reads the 2.0 series alone.** Over the 136 refs on
-  2026-10-22, `resolve-source` selected `v2.0.15`, 15 `superseded` and 120
-  `foreign_tag`, `v2.1.2` and every 1.2 among them. The record's tag is
-  `v2.0.15`, and only the tag is read downstream.
+- ⛔ **The scheme pins the 2.0 series.** Over the 136 refs on 2026-10-22,
+  `resolve-source` selects `v2.0.15` as `2.0.15`, with 15 `superseded`, 14
+  `other_series` (every 1.2 and 2.1 release), 3 prereleases and 103
+  `foreign_tag`. ⚠ Until the runs below the series was a prefix, `v2.0.` with
+  one component, which the published view could not order.
 - ⛔ **A route never upgrades the pin.** Both refuse a 2.0.16 with *re-pin it,
   and its defaults digest*.
 - ⛔ **The feature set is held at install, three ways.** The b2 line the tag's
@@ -158,8 +159,9 @@ Boost's digest, `libssl-dev`'s version and the wheel's digest.
 commit. ⚠ The PyPI lane files as `linux_package_manager`, as Deluge's does.
 
 ⭐ `check-bitcheck` runs the selftest, removes `--no-dht` from a scratch copy
-of the command line and sees the selftest refuse, and changes `crypto=openssl`
-in the b2 features held and sees the vendor's own line refused.
+of the command line and sees the selftest refuse, changes `crypto=openssl`
+in the b2 features held and sees the vendor's own line refused, and unpins
+the release series and sees the describe refused.
 
 ⛔ **Windows has one honest route measured and none built.**
 
@@ -191,6 +193,93 @@ bounded at 1500 seconds. Check, in reading order:
    the b2 line and `libssl_dev`;
 3. the two captures, then `assemble-bundle`: the pair `publishable` and
    `build_equivalent`, with `target.kind` `library`.
+
+### ⛔ Runs 39783974176 and 39784872974: the view could not order the scheme's series. 2026-10-22
+
+⭐ **The runner captured both Linux lanes.** `capture-client` run 39783974176,
+at `df7f9c67`, dispatched on 2026-10-22 at 13:06:33Z, finished `success` in
+six minutes: *Linux client capture (libtorrent, package)* and *(libtorrent,
+source)* both green, the Windows matrix skipped. `assemble-bundle` run
+39784872974 then built both records, `publishable` each and
+`classify_across: build_equivalent`, and `corpus: valid, 2 record(s)`.
+
+⛔ **And the published view refused the bundle**, both records:
+
+```text
+E-VIW-02 at profiles/v1/libtorrent/2.0.15/linux/x86-64/python-source/cap-source.json: version 2.0.15 is not orderable under target libtorrent's scheme
+E-VIW-02 at profiles/v1/libtorrent/2.0.15/linux/x86-64/python-wheel/cap-package.json: version 2.0.15 is not orderable under target libtorrent's scheme
+```
+
+⛔ **The cause was the scheme, which pinned the series as a prefix.**
+`describe` declared `release_tag_prefix=v2.0.` and one component, so the
+resolver read `v2.0.15` as the version `15`. The source lane's own artifact
+says so: `resolution.txt` carries `selected_version=15` beside
+`selected_tag=v2.0.15`, and `resolution.json` the scheme `v2.0.`, 1, 1. The
+assembler takes each target's scheme from there, by design, and the view
+orders a record's `build.version` under it. `2.0.15` is three components.
+⚠ The tag was right and only the tag is read downstream, which is why every
+lane went green and nothing failed until the view.
+
+⭐ **The scheme is now the library's own, with the series pinned beside it.**
+`describe` declares `release_tag_prefix=v`, three components, floor `-` and
+the new `release_series=2.0`.
+
+| piece | rule |
+| --- | --- |
+| `release_series` | declared on every adapter, `-` for none, never defaulted, as the floor is. Dotted plain integers, fewer than `release_min_components`; `2.`, `.0`, `02.0`, `2.x` and a series as long as a version cannot run |
+| `other_series` | the new verdict for a stable tag whose leading components differ readably from the series: libtorrent's own release on another line. ⚠ Not `foreign_tag`, which says the tag is not this target's, and not `superseded`, since `v2.1.2` is newer. A prerelease of another series stays a prerelease |
+| what still blocks | a tag that agrees with the series as far as it goes, `v2.0` or `v2`, or is unreadable before a difference, `v2.0x.1`: it could be the series's newest |
+| `VersionScheme::components` | orders only versions inside the series. ⛔ So the latest view never compares across series: a 2.1 record under a target pinned to 2.0 is `E-VIW-02`, not the latest. A build line is target, platform, arch and package, and both series stay current, so "newest" across them would answer for a line nobody captured |
+| the scheme line | `libtorrent:v:3:3:2.0`, the fifth field only where a series is pinned, so every line in the published `schemes.txt` reads back byte for byte. ⛔ Moving the pin is a scheme change, and the assembler refuses two schemes for one target, so a move to 2.1 is a decision, not a drift |
+| the document | `bit-ids/resolution/3`, with `scheme.series` stated, `null` for none. `E-RES-11` re-derives every `other_series`, `E-RES-12` refuses an ordered candidate outside the series, `E-RES-13` a series that leaves nothing to order. The assembler still reads `/1` and `/2` |
+
+⭐ **Measured over every adapter's live inputs on 2026-10-22**, the same bytes
+read before and after the change: each adapter's refs through `resolve-source
+--refs`, and each listing through `resolve-stable` under its `describe`.
+Eighteen of the twenty verdict tables are identical, and nothing else
+selects differently. libtorrent's two move:
+
+| input | before | after |
+| --- | --- | --- |
+| 136 refs | `selected=15`; 15 `superseded`, 120 `foreign_tag` | `selected=2.0.15`; 15 `superseded`, 14 `other_series` (`v1.2.10` to `v1.2.20`, `v2.1.0` to `v2.1.2`), 3 `prerelease_by_version` (2.1's release candidates), 103 `foreign_tag` |
+| 69 releases | `selected=15`; 14 `superseded`, 54 `foreign_tag` | `selected=2.0.15`; 14 `superseded`, 13 `other_series`, 3 `prerelease_by_label`, 38 `foreign_tag` |
+
+⭐ **Run 39783974176's own artifacts, re-assembled here onto `origin/data`:**
+
+| artifacts | `assemble-dispatch --published` |
+| --- | --- |
+| as published | exit 1, the same two `E-VIW-02`. ⛔ The scheme is the artifacts', so a re-assembly is not a fix |
+| a scratch copy whose two `resolution.json` carry the new scheme | exit 0: `38 of 38 record(s) may enter a published view`, `schemes.txt` gains `libtorrent:v:3:3:2.0`, and the latest view names `python-source` and `python-wheel` at `2.0.15`, 29 rows |
+
+⚠ The second is a driven proof that the view orders these records, in
+disposable state, and is not a publication: its scheme was written, not
+resolved.
+
+⭐ The 36 records on `origin/data`, at `ab08fa3`, still validate, `36 of 36
+record(s) may enter a published view`, and `build-indexes` under the nine
+published schemes rebuilds `indexes/v1/profiles.json` byte for byte, 27
+latest rows, with or without libtorrent's line beside them.
+
+⛔ **So libtorrent needs a new dispatch, not a re-assembly.** Dispatch
+`capture-client` with `adapters: ["libtorrent"]`, `routes:
+["package","source"]` and `windows_adapters: []` at this commit, then
+`assemble-bundle` over that run. The record's version was `2.0.15` already;
+what changes is the resolution each lane writes. Check that the source lane's
+`resolution.txt` names `selected_version=2.0.15` and `resolution.json`
+`bit-ids/resolution/3` with `series` `2.0`.
+
+⭐ Tests: `cargo test` 629 across the workspace, 308 in `bit-ids`, five new
+unit tests and three new integration tests among them, and the planted
+defects for `E-RES-11` to `E-RES-13`. `check-source-route` replays the 136
+refs: `v2.0.15` selected as `2.0.15`, the 14 set aside, `v2.1.2` without the
+pin, and the old prefix pin's version `15`; 67 cases. `check-bundle` carries
+the series as a fifth field, refuses a record outside it and a
+third-generation scheme that omits it, and holds a pinned and an unpinned
+scheme apart; 26 cases. `bit-check libtorrent --selftest` holds 125 cases, and
+`check-bitcheck` plants an unpinned series in a scratch copy of the describe
+and sees the selftest refuse it; 350 cases. ⚠ Mutation-proved: the series
+guard in `components` removed fails two unit tests, and the assembler's
+"series omitted" guard removed fails its `check-bundle` case.
 
 ## ENGINE-02: anacrolix/torrent engine matrix
 

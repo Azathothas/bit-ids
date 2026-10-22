@@ -172,6 +172,7 @@ func aria2NextAdapter(k *adapterKit, sub string, args []string) {
 		fmt.Print("release_min_components=3\n")
 		fmt.Print("release_max_components=3\n")
 		fmt.Print("release_floor_major=-\n")
+		fmt.Print("release_series=-\n")
 		fmt.Print("release_asset=aria2-next-{version}-linux-x86_64\n")
 		// ⭐ THE VENDOR PUBLISHES A DIGEST AND THIS IS WHERE IT SAYS SO. Its release
 		// carries `aria2-next-{version}-checksums.sha256` beside the seven builds,
