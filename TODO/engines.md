@@ -18,6 +18,180 @@ a packet oracle.
 Prove: same-version route records and two-connector captures exist for Linux
 and Windows without claiming that an embedding client shares the profile.
 
+### ⭐ What libtorrent publishes, and which version a pair can reach. 2026-10-22
+
+Read through `AGENTS.md` rule 8's route, PyPI's JSON API and
+archives.boost.io, the last two answering directly.
+
+| source | what it carries |
+| --- | --- |
+| GitHub `arvidn/libtorrent` releases | two stable series at once. RC_2_0: `v2.0.15`, 2026-09-25T08:34:25Z, commit `1eb18fae...`, one asset, `libtorrent-rasterbar-2.0.15.tar.gz`. RC_2_1: `v2.1.2`, 2026-09-25T08:38:14Z, the tarball and 45 wheels. RC_1_2: `v1.2.20`, 2025-01-28 |
+| PyPI `libtorrent` | `info.version` 2.1.1. It carries 2.0.15, 2026-09-25, 45 wheels, cp39 to cp313, manylinux, musllinux, macOS and win32/win_amd64. ⛔ It does not carry 2.1.2, and its newest 1.2 is 1.2.19 |
+| the tag's `cibuildwheel.yml` and `pyproject.toml` | the PyPI wheels: cibuildwheel 2.23.4 runs the tag's `setup.py` with no option, against Boost 1.83.0 from archives.boost.io (`setup_boost.sh`) and a static OpenSSL (`setup_openssl.sh` on Linux, vcpkg's `x64-windows-static` on Windows) |
+| the tag's `bindings/python/setup.py` | given no b2 option, it adds `deprecated-functions=on boost-link=static libtorrent-link=static crypto=openssl variant=release`; its `setup.cfg` adds `cxxstd=14`. *"The feature set will match the version found on pypi"* |
+| archives.boost.io | `boost_1_83_0.tar.gz`, sha256 `c0685b68...`, the archive's own `.json` statement |
+
+⛔ **The target is the 2.0 series, at 2.0.15, because that is where PyPI and
+the tags agree.** A 2.1 pair on PyPI would measure 2.1.1, which `v2.1.2`
+superseded the same day 2.0.15 was published. ⚠ 2.1 deserves its own pair:
+the `v2.1.2` release carries the vendor's wheels as assets, so `release`
+beside `source` reaches it today, or PyPI once it carries 2.1.2. 1.2 deserves
+one later as well, since qBittorrent Enhanced and Deluge's Windows installer
+embed it, and no index carries 1.2.20. Absolute 5 reads per series here: each
+is a live stable line the vendor still releases.
+
+⭐ **The harness is this tree's: [`../tools/harness/libtorrent/harness.py`](../tools/harness/libtorrent/harness.py).**
+It is Python because the PyPI wheel delivers the library's Python binding and
+nothing else that runs, so the one harness both routes can run is a binding
+program. It is about 270 lines, carries `bit-ids:python-exception=ENGINE-01`,
+and runs `lt.session(settings)` with the library's default settings on one
+torrent. A tiny C++ program was weighed and set aside: it would link a library
+neither route installs, so a third build would be measured.
+
+| surface | library default, read from `lt.default_settings()` | what `start` passes |
+| --- | --- | --- |
+| DHT, bootstrapping from `dht.libtorrent.org:25401` | on | `--no-dht`, `enable_dht=false` |
+| local service discovery | on | `--no-lsd` |
+| UPnP, NAT-PMP | on, two settings | `--no-upnp`, `--no-natpmp` |
+| PEX, `ut_pex` | one of the session's three default plugins | `--no-pex`: the session gets no default plugin and `ut_metadata` and `smart_ban` are added back |
+| listen | `0.0.0.0:6881,[::]:6881` | `--ipv4-only --port 51413`: `0.0.0.0:51413` |
+| uTP, encryption policy | on, `pe_enabled` both ways | nothing |
+| peer fingerprint, user agent, handshake `v` | `-LT20F0-`, `libtorrent/2.0.15.0`, unset | nothing |
+| alert mask | errors only | error, status, tracker, peer, connect and port-mapping alerts, written to `alerts-N.log`. No peer or tracker sees it |
+
+- ⛔ **IPv4-only on every host, and recorded.** This host boots with IPv6
+  disabled, and how the default `[::]` listen behaves on such a kernel was not
+  measured. Off everywhere keeps the profile independent of the host's kernel.
+  No handshake field moves.
+- ⭐ **The harness reports what it configured**, `ready.txt`, read back from
+  `ses.get_settings()`, and `start` holds it with `libtorrentReadyRefusal`:
+  every surface off, `extensions=smart_ban,ut_metadata`, no proxy, no
+  anonymous mode, the listen interface IPv4 on the peer port and every
+  listener on it, and the library's identity defaults standing.
+- ⚠ libtorrent expands `0.0.0.0` into one listener per interface, so the
+  listen alerts name `127.0.0.1` inside the namespace. The first capture
+  refused on that, and the check now takes any IPv4 address on the port.
+- ⭐ **`stop` is the library's own shutdown**: a stop file the harness polls
+  every 200 ms, then the session's destructor. It kills after 10 seconds.
+  One mechanism for a Windows half, which has no SIGTERM to send.
+- ⭐ **`binary=` is the binding's extension module**, the library as each route
+  built it. The interpreter is the host's on both routes and would digest
+  alike.
+
+### ⭐ Two routes at 2.0.15 build one feature set, and both capture on this host. 2026-10-22
+
+[`../tools/check/adapter_libtorrent.go`](../tools/check/adapter_libtorrent.go)
+registers `libtorrent` on Linux. Its pure decisions are
+[`../tools/check/libtorrent.go`](../tools/check/libtorrent.go), and `bit-check
+libtorrent --selftest` asks them on any host: 123 cases, all held.
+
+⭐ **The routes, every origin https, both rootless:**
+
+| route | resolver | delivery | `package` |
+| --- | --- | --- | --- |
+| `package` | PyPI's index, asked for `libtorrent>=2.0,<2.1`, wheels only. pip's report must name 2.0.15 | the cp3XX manylinux wheel from files.pythonhosted.org into a venv at `<prefix>/opt/libtorrent` | `python-wheel` |
+| `source` | `resolve-source` over the repository's refs, prefix `v2.0.`, one component | `git clone --depth 1` of `v2.0.15`, commit held to `1eb18fae...`, `deps/try_signal` alone; Boost 1.83.0 from archives.boost.io held to its digest; `pip wheel -v` of the tag with no option; the wheel installed into the same venv path | `python-source` |
+
+- ⛔ **The scheme reads the 2.0 series alone.** Over the 136 refs on
+  2026-10-22, `resolve-source` selected `v2.0.15`, 15 `superseded` and 120
+  `foreign_tag`, `v2.1.2` and every 1.2 among them. The record's tag is
+  `v2.0.15`, and only the tag is read downstream.
+- ⛔ **A route never upgrades the pin.** Both refuse a 2.0.16 with *re-pin it,
+  and its defaults digest*.
+- ⛔ **The feature set is held at install, three ways.** The b2 line the tag's
+  setup.py ran is read out of the log and must be exactly the vendor's
+  features. The binding's own symbols must show the deprecated API, the DHT,
+  logging, I2P and encryption compiled in, and OpenSSL linked in. And the
+  sha256 of all 258 default settings must be `2ec98866...`.
+- ⚠ **The source build's environment drops every `BOOST*`, compiler, flag,
+  `PIP_*` and `PYTHON*` variable**, and pip runs with `PIP_CONFIG_FILE` set
+  to `/dev/null`.
+- ⚠ **What still differs, recorded rather than closed.** The wheel links a
+  static OpenSSL 3.5.0 and was built in manylinux2014 by its devtoolset's
+  compiler. The source route links the host's static `libcrypto.a` from
+  `libssl-dev`, 3.0.13 here, with the host's g++ 13.3. Neither touches a field
+  the wire carries. The source route takes setuptools from PyPI for its build.
+
+⭐ **Driven on the session host as `ubuntu`, each lane with its own `HOME`,
+prefix, claim and `RUNNER_TEMP`, through `bit-check install-step`, on the
+host's Python 3.13.16:**
+
+| step | package | source |
+| --- | --- | --- |
+| `install-step` | exit 0 in 6 seconds, `acquired=yes` | exit 0 in 309 and 321 seconds on two drives, the build itself 254, `acquired=yes`, commit `1eb18fae...` |
+| the module | 19727328 bytes, sha256 `713eab7f...`, the wheel's | 19317816 bytes, `3fe19e8d...` on both drives in one workdir. A probe build of the same tag in another directory digested `731d183b...` |
+| the answer | `library_version=2.0.15.0`, every define symbol present, `openssl=static` with `OpenSSL 3.5.0 8 Apr 2025` | the same, `openssl=static` with no version text |
+| default settings | 258, `2ec98866...` | **the same, line for line** |
+| b2 | | `cxxstd=14 deprecated-functions=on boost-link=static libtorrent-link=static crypto=openssl variant=release address-model=64` |
+| `version` | `2.0.15` | `2.0.15` |
+| capture, 45 s, 3 sessions, in a loopback-only namespace as uid 1000 | exit 0: 6 announces, 6 peer streams, 30 segments, verified by `sha256sum` | the same |
+| tracker `peer_id` | `-LT20F0-` and a new twelve-byte tail per session | the same |
+| tracker `user_agent` | `libtorrent/2.0.15.0` | the same |
+| peer-wire `reserved` | `0000000000100005` | the same |
+| `stop` | `closed on the stop file` in every session, in about 100 ms | the same |
+| sockets | TCP `127.0.0.1:51413` listening and UDP `127.0.0.1:51413`, uTP. Nothing else | the same |
+| `assemble-dispatch`, by hand | both records `publishable`, `classify_across` `build_equivalent`, 4 fields agreeing. Refused only for the run manifests a dispatch writes and the runner environment this host's claim has not got | |
+
+- The announce is `uploaded=0`, `downloaded=0`, `left`, `corrupt=0`, an
+  eight-digit hex `key`, `event=started`, `numwant=200`, `compact=1`,
+  `no_peer_id=1`, `supportcrypto=1` and `redundant=0`. Its headers are `Host`,
+  `User-Agent`, `Accept-Encoding: gzip` and `Connection: close`.
+- ⭐ **A `stopped` announce in every session**, which the destructor sends.
+- ⚠ **The peer-wire peer ID is not the tracker's.** Each connection carries
+  `-LT20F0-` with its own tail, while each session's announces share one. That
+  is the library's behaviour and it is recorded.
+- ⚠ **The reserved bytes advertise the DHT though it is off**, as
+  anacrolix/torrent's do: DHT, LTEP and Fast.
+- The extension handshake offers `lt_donthave`, `share_mode`, `upload_only`,
+  `ut_holepunch` and `ut_metadata`, and no `ut_pex`. It carries
+  `complete_ago=-1`, `metadata_size`, `reqq=2000`, `yourip` and `v`
+  `libtorrent/2.0.15.0`, the user agent, since `handshake_client_version` is
+  unset.
+- ⚠ `ss` names the process `python`, the venv's interpreter.
+
+⚠ **Gap, as rqbit's and anacrolix's:** the record has no field for the library
+version or the harness commit. No field is invented. The record's version is
+`2.0.15`, `lt.__version__` without its fourth component. `build-features.txt`
+keeps the harness's digest, the tree's commit, the whole answer, the b2 line,
+Boost's digest, `libssl-dev`'s version and the wheel's digest.
+`default-settings.txt` keeps all 258 defaults, and `source-commit` the tag's
+commit. ⚠ The PyPI lane files as `linux_package_manager`, as Deluge's does.
+
+⭐ `check-bitcheck` runs the selftest, removes `--no-dht` from a scratch copy
+of the command line and sees the selftest refuse, and changes `crypto=openssl`
+in the b2 features held and sees the vendor's own line refused.
+
+⛔ **Windows has one honest route measured and none built.**
+
+- ⭐ The `package` route reaches it. PyPI's
+  `libtorrent-2.0.15-cp312-cp312-win_amd64.whl`, 3999252 bytes, holds a
+  10726912-byte `.pyd` whose imports are system DLLs, the MSVC runtime and
+  `python312.dll`, and no OpenSSL DLL. It links OpenSSL 3.6.1 statically. So
+  CLIENT-07's 1.2.19 lesson, the vendor's OpenSSL DLLs, does not apply here.
+- ⛔ The `source` route is unbuilt and unmeasured. It needs MSVC, Boost 1.83.0
+  bootstrapped with b2, and a static OpenSSL, which the vendor makes with
+  vcpkg's `x64-windows-static`, all inside 1500 seconds. Linux's build alone
+  took 254 seconds on four cores. Nothing here can measure a Windows build.
+- ⛔ So no Windows half is registered, and a Windows dispatch of `libtorrent`
+  could not run. The next unit writes the half: the same harness and pure
+  decisions, the PyPI route, and a source route whose OpenSSL is either
+  vcpkg's static build or the runner's preinstalled OpenSSL. The second
+  would change the linkage that the answer holds `static`.
+
+⛔ **What only a runner can prove.** Dispatch `capture-client` with `adapters:
+["libtorrent"]`, `routes: ["package","source"]` and `windows_adapters: []`.
+The workflow needs no change: the source lane reads `compiles=source` and is
+bounded at 1500 seconds. Check, in reading order:
+
+1. whether the package lane's pip finds a cp312 manylinux wheel for
+   `ubuntu-24.04`'s Python 3.12, and whether its answer's defaults digest is
+   still `2ec98866...` there;
+2. whether the source lane's `git clone`, archives.boost.io and the build
+   finish inside 1500 seconds. `build-features.txt` carries `build_seconds`,
+   the b2 line and `libssl_dev`;
+3. the two captures, then `assemble-bundle`: the pair `publishable` and
+   `build_equivalent`, with `target.kind` `library`.
+
 ## ENGINE-02: anacrolix/torrent engine matrix
 
 Source: operator scope and anacrolix/torrent upstream

@@ -18,8 +18,9 @@ their contract.** Each is a `bit-check` command, `bit-check adapter <name>
 | `rqbit` | [`../../../tools/check/adapter_rqbit.go`](../../../tools/check/adapter_rqbit.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/rqbit.go`](../../../tools/check/rqbit.go). An engine target |
 | `biglybt` | [`../../../tools/check/adapter_biglybt.go`](../../../tools/check/adapter_biglybt.go), with a Windows half registered under the same name and both halves' pure decisions in [`../../../tools/check/biglybt.go`](../../../tools/check/biglybt.go) |
 | `anacrolix-torrent` | [`../../../tools/check/adapter_anacrolix-torrent.go`](../../../tools/check/adapter_anacrolix-torrent.go), with a Windows half registered under the same name and both halves' pure decisions and their one install in [`../../../tools/check/anacrolix.go`](../../../tools/check/anacrolix.go). An engine target, whose harness is [`../../../tools/harness/anacrolix-torrent/`](../../../tools/harness/anacrolix-torrent/) |
+| `libtorrent` | [`../../../tools/check/adapter_libtorrent.go`](../../../tools/check/adapter_libtorrent.go), Linux only, with its pure decisions in [`../../../tools/check/libtorrent.go`](../../../tools/check/libtorrent.go). An engine target, whose harness is [`../../../tools/harness/libtorrent/harness.py`](../../../tools/harness/libtorrent/harness.py) |
 
-The nine Linux adapters share their mechanics, and none of their decisions, in
+The ten Linux adapters share their mechanics, and none of their decisions, in
 [`../../../tools/check/adapterkit.go`](../../../tools/check/adapterkit.go). The
 door every caller reaches an adapter through is
 [`../../../tools/check/adapter.go`](../../../tools/check/adapter.go): a
@@ -280,6 +281,24 @@ harness's own report of its config. `stop` writes a stop file the harness
 polls, so the library's own close runs on both platforms. `ENGINE-02` in
 [`../../../TODO/engines.md`](../../../TODO/engines.md) carries the
 measurements.
+
+⭐ **`libtorrent` runs a Python harness this tree commits, on the 2.0
+series.** PyPI's wheel delivers the library's Python binding and nothing else
+that runs, so the product is
+[`../../../tools/harness/libtorrent/harness.py`](../../../tools/harness/libtorrent/harness.py),
+`lt.session` on the library's default settings. `describe` prints
+`target_kind=library` and reads the tags with prefix `v2.0.` and one
+component, so 2.1 and 1.2 are other series. The `package` route asks PyPI for
+`libtorrent>=2.0,<2.1`, wheels only; the `source` route builds the tag with
+its own `setup.py` against Boost 1.83.0 from archives.boost.io, which is the
+vendor's wheel build, and `compiles=source`. Both install into a venv under
+the prefix, and `binary=` names the binding's extension module. Every install
+holds the b2 line, the binding's compiled-in features and a digest of every
+default setting. `start` switches off the DHT, local discovery, UPnP, NAT-PMP,
+`ut_pex` and IPv6 and holds the harness's report of its session. `stop`
+writes a stop file the harness polls. ⛔ No Windows half yet. `ENGINE-01` in
+[`../../../TODO/engines.md`](../../../TODO/engines.md) carries the
+measurements and what Windows lacks.
 
 ⭐ **`biglybt` is the one Java target, and the one whose build has no
 `--version`.** `version` writes a small class file, made byte by byte in

@@ -27,6 +27,28 @@ Nothing is released yet. Entries accumulate here until the first
 - Record: [`TODO/engines.md`](TODO/engines.md) `ENGINE-03`. No version bump and
   no deploy.
 
+### 2026-10-22T12:19:03Z
+
+- ⭐ **libtorrent has an adapter and a harness**, `libtorrent`, on Linux, at
+  2.0.15. The 2.0 series is the one where PyPI and the tags agree; PyPI stops
+  at 2.1.1 in the newer one. The product is a small Python harness in
+  `tools/harness/libtorrent/`, the library's binding on its default settings.
+- The routes: PyPI's wheel, and the `v2.0.15` tag built by its own `setup.py`
+  against Boost 1.83.0, which is how the vendor builds its wheels. Every
+  install checks the build's features and a digest of all 258 default
+  settings, and both routes measured the same.
+- The adapter switches off the DHT, local discovery, UPnP, NAT-PMP, PEX and
+  IPv6. The library's peer ID, user agent and handshake version are left
+  alone.
+- Driven on the session host, both routes captured `-LT20F0-` and
+  `libtorrent/2.0.15.0`, sent a `stopped` announce in every session, and
+  assembled `build_equivalent`.
+- ⚠ No Windows half yet. PyPI's Windows wheel was measured; a Windows build of
+  the tag was not.
+- Record: [`TODO/engines.md`](TODO/engines.md) `ENGINE-01`.
+
+No version bump and no deploy.
+
 ### 2026-10-22T08:21:00Z
 
 - ⛔ **KTorrent has no adapter, because no rootless pair of routes exists.**

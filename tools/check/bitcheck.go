@@ -2219,6 +2219,60 @@ func (b *bitcheck) plantedAnacrolixSwitch() {
 		"FAILED the command line is held")
 }
 
+// plantedLibtorrentSwitch takes `--no-dht` off the command line the
+// `libtorrent` adapter builds, in a scratch copy, builds that copy and asks its
+// selftest, which must refuse the line it now makes. `ENGINE-01`.
+//
+// ⛔ The DHT is the plant because the library's default settings have it on
+// and bootstrap from `dht.libtorrent.org`, and the harness's own report would
+// see a missing switch only at a capture.
+func (b *bitcheck) plantedLibtorrentSwitch() {
+	const lt = "tools/check/libtorrent.go"
+	const line = "\t\t\"--ipv4-only\", \"--no-dht\", \"--no-lsd\", \"--no-upnp\", \"--no-natpmp\", \"--no-pex\","
+	b.save(lt, "libtorrent.orig")
+	defer b.put("libtorrent.orig", lt)
+	landed := false
+	b.rewrite("libtorrent.orig", lt, func(l string) (string, bool) {
+		if l == line && !landed {
+			landed = true
+			return "\t\t\"--ipv4-only\", \"--no-lsd\", \"--no-upnp\", \"--no-natpmp\", \"--no-pex\",", true
+		}
+		return l, true
+	})
+	if !landed {
+		b.h.bad("adapters libtorrent's DHT switch could not be planted: libtorrent.go no longer has [" + strings.TrimSpace(line) + "]")
+		return
+	}
+	b.plantedSelftestOf("libtorrent's DHT switch, removed,", []string{libtorrentTarget, "--selftest"},
+		"FAILED the command line is held")
+}
+
+// plantedLibtorrentCrypto drops `crypto=openssl` from the b2 features the
+// source route holds its build to, in a scratch copy, and asks the selftest,
+// which must then refuse the vendor's own line. ⛔ The feature set is what
+// makes the two routes one build, and OpenSSL is the one setup.py adds that a
+// host without libssl-dev would silently lose. `ENGINE-01`.
+func (b *bitcheck) plantedLibtorrentCrypto() {
+	const lt = "tools/check/libtorrent.go"
+	const line = "\twant := []string{\"deprecated-functions=on\", \"boost-link=static\", \"libtorrent-link=static\", \"crypto=openssl\","
+	b.save(lt, "libtorrent.orig")
+	defer b.put("libtorrent.orig", lt)
+	landed := false
+	b.rewrite("libtorrent.orig", lt, func(l string) (string, bool) {
+		if l == line && !landed {
+			landed = true
+			return "\twant := []string{\"deprecated-functions=on\", \"boost-link=static\", \"libtorrent-link=static\", \"crypto=built-in\",", true
+		}
+		return l, true
+	})
+	if !landed {
+		b.h.bad("adapters libtorrent's crypto feature could not be planted: libtorrent.go no longer has [" + strings.TrimSpace(line) + "]")
+		return
+	}
+	b.plantedSelftestOf("libtorrent's crypto feature, changed,", []string{libtorrentTarget, "--selftest"},
+		"FAILED the b2 line is held")
+}
+
 // anacrolixHarnessPin holds the harness this tree commits to the adapter's
 // pin: the library's version and sum.golang.org's hashes in its go.mod and
 // go.sum, and the toolchain. ⛔ The routes build the harness's files and the
@@ -2394,6 +2448,16 @@ func (b *bitcheck) adapters() {
 	}
 	b.plantedAnacrolixSwitch()
 	b.anacrolixHarnessPin()
+	// ⭐ AND libtorrent's: the scheme, the build's answer and its defaults
+	// digest, the b2 line, the build environment, the harness's command line
+	// and its report are libtorrent.go, untagged. `ENGINE-01`.
+	if rc, out := b.run(libtorrentTarget, "--selftest"); rc == 0 && strings.Contains(out, `"failed":0}`) {
+		b.h.ok("adapters the libtorrent adapter's selftest holds: go (exit 0)")
+	} else {
+		b.h.bad(fmt.Sprintf("adapters the libtorrent adapter's selftest: go answered %d: %s", rc, strings.TrimSpace(out)))
+	}
+	b.plantedLibtorrentSwitch()
+	b.plantedLibtorrentCrypto()
 
 	// ⛔ A RELEASE FETCH WITH NO TIME LIMIT. ⚠ Planted in the installer, because
 	// `ACQ-06` moved every release retrieval there, and in its Go file since

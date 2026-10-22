@@ -92,7 +92,7 @@ because two empty sets agree perfectly.
 
 | id | harness | route A | route B | entry |
 | --- | --- | --- | --- | --- |
-| `libtorrent` | minimal Rust/C++ or Python-binding client pinned to one stable libtorrent | package registry/system package | matching GitHub tag | `ENGINE-01` |
+| `libtorrent` | this tree's `tools/harness/libtorrent/harness.py`, the Python binding's `lt.session` on the library's defaults, the 2.0 series at 2.0.15 ⭐ | PyPI's `libtorrent` wheel, Linux ⭐; Windows measured, no adapter half yet | the `v2.0.15` tag built by its own `setup.py` against Boost 1.83.0, Linux ⭐ | `ENGINE-01` |
 | `anacrolix-torrent` | this tree's `tools/harness/anacrolix-torrent/`, the library's default config, pinned at the stable tag ⭐ | proxy.golang.org, checked by sum.golang.org, Linux and Windows ⭐ | the tag from GitHub with every module from its own origin, `GOPROXY=direct`, Linux and Windows ⭐ | `ENGINE-02` |
 | `rqbit` | the upstream `rqbit` command, librqbit's own wrapper, at the stable tag ⭐ | crates.io `rqbit`, `cargo install --locked`, Linux and Windows ⭐ | the vendor's GitHub release binary, Linux and Windows ⭐ | `ENGINE-03` |
 
@@ -120,6 +120,16 @@ build information, and both captures assembled `build_equivalent`. ⚠ The same
 gap as rqbit's: the record's version is the library's, and the harness's
 digest, the build information and the tag's commit are evidence files beside
 the capture. `ENGINE-02` records it.
+
+⭐ **`libtorrent`'s harness is this tree's Python, and its two Linux routes
+build one feature set.** The 2.0 series is the one where PyPI and the tags
+agree, at 2.0.15. On 2026-10-22 PyPI's wheel and the tag built by its own
+`setup.py` reported the same compiled-in features and the same 258 default
+settings, and both captures assembled `build_equivalent`. ⚠ They link
+different OpenSSL releases, both statically. ⛔ Windows has the PyPI route
+measured and no adapter half. The same gap as rqbit's: the harness's digest,
+the b2 line and the tag's commit are evidence files beside the capture.
+`ENGINE-01` records it.
 
 ## Platform rule
 
