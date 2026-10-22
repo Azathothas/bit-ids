@@ -1645,35 +1645,11 @@ YAML
   rm -f "$PLANT"
 fi
 
-# -- 9. a Go file that is not formatted ---------------------------------------
+# -- 9. a checking rule weakened so it no longer refuses ----------------------
 #
-# ⚠ It compiles, so the refusal is gofmt's and not the compiler's. The pattern
-# is the step's own line, which only the formatting branch prints.
-GOFILE="tools/check/project.go"
-
-if unit go-fmt; then
-  if keep "$GOFILE" && append_once "$TREE/$GOFILE" "func  workflowPlant( ) {}"; then
-    refuses linux "Go formatting and vet" "an unformatted Go file" "gofmt would rewrite"
-  else
-    fail "plant    could not plant the Go formatting defect"
-  fi
-  restore "$GOFILE" || exit 2
-fi
-
-# -- 10. a Go defect vet refuses ----------------------------------------------
-#
-# ⚠ Formatted and compiling on purpose, so the step reaches its last line: a
-# plant gofmt also refused would report vet working when vet never ran.
-if unit go-vet; then
-  if keep "$GOFILE" && append_once "$TREE/$GOFILE" 'func workflowPlant() { fmt.Printf("%d", "x") }'; then
-    refuses linux "Go formatting and vet" "a Go defect vet refuses" "wrong type"
-  else
-    fail "plant    could not plant the vet defect"
-  fi
-  restore "$GOFILE" || exit 2
-fi
-
-# -- 11. a checking rule weakened so it no longer refuses ---------------------
+# ⚠ IT RUNS BEFORE THE TWO GO UNITS, AND THE ORDER IS THE POINT. `--shard i/N`
+# takes `index mod N`, and this unit runs the whole harness. At position 20 of
+# 22 it lands, under eight shards, in the one shard that runs no full gate.
 #
 # ⛔ THE GATE PASSES THIS TREE. The rule is only ever run against a clean tree
 # there, and a rule that reports success where it should report a refusal still
@@ -1689,6 +1665,34 @@ if unit harness-weakened; then
     fail "plant    could not plant the weakened rule"
   fi
   restore "$CACHEGO" || exit 2
+fi
+
+# -- 10. a Go file that is not formatted --------------------------------------
+#
+# ⚠ It compiles, so the refusal is gofmt's and not the compiler's. The pattern
+# is the step's own line, which only the formatting branch prints.
+GOFILE="tools/check/project.go"
+
+if unit go-fmt; then
+  if keep "$GOFILE" && append_once "$TREE/$GOFILE" "func  workflowPlant( ) {}"; then
+    refuses linux "Go formatting and vet" "an unformatted Go file" "gofmt would rewrite"
+  else
+    fail "plant    could not plant the Go formatting defect"
+  fi
+  restore "$GOFILE" || exit 2
+fi
+
+# -- 11. a Go defect vet refuses ----------------------------------------------
+#
+# ⚠ Formatted and compiling on purpose, so the step reaches its last line: a
+# plant gofmt also refused would report vet working when vet never ran.
+if unit go-vet; then
+  if keep "$GOFILE" && append_once "$TREE/$GOFILE" 'func workflowPlant() { fmt.Printf("%d", "x") }'; then
+    refuses linux "Go formatting and vet" "a Go defect vet refuses" "wrong type"
+  else
+    fail "plant    could not plant the vet defect"
+  fi
+  restore "$GOFILE" || exit 2
 fi
 
 # -- 12. the clean tree again -------------------------------------------------

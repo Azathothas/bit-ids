@@ -151,7 +151,7 @@ jobs:
   # restore on a job that saves a quarter of an hour is a trade worth naming
   # rather than hiding behind a composite action nothing else would use.
   acceptance:
-    name: Workflow acceptance ${{ matrix.shard }}/7
+    name: Workflow acceptance ${{ matrix.shard }}/8
     runs-on: ubuntu-24.04
     # ⭐ SHARDED ACROSS FOUR RUNNERS, `CI-10`, 2026-09-10. This job was 32.6
     # minutes on run 122 - measured, not estimated - against 5.8 for the Linux
@@ -164,7 +164,7 @@ jobs:
     # ⛔ THE PARTITION IS CHECKED RATHER THAN ASSUMED. `index mod N` is provable by
     # construction, each shard prints what it ran and what it skipped, and
     # `scripts/ci/check-shards.sh` asserts that the N shards together cover every
-    # unit exactly once for every N from 1 to 7. ⚠ A shard selector that silently
+    # unit exactly once for every N from 1 to 8. ⚠ A shard selector that silently
     # claimed no unit would report a faster green run over less work, which is
     # this repository's oldest defect class and the one a wall-clock target makes
     # most tempting.
@@ -174,14 +174,14 @@ jobs:
     # refused proves nothing unless the clean tree is accepted. That is a floor on
     # what a shard can cost and it is paid on purpose.
     #
-    # ⚠ THE COUNT IS HERE AND IN THE MATRIX AND NOWHERE ELSE. `--shard i/7` takes
+    # ⚠ THE COUNT IS HERE AND IN THE MATRIX AND NOWHERE ELSE. `--shard i/8` takes
     # its N from this list, so a fifth entry added without changing the divisor
     # would leave one shard running nothing; `check-shards` is what compares the
     # two, and `check-workflow` refuses an `i` outside `1..N` outright.
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     # ⛔ FIVE SINCE 2026-10-15. Shard 2 of four took 19 minutes 5 seconds on run
     # 218 and was cancelled at the 20-minute bound on run 219, once `CI-09` and
     # `CLIENT-06` had added cases. The bound stays where it is, for the reason
@@ -195,6 +195,10 @@ jobs:
     # 19. Under `mod 6` shard 1 held two of them beside `rust-clippy` and was
     # cancelled at 1216 seconds on CI run 39672223612, while the other five took
     # 15 to 18 minutes. Under `mod 7` each shard holds exactly one.
+    # ⛔ EIGHT ON 2026-10-22, AND THE HARNESS MOVED. Under seven, shard 1 also held
+    # `harness-weakened`, which runs the whole harness, and took 1187 seconds on
+    # CI run 39733930507. Under eight the gate-running units fill seven shards,
+    # and `harness-weakened`, moved to unit 20 of 22, lands in shard 4, the one left.
     # ⛔ 20 RATHER THAN 45, AND LOWERING IT IS THE POINT. The bound was raised to
     # 45 on 2026-09-10 to fit a job that had been cancelled at 30 minutes three
     # times, which this repository calls masking everywhere else. A shard is about
@@ -245,7 +249,7 @@ jobs:
       - name: Shard partition
         run: sh scripts/ci/check-shards.sh
       - name: Workflow acceptance
-        run: sh scripts/ci/check-workflow.sh --shard ${{ matrix.shard }}/7
+        run: sh scripts/ci/check-workflow.sh --shard ${{ matrix.shard }}/8
 
   windows:
     name: Windows gate

@@ -3509,6 +3509,14 @@ unstated write in both doors, and `check-bitcheck` plants each.
   two of them beside `rust-clippy`: CI run 39672223612 cancelled it at 1216
   seconds while the other five shards took 15 to 18 minutes. Under `mod 7` each
   shard holds exactly one. `check-shards` now proves every N from 1 to 7.
+- **And to eight, with the harness unit moved, on 2026-10-22.** Under seven,
+  shard 1 also held `harness-weakened`, which runs the whole harness. CI run
+  39733930507 on `018c32c` was green, but shard 1 took 1187 of its 1200 seconds.
+  Under eight, the seven gate-running units fill seven shards. Moving
+  `harness-weakened` from unit 22 to unit 20, ahead of `go-fmt` and `go-vet`,
+  puts it in shard 4, the one shard without a gate run. The units share no
+  state, and `check-shards`
+  proves every N from 1 to 8.
 
 ## CI-09: The capture-to-publisher path, end to end
 

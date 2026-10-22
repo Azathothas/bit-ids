@@ -5,6 +5,13 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-22T02:40:00Z
+
+- **Workflow acceptance runs on eight shards**, and the unit that runs the whole
+  harness moved so it shares no shard with a unit that runs the whole gate.
+  Under seven, shard 1 held both and took 1187 of its 1200 seconds.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-08`. No version bump and no deploy.
+
 ### 2026-10-22T01:30:39Z
 
 - ⭐ **BiglyBT has an adapter**, `biglybt`, on Linux and Windows, at 4.1.0.0.

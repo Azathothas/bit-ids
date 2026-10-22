@@ -104,11 +104,11 @@ if [ "$NPLANTS" -lt 2 ] || [ "$NCONTROLS" -lt 1 ]; then
 fi
 pass "control  the subject names $NPLANTS shardable units and $NCONTROLS controls"
 
-# ⚠ EVERY N FROM 1 TO 7, not one convenient value. `index mod N` is correct for
+# ⚠ EVERY N FROM 1 TO 8, not one convenient value. `index mod N` is correct for
 # every N by construction, and a harness that checked only the N the workflow
 # happens to use would pass over a selector that was right for four and wrong for
 # three - which is exactly what a later change to the matrix would reach for.
-for n in 1 2 3 4 5 6 7; do
+for n in 1 2 3 4 5 6 7 8; do
   : >"$WORK/union"
   _bad=0
   _i=1
