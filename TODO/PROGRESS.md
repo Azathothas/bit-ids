@@ -1,9 +1,9 @@
 # Current progress
 
 State instant: 2026-10-25
-Total: 69
+Total: 70
 Open: 12
-In progress: 0
+In progress: 1
 Blocked: 0
 Done: 57
 
@@ -127,6 +127,9 @@ still open is a host that never reached it.
 
 ⚠ **Paused on 2026-10-22 for a transfer and refactor of the repository**, settled by
 the operator. The transfer landed on 2026-10-25; the refactor has not started.
+⭐ **`CI-13` is in progress**, asked by the operator on 2026-10-25: the CI wall
+clock, shortened without dropping a guarantee. It closes when a CI run on this
+remote measures it. [`ci.md`](ci.md).
 12 entries are open. In the order a resuming session would take them:
 
 1. **`ENGINE-01`**, libtorrent 2.0.15. The Linux pair is built and was captured

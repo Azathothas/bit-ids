@@ -16,11 +16,11 @@ mapping of its own and the two twins cannot hold different ones.
 | Corpus | `CORPUS` | 0 | 0 | 0 | 4 | 4 |
 | Library | `LIB` | 0 | 0 | 0 | 2 | 2 |
 | Publishing | `PUB` | 0 | 0 | 0 | 5 | 5 |
-| CI | `CI` | 3 | 0 | 0 | 9 | 12 |
+| CI | `CI` | 3 | 1 | 0 | 9 | 13 |
 | Documentation | `DOC` | 0 | 0 | 0 | 2 | 2 |
-| Total | | 12 | 0 | 0 | 57 | 69 |
+| Total | | 12 | 1 | 0 | 57 | 70 |
 
-Effort inventory: 1 S, 15 M, 51 L, 2 XL. `check-project` derives that line from
+Effort inventory: 1 S, 16 M, 51 L, 2 XL. `check-project` derives that line from
 the index and refuses it when they disagree. `CI-10` and `CI-11` are the XL entries; the
 observer-lab entry was one too and was split on 2026-09-04, because its
 acceptance named a client fixture and a Windows run that this repository cannot

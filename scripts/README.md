@@ -15,7 +15,7 @@ four-processor session host, cold, and on run 179 for CI.
 | Rust | `cargo fmt --all -- --check`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `cargo test --workspace --locked --all-targets` | under a minute warm | *Linux gate* and *Windows gate* |
 | `tools/check/` | `gofmt -l tools/check`, `go vet ./...` from `tools/check`, then `bit-check check-bitcheck --harnesses` from a built `tools/check` | about a minute | *Linux gate*: *Go formatting and vet*, *Checking harnesses* |
 | a shell script | `shellcheck` and `shfmt -d -i 2 -ci` over it, then the gate | seconds, then 3 minutes | *Shell syntax and style* |
-| `.github/workflows/` | `sh scripts/ci/check-workflow.sh`, unsharded, after the gate | about 30 minutes | *Workflow acceptance*, eight shards under a 20-minute bound |
+| `.github/workflows/` | `sh scripts/ci/check-workflow.sh`, unsharded, after the gate | about 40 minutes, measured on 2026-10-25 | *Workflow acceptance*, twelve shards under a 20-minute bound |
 
 ⛔ **Do not edit the tree or `git add` while the gate or `check-workflow` runs.**
 Both copy and compare the working tree, and an edit mid-run fails a row with a
@@ -315,16 +315,21 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
   is read out of `.github/workflows/ci.yml` by job and step name, so a harness
   that has drifted from CI reports a missing step rather than a pass.
   ⭐ **It shards.** `--shard i/N` selects units by `index mod N` and `--units`
-  lists the names and runs nothing. ⛔ **The controls are NOT sharded**: a shard
-  carrying only plants goes green over a tree where every step is broken, so
-  every shard runs all three and that is a floor on what one costs.
+  lists the names and runs nothing. ⛔ **A plant is never judged without its
+  control**: each unit that judges a step opens with that step's control, which
+  runs once per shard before anything is planted, so a shard pays for its own
+  plants' controls and no others. The last control asks git whether every plant
+  was restored.
 - [`ci/check-shards.sh`](ci/check-shards.sh) asserts that the N shards together
-  run every unit exactly once, for every N from 1 to 8, that each names every
-  control, that no variable is assigned in one unit and read in another, and that
-  a malformed selector is refused rather than clamped. ⚠ It costs seconds, because
-  it asks `--units` rather than running anything. ⛔ It found three real defects
-  the moment it existed, all of them in the sharding: a `--units` mode that
-  ignored `--shard`, and two variables that crossed a unit boundary.
+  run every unit exactly once, for every N up to the larger of 8 and the
+  workflow's matrix, that each names every control `--units` lists, that every
+  judged step's control opens its unit, that the matrix is `1..N` and the step
+  takes its divisor from it, that no variable is assigned in one unit and read in
+  another, and that a malformed selector is refused rather than clamped. ⚠ It
+  costs about a second, because it asks `--units`, which builds no scratch tree.
+  ⛔ It found three real defects the moment it existed, all of them in the
+  sharding: a `--units` mode that ignored `--shard`, and two variables that
+  crossed a unit boundary.
 - [`ci/workflow-step.sh`](ci/workflow-step.sh) is the one reader that lifts a
   step out of a workflow: its job's ordered step names, its `run:` body, or the
   shell it declares. ⛔ Two harnesses execute step bodies now, and a copy of the

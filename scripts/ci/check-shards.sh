@@ -21,13 +21,21 @@
 #   DISJOINTNESS every unit is claimed by at most one shard. Duplication is not a
 #                correctness defect, it is a wall-clock one, and it hides in a
 #                green run exactly as well as a gap does.
-#   THE CONTROLS every shard runs all of them. ⛔ A shard carrying only plants
-#                goes GREEN over a tree where every step is broken, because a
-#                plant that is refused proves nothing unless the clean tree is
-#                accepted.
+#   THE CONTROLS every shard runs the controls `--units` names, and every unit
+#                that judges a step OPENS with that step's control. ⛔ A plant
+#                that is refused proves nothing unless the clean tree is
+#                accepted, so a shard holding a plant without its control goes
+#                GREEN over a tree where that step is broken.
 #
 # ⚠ A run that checked only the first would pass over a selector that ran
 # everything in every shard, which is a partition of nothing and N times the work.
+#
+# -- ⛔ AND THE N CI USES IS READ FROM THE WORKFLOW -------------------------
+#
+# The matrix in `ci.yml` is the one place the shard count is written. The step
+# takes its divisor from `strategy.job-total`, so the two cannot disagree, and
+# this checks the step still says so: a literal divisor beside a longer matrix
+# leaves the extra shards running a second copy of somebody else's units.
 #
 # Usage:
 #   sh scripts/ci/check-shards.sh
@@ -72,6 +80,11 @@ SUBJECT="$ROOT/scripts/ci/check-workflow.sh"
   printf 'check-shards: %s is missing\n' "$SUBJECT" >&2
   exit 2
 }
+WORKFLOW="$ROOT/.github/workflows/ci.yml"
+[ -f "$WORKFLOW" ] || {
+  printf 'check-shards: %s is missing\n' "$WORKFLOW" >&2
+  exit 2
+}
 
 WORK=$(store_workdir checkshards) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
@@ -104,11 +117,60 @@ if [ "$NPLANTS" -lt 2 ] || [ "$NCONTROLS" -lt 1 ]; then
 fi
 pass "control  the subject names $NPLANTS shardable units and $NCONTROLS controls"
 
-# ⚠ EVERY N FROM 1 TO 8, not one convenient value. `index mod N` is correct for
-# every N by construction, and a harness that checked only the N the workflow
-# happens to use would pass over a selector that was right for four and wrong for
-# three - which is exactly what a later change to the matrix would reach for.
-for n in 1 2 3 4 5 6 7 8; do
+# -- the N the workflow runs --------------------------------------------------
+#
+# ⛔ THE MATRIX IS `1..N` IN ORDER OR IT IS REFUSED. A gap or a repeat is a shard
+# index the selector is never asked for, or one it is asked for twice, and both
+# read as an ordinary green matrix.
+MATRIX=$(awk '
+  /^  [A-Za-z0-9_-]+:$/ { job = $1 }
+  job == "acceptance:" && /^ +shard: \[/ {
+    line = $0
+    sub(/^[^[]*\[/, "", line)
+    sub(/\].*$/, "", line)
+    gsub(/[ \t]/, "", line)
+    print line
+    exit
+  }' "$WORKFLOW")
+NMATRIX=0
+_want=1
+_ok=1
+for _s in $(printf '%s\n' "$MATRIX" | tr ',' ' '); do
+  if [ "$_s" != "$_want" ]; then
+    _ok=0
+    break
+  fi
+  NMATRIX=$_want
+  _want=$((_want + 1))
+done
+if [ -z "$MATRIX" ]; then
+  fail "matrix   ci.yml's acceptance job declares no shard matrix"
+elif [ "$_ok" != 1 ] || [ "$NMATRIX" -lt 1 ]; then
+  fail "matrix   ci.yml's shard matrix is not 1..N in order: [$MATRIX]"
+else
+  pass "matrix   ci.yml's acceptance job runs shards 1..$NMATRIX"
+fi
+
+STEP=$(sh "$ROOT/scripts/ci/workflow-step.sh" --workflow "$WORKFLOW" \
+  --job acceptance --step "Workflow acceptance" 2>/dev/null) || STEP=""
+# shellcheck disable=SC2016
+WANT='sh scripts/ci/check-workflow.sh --shard ${{ matrix.shard }}/${{ strategy.job-total }}'
+if [ "$STEP" = "$WANT" ]; then
+  pass "matrix   the acceptance step takes its divisor from the matrix it runs in"
+else
+  fail "matrix   the acceptance step does not read --shard i/N from the matrix: [$STEP]"
+fi
+
+# ⚠ EVERY N FROM 1 TO THE LARGER OF 8 AND THE MATRIX, not one convenient value.
+# `index mod N` is correct for every N by construction, and a harness that
+# checked only the N the workflow happens to use would pass over a selector that
+# was right for four and wrong for three - which is exactly what a later change
+# to the matrix would reach for.
+NMAX=8
+[ "$NMATRIX" -le "$NMAX" ] || NMAX=$NMATRIX
+n=0
+while [ "$n" -lt "$NMAX" ]; do
+  n=$((n + 1))
   : >"$WORK/union"
   _bad=0
   _i=1
@@ -153,6 +215,62 @@ for n in 1 2 3 4 5 6 7 8; do
   fi
   pass "n=$n      $n shards cover all $_count units exactly once, each naming every control"
 done
+
+# -- ⛔ every judged step's control opens its unit ------------------------------
+#
+# ⛔ THE CONTROL TRAVELS WITH THE PLANT, SO THIS IS WHAT KEEPS THEM TOGETHER. A
+# unit's opening is its leading run of `controlled` lines, before anything is
+# planted. Every `refuses JOB "STEP"` in the unit, and every `gate_refuses`,
+# which judges `linux "Repository gate"`, must name a step that opening names.
+# ⚠ A refusal judged without its control passes over a step that refuses
+# everything, so a missing line here is a guard that can only report success.
+#
+# ⚠ THIS IS A STATIC READ, like the coupling check below. A judge built at
+# runtime is outside what it can see; the subject spells every judge literally.
+OPENINGS=$(awk '
+  /^if (unit|always) [A-Za-z0-9_-]+; then$/ { u = $3; sub(/;$/, "", u); opening = 1; split("", opened); next }
+  u != "" && /^fi$/ { u = ""; next }
+  u != "" && /^[ \t]*#/ { next }
+  u != "" && /^[ \t]*$/ { next }
+  u != "" {
+    line = $0
+    if (opening && match(line, /^[ \t]*controlled [a-z]+ "[^"]+"/)) {
+      key = substr(line, RSTART, RLENGTH)
+      sub(/^[ \t]*controlled /, "", key)
+      opened[key] = 1
+      next
+    }
+    opening = 0
+    judged = ""
+    if (match(line, /(^|[ \t;(])gate_refuses /))
+      judged = "linux \"Repository gate\""
+    else if (match(line, /(^|[ \t;(])refuses [a-z]+ "[^"]+"/)) {
+      judged = substr(line, RSTART, RLENGTH)
+      sub(/^.*refuses /, "", judged)
+    }
+    if (judged != "") {
+      judges++
+      if (!(judged in opened))
+        printf "BAD\t%s judges %s and does not open with its control\n", u, judged
+    }
+  }
+  END { printf "COUNT\t%d\n", judges + 0 }
+' "$SUBJECT")
+JUDGES=$(printf '%s\n' "$OPENINGS" | awk -F'\t' '$1 == "COUNT" { print $2 }')
+UNOPENED=$(printf '%s\n' "$OPENINGS" | awk -F'\t' '$1 == "BAD" { print $2 }')
+# ⛔ A READ THAT FOUND NO JUDGE AT ALL PASSES OVER EVERYTHING, so it is refused
+# as could-not-run rather than reported as a clean subject.
+if [ "${JUDGES:-0}" -lt 2 ]; then
+  printf 'check-shards: the subject spells %s judge(s); the reader no longer matches it\n' \
+    "${JUDGES:-0}" >&2
+  exit 2
+fi
+if [ -z "$UNOPENED" ]; then
+  pass "opening  all $JUDGES judged plants open with the control of the step they judge"
+else
+  fail "opening  a unit judges a step without opening with its control"
+  [ "$JSON" = "1" ] || printf '%s\n' "$UNOPENED" | sed 's/^/          /'
+fi
 
 # -- ⛔ the coupling sharding creates, which no partition check would see ------
 #

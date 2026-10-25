@@ -42,12 +42,9 @@
 #
 # -- ⭐ IT SHARDS, BECAUSE IT IS THE CI WALL CLOCK --------------------------
 #
-# `CI-10`. Measured on run 122, 2026-09-10, on a real runner: *Workflow
-# acceptance* is **32.6 minutes** where the Linux gate is 5.8 and the Windows
-# gate 2.9. It runs the whole repository gate NINE times, and a 130-second gate
-# is about twenty minutes of that whatever language its rows are written in. ⛔ So
-# the only thing that touches this number is running the units on more than one
-# machine.
+# `CI-10`, then `CI-13`. Seven units run the whole repository gate and one runs
+# every checking harness, so this job costs more than the rest of CI together.
+# ⛔ Only running the units on more than one machine touches that number.
 #
 # ⛔ THE PARTITION IS `index mod N` AND IT IS PROVABLE BY CONSTRUCTION. A shard
 # selector that silently claimed no case would report a faster green run over
@@ -57,18 +54,21 @@
 # and `scripts/ci/check-shards.sh` is what asserts the N shards together cover
 # every unit exactly once.
 #
-# -- ⛔ AND THE CONTROLS ARE NOT SHARDED. THIS IS THE WHOLE DESIGN ------------
+# -- ⛔ AND A PLANT IS NEVER JUDGED WITHOUT ITS CONTROL. THIS IS THE DESIGN -----
 #
 # A plant that is refused proves nothing unless the clean tree is accepted: a
 # step broken for an unrelated reason refuses everything, and reads here as a
-# guard working perfectly. ⚠ So a shard carrying only plants would go GREEN over
-# a tree where every single step was broken - which is the exact failure mode
-# sharding is most likely to introduce, dressed as a speedup.
+# guard working perfectly. ⚠ So a shard carrying a plant without its control
+# would go GREEN over a tree where that step was broken - which is the exact
+# failure mode sharding is most likely to introduce, dressed as a speedup.
 #
-# ⭐ Every shard therefore runs the whole control block and the final clean-tree
-# control, and shards only the plants. ⚠ That is a FLOOR on what a shard costs -
-# the controls include two of the nine gate runs - and it is paid on purpose.
-# `TODO/ci.md` carries the measured floor beside the measured total.
+# ⭐ So every unit that judges a step OPENS with `controlled`, naming that step,
+# before it plants anything. The control runs once per shard, the first time a
+# unit asks for it, in the same process and on the same scratch tree as the
+# plant. `check-shards.sh` refuses a unit that judges a step it did not open with.
+# ⚠ A shard therefore pays for the controls its own plants need and no others.
+# Until `CI-13` every shard ran every control, three of them full gate or harness
+# runs, and that floor was most of each shard's cost.
 #
 # Usage:
 #   sh scripts/ci/check-workflow.sh
@@ -178,41 +178,50 @@ CARGOTGT="$WORK/target"
 # ⚠ Tracked AND untracked-but-not-ignored, because an uncommitted new file is
 # part of the tree the next push carries. target/ is ignored, so the 1G build
 # directory is not copied.
-mkdir -p "$TREE" || exit 2
-(
-  cd "$ROOT" || exit 1
-  {
-    git ls-files -z
-    git ls-files -zo --exclude-standard
-  } | tar --null -T - -cf -
-) | (cd "$TREE" && tar -xf -) || {
-  printf 'check-workflow: cannot copy the working tree\n' >&2
-  exit 2
-}
-
-# ⛔ IT IS A REAL REPOSITORY, because half the checks the gate runs ask git what
-# is tracked. A plain directory would make every one of them exit 2, and a run
-# of nothing but skips is what --strict exists to refuse.
 #
-# ⚠ AND IT CARRIES THE ORIGIN, which is not decoration either. check-remote-items
-# resolves the repository from that remote, so a scratch tree without one made
-# that check answer 2 wherever it ran, including on a CI runner that could
-# perfectly well have run it. The gate cases then never saw a clean tree exit 0
-# and their exit codes did no work anywhere. Measured on run 37.
-ORIGIN=$(cd "$ROOT" && git remote get-url origin 2>/dev/null) || ORIGIN=""
-(
-  cd "$TREE" || exit 1
-  # ⚠ The identity carries no at-sign on purpose. check-no-secrets --public
-  # reads one as an email address and refused this file over its own scratch
-  # commit; git accepts a bare word here and the commit is thrown away anyway.
-  git init -q -b main &&
-    git add -A &&
-    git -c user.email=gate -c user.name=gate commit -qm scratch &&
-    { [ -z "$ORIGIN" ] || git remote add origin "$ORIGIN"; }
-) >/dev/null 2>&1 || {
-  printf 'check-workflow: cannot make the scratch tree a repository\n' >&2
-  exit 2
+# ⚠ A LISTING BUILDS NO TREE. `--units` runs nothing, and `check-shards` asks
+# for a listing once per shard of every N it proves, so a copy and a commit per
+# listing was most of that check's time.
+make_scratch_tree() {
+  mkdir -p "$TREE" || exit 2
+  (
+    cd "$ROOT" || exit 1
+    {
+      git ls-files -z
+      git ls-files -zo --exclude-standard
+    } | tar --null -T - -cf -
+  ) | (cd "$TREE" && tar -xf -) || {
+    printf 'check-workflow: cannot copy the working tree\n' >&2
+    exit 2
+  }
+
+  # ⛔ IT IS A REAL REPOSITORY, because half the checks the gate runs ask git
+  # what is tracked. A plain directory would make every one of them exit 2, and
+  # a run of nothing but skips is what --strict exists to refuse. ⭐ And the
+  # commit is what the last control compares the tree against.
+  #
+  # ⚠ AND IT CARRIES THE ORIGIN, which is not decoration either.
+  # check-remote-items resolves the repository from that remote, so a scratch
+  # tree without one made that check answer 2 wherever it ran, including on a CI
+  # runner that could perfectly well have run it. The gate cases then never saw
+  # a clean tree exit 0 and their exit codes did no work anywhere. Measured on
+  # run 37.
+  ORIGIN=$(cd "$ROOT" && git remote get-url origin 2>/dev/null) || ORIGIN=""
+  (
+    cd "$TREE" || exit 1
+    # ⚠ The identity carries no at-sign on purpose. check-no-secrets --public
+    # reads one as an email address and refused this file over its own scratch
+    # commit; git accepts a bare word here and the commit is thrown away anyway.
+    git init -q -b main &&
+      git add -A &&
+      git -c user.email=gate -c user.name=gate commit -qm scratch &&
+      { [ -z "$ORIGIN" ] || git remote add origin "$ORIGIN"; }
+  ) >/dev/null 2>&1 || {
+    printf 'check-workflow: cannot make the scratch tree a repository\n' >&2
+    exit 2
+  }
 }
+[ "$UNITS_ONLY" = 1 ] || make_scratch_tree
 
 # -- reading a command out of the workflow ------------------------------------
 #
@@ -552,6 +561,42 @@ refuses() { # job step label pattern
 # whether the exit code was doing any of the work on the host it ran on.
 gate_refuses() { # label pattern
   refuses linux "Repository gate" "$1$GATE_NOTE" "$2"
+}
+
+# -- ⭐ the controls, run where their plants run -------------------------------
+#
+# ⛔ EVERY UNIT THAT JUDGES A STEP OPENS WITH THIS, NAMING THAT STEP. The control
+# runs the first time a unit in this run asks for it, before that unit plants
+# anything, so a plant is never judged in a process that has not watched the
+# same step accept the clean tree. `check-shards.sh` refuses a unit that judges
+# a step its opening lines do not name.
+#
+# ⚠ THE TREE IS CHECKED FIRST, because a control over a tree an earlier unit
+# failed to restore is a control over the wrong input. It would fail, and it
+# would name the step rather than the restore.
+CONTROLLED="|"
+controlled() { # job step label
+  case "$CONTROLLED" in
+    *"|$1/$2|"*) return 0 ;;
+  esac
+  CONTROLLED="$CONTROLLED$1/$2|"
+  if ! tree_is_clean; then
+    fail "control  $3: the scratch tree did not match its commit before the control"
+    return
+  fi
+  if [ "$1" = linux ] && [ "$2" = "Repository gate" ]; then
+    gate_control "$3"
+  else
+    control "$1" "$2" "$3"
+  fi
+}
+
+# ⭐ WHAT A RESTORE OWES, ASKED OF GIT. The scratch tree is a repository with
+# one commit, so every plant restored what it changed exactly when git reports
+# nothing modified and nothing untracked.
+tree_is_clean() {
+  _tic_status=$(cd "$TREE" && git status --porcelain --untracked-files=all 2>&1) || return 1
+  [ -z "$_tic_status" ]
 }
 
 # -- ⭐ the shard selector -----------------------------------------------------
@@ -1339,25 +1384,12 @@ if unit static-readers; then
       fail "probe    the recorder-stop reader accepted a stop that skips a failed job"
     fi
   fi
+fi
 
-# -- the controls -------------------------------------------------------------
+# -- the plants ---------------------------------------------------------------
 #
-# ⚠ Run first and in this order, because the first cargo command warms the
-# shared target directory that every later case reuses.
-fi
-if always clean-tree-controls; then
-  control linux "Rust check" "cargo check"
-  control linux "Rust formatting" "cargo fmt"
-  control linux "Rust tests" "cargo test"
-  control linux "Rust lints" "cargo clippy"
-  control linux "Shell syntax and style" "shellcheck and shfmt"
-  control linux "Go formatting and vet" "gofmt and go vet"
-  gate_control "the repository gate"
-  # ⚠ THE COSTLIEST CONTROL HERE AFTER THE GATE, about a minute, because it
-  # builds every harness's Rust subject cold. It is paid in every shard for the
-  # reason the block above gives: the plant below proves nothing without it.
-  control linux "Checking harnesses" "the checking harnesses"
-fi
+# ⚠ Each opens with `controlled`, and the first cargo control in a run warms the
+# shared target directory that every later Rust case reuses.
 
 # -- 1. a Rust defect that does not compile -----------------------------------
 # ⛔ HOISTED FOR THE SAME REASON: `rust-clippy` and `rust-fmt` plant into this
@@ -1365,6 +1397,7 @@ fi
 LIB="crates/bit-ids/src/lib.rs"
 
 if unit rust-nocompile; then
+  controlled linux "Rust check" "cargo check"
   if keep "$LIB" && append_once "$TREE/$LIB" "fn workflow_plant() -> u8 { \"not a u8\" }"; then
     refuses linux "Rust check" "an uncompilable Rust defect" "error"
   else
@@ -1379,6 +1412,7 @@ fi
 # broke the build or the formatting would be refused by an earlier step, and the
 # case would report the lint step working when it had never been reached.
 if unit rust-clippy; then
+  controlled linux "Rust lints" "cargo clippy"
   if keep "$LIB" && append_once "$TREE/$LIB" "pub fn workflow_plant() -> u8 { return 1; }"; then
     refuses linux "Rust lints" "a lint the workspace denies" "needless_return"
   else
@@ -1389,6 +1423,7 @@ fi
 
 # -- 3. a Rust file that is not formatted -------------------------------------
 if unit rust-fmt; then
+  controlled linux "Rust formatting" "cargo fmt"
   if keep "$LIB" && append_once "$TREE/$LIB" "pub  fn   workflow_plant ( )  ->  u8  {  1  }"; then
     refuses linux "Rust formatting" "an unformatted Rust file" "Diff in"
   else
@@ -1403,6 +1438,7 @@ fi
 # makes the declared id disagree with the record's own contents. That is the
 # rule docs/architecture.md section 4 states, planted rather than read.
 if unit schema-fixture; then
+  controlled linux "Rust tests" "cargo test"
   PROFILE="crates/bit-ids/tests/fixtures/valid-profile.json"
   if keep "$PROFILE" &&
     replace_once "$TREE/$PROFILE" '"platform": "linux"' '"platform": "windows"'; then
@@ -1420,6 +1456,7 @@ fi
 # no decoder reads: a plant in the frame bytes could be refused by a codec
 # instead, which is a different guard than the one this case names.
 if unit wire-fixture; then
+  controlled linux "Rust tests" "cargo test"
   FIXTURE="crates/bit-ids-wire/tests/fixtures/tracker-http-announce-started.json"
   if keep "$FIXTURE" &&
     replace_once "$TREE/$FIXTURE" 'An ordinary started announce' 'An ordinary drifted announce'; then
@@ -1436,6 +1473,7 @@ fi
 # produced for a reformatting difference, so the case would have passed while
 # the syntax checker said nothing.
 if unit shell-parse; then
+  controlled linux "Shell syntax and style" "shellcheck and shfmt"
   SCRIPT="scripts/doctor/doctor.sh"
   if keep "$SCRIPT" && append_once "$TREE/$SCRIPT" "if [ 1 = 1 ; then :"; then
     refuses linux "Shell syntax and style" "a shell script that does not parse" "SC1073"
@@ -1453,6 +1491,7 @@ fi
 # not parse. SC2086 is a finding shfmt does not make: the planted line is
 # already formatted as shfmt would write it.
 if unit shell-lint-only; then
+  controlled linux "Shell syntax and style" "shellcheck and shfmt"
   SCRIPT="scripts/doctor/doctor.sh"
   # shellcheck disable=SC2016
   if keep "$SCRIPT" && append_once "$TREE/$SCRIPT" 'echo $BIT_IDS_UNQUOTED_PLANT'; then
@@ -1469,6 +1508,7 @@ fi
 # alone also matches the row that reads `ok    check-docs`, so a plant that was
 # never refused would have matched the control's own output.
 if unit docs-deadlink; then
+  controlled linux "Repository gate" "the repository gate"
   README="README.md"
   if keep "$README" &&
     append_once "$TREE/$README" "A link to [nothing](docs/this-file-does-not-exist.md)."; then
@@ -1496,6 +1536,7 @@ fi
 # would fail the BUILD, and a gate whose binary did not build skips every ported
 # row at once - a different plant with a different answer.
 if unit check-stopped; then
+  controlled linux "Repository gate" "the repository gate"
   BROKEN="scripts/common/check-shell.sh"
   if keep "$BROKEN" && printf 'exit 2\n' >"$TREE/$BROKEN"; then
     gate_refuses "a check that can no longer run" "SKIP  check-shell"
@@ -1554,6 +1595,7 @@ YAML
 
 # 8b-i. a pwsh block that stops on errors and says nothing about a native exit.
 if unit pwsh-native-preference; then
+  controlled linux "Repository gate" "the repository gate"
   {
     plant_head "Stop with no native preference"
     cat <<'YAML'
@@ -1570,6 +1612,7 @@ fi
 
 # 8b-ii. a pwsh block reporting through a display layer.
 if unit pwsh-write-error; then
+  controlled linux "Repository gate" "the repository gate"
   {
     plant_head "Report through Write-Error"
     cat <<'YAML'
@@ -1590,6 +1633,7 @@ fi
 # so a restored route failed the step and the evidence upload was skipped.
 # ⚠ No reading caught it. A dispatch did.
 if unit pwsh-lastexitcode; then
+  controlled linux "Repository gate" "the repository gate"
   {
     plant_head "Leave the guard's refusal in LASTEXITCODE"
     cat <<'YAML'
@@ -1656,6 +1700,7 @@ fi
 # answers 0 over a clean one. Only the harness cases plant the subject the rule
 # exists to catch, which is why the step this refutes exists.
 if unit harness-weakened; then
+  controlled linux "Checking harnesses" "the checking harnesses"
   CACHEGO="tools/check/cache.go"
   if keep "$CACHEGO" &&
     replace_once "$TREE/$CACHEGO" 'h.bad("E-CAC-01  the refusal did not appear: "' \
@@ -1674,6 +1719,7 @@ fi
 GOFILE="tools/check/project.go"
 
 if unit go-fmt; then
+  controlled linux "Go formatting and vet" "gofmt and go vet"
   if keep "$GOFILE" && append_once "$TREE/$GOFILE" "func  workflowPlant( ) {}"; then
     refuses linux "Go formatting and vet" "an unformatted Go file" "gofmt would rewrite"
   else
@@ -1687,6 +1733,7 @@ fi
 # ⚠ Formatted and compiling on purpose, so the step reaches its last line: a
 # plant gofmt also refused would report vet working when vet never ran.
 if unit go-vet; then
+  controlled linux "Go formatting and vet" "gofmt and go vet"
   if keep "$GOFILE" && append_once "$TREE/$GOFILE" 'func workflowPlant() { fmt.Printf("%d", "x") }'; then
     refuses linux "Go formatting and vet" "a Go defect vet refuses" "wrong type"
   else
@@ -1701,8 +1748,19 @@ fi
 # file it touched, and nothing so far has checked that any of them did. A
 # restore that silently failed would leave every later case running against a
 # defective tree, and the run would still report every guard refusing.
+#
+# ⭐ GIT ANSWERS IT, NOT A GATE RUN. The question is whether the tree is the one
+# that was committed, and `git status` answers exactly that, naming each file.
+# Until `CI-13` this ran the whole gate again, which answered it indirectly and
+# cost one full gate run in every shard.
 if always clean-tree-after-restores; then
-  gate_control "the repository gate, after every restore"
+  if tree_is_clean; then
+    pass "control  every plant restored what it changed: the scratch tree matches its commit"
+  else
+    fail "control  the scratch tree does not match its commit after every restore"
+    [ "$JSON" = "1" ] || (cd "$TREE" && git status --porcelain --untracked-files=all) 2>&1 |
+      head -20 | sed 's/^/          /'
+  fi
 fi
 
 # ⛔ A LISTING IS NOT A RUN, so it does not go through the report. store_report

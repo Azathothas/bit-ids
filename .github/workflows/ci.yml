@@ -61,6 +61,18 @@ jobs:
         with:
           path: target
           key: ${{ runner.os }}-target-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+      # ⭐ GO'S BUILD CACHE, AND ONLY THAT. It is content-addressed, so an entry
+      # is reused only for byte-identical inputs and a near-miss is still safe,
+      # which is why it falls back. Measured on 2026-10-25: `bit-check` builds in
+      # 13.6 seconds cold and 0.5 warm, and every gate run builds it. ⚠ The
+      # module cache is NOT kept, so `go install` still fetches shfmt and checks
+      # it against Go's checksum database on every run.
+      - name: Cache Go builds
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: ${{ runner.os }}-gobuild-${{ hashFiles('tools/check/go.mod', 'tools/check/**/*.go') }}
+          restore-keys: ${{ runner.os }}-gobuild-
       - name: Host report
         run: sh scripts/doctor/doctor.sh --fast
       - name: Install pinned shfmt
@@ -136,77 +148,52 @@ jobs:
           (cd tools/check && go build -o "$bin/bit-check" .)
           "$bin/bit-check" check-bitcheck --harnesses
 
-  # ⭐ A JOB OF ITS OWN, BECAUSE IT WAS THE LANE. It plants a defect of each class
-  # the gate exists to catch and runs the offending step against it, and several
-  # of those cases run the whole gate - nine times in total - so it costs more
-  # than everything else in this workflow put together. Measured on run 83: 25.9
-  # minutes of a 30.5-minute lane. ⛔ Serialising it behind the Linux gate bought
-  # nothing: it repeats that gate itself, so a tree it would reject is one the
-  # first case reports with its own message.
+  # ⭐ A JOB OF ITS OWN, BECAUSE IT IS THE LANE. It plants a defect of each class
+  # the gate exists to catch and runs the offending step against it. Seven of
+  # those units run the whole gate and one runs every checking harness, so it
+  # costs more than everything else in this workflow put together. ⛔ Serialising
+  # it behind the Linux gate buys nothing: it runs that gate itself, so a tree it
+  # would reject is one its own control reports with its own message.
   #
   # ⚠ IT IS DELIBERATELY ABSENT FROM check-gate.sh, and that is unchanged: a
   # runner inside the gate that also runs the gate recurses.
   #
-  # ⚠ THE SETUP IS REPEATED RATHER THAN SHARED. A minute of checkout and cache
-  # restore on a job that saves a quarter of an hour is a trade worth naming
-  # rather than hiding behind a composite action nothing else would use.
+  # ⚠ THE SETUP IS REPEATED RATHER THAN SHARED. Under a minute of checkout and
+  # cache restore per shard is a trade worth naming rather than hiding behind a
+  # composite action nothing else would use.
   acceptance:
-    name: Workflow acceptance ${{ matrix.shard }}/8
+    name: Workflow acceptance ${{ matrix.shard }}/${{ strategy.job-total }}
     runs-on: ubuntu-24.04
-    # ⭐ SHARDED ACROSS FOUR RUNNERS, `CI-10`, 2026-09-10. This job was 32.6
-    # minutes on run 122 - measured, not estimated - against 5.8 for the Linux
-    # gate and 2.9 for the Windows one, so it WAS the CI wall clock on its own.
-    # `check-workflow` runs the whole repository gate about nine times, and a
-    # 130-second gate is about twenty minutes of that whatever language its rows
-    # are written in. ⛔ Nothing inside the harness touches that number; only
-    # running the units on more than one machine does.
-    #
     # ⛔ THE PARTITION IS CHECKED RATHER THAN ASSUMED. `index mod N` is provable by
     # construction, each shard prints what it ran and what it skipped, and
-    # `scripts/ci/check-shards.sh` asserts that the N shards together cover every
-    # unit exactly once for every N from 1 to 8. ⚠ A shard selector that silently
-    # claimed no unit would report a faster green run over less work, which is
-    # this repository's oldest defect class and the one a wall-clock target makes
-    # most tempting.
+    # `scripts/ci/check-shards.sh` asserts that the shards together cover every
+    # unit exactly once for every N up to this matrix's. ⚠ A shard selector that
+    # silently claimed no unit would report a faster green run over less work,
+    # which is this repository's oldest defect class and the one a wall-clock
+    # target makes most tempting.
     #
-    # ⛔ AND EVERY SHARD RUNS THE CONTROLS. A shard carrying only plants goes
-    # GREEN over a tree where every step is broken, because a plant that is
-    # refused proves nothing unless the clean tree is accepted. That is a floor on
-    # what a shard can cost and it is paid on purpose.
+    # ⛔ AND A PLANT IS NEVER JUDGED WITHOUT ITS CONTROL. A plant that is refused
+    # proves nothing unless the clean tree is accepted, so each unit opens with
+    # its step's control and runs it in the same shard; `check-shards` refuses a
+    # unit that does not. A shard pays for its own plants' controls and no others.
     #
-    # ⚠ THE COUNT IS HERE AND IN THE MATRIX AND NOWHERE ELSE. `--shard i/8` takes
-    # its N from this list, so a fifth entry added without changing the divisor
-    # would leave one shard running nothing; `check-shards` is what compares the
-    # two, and `check-workflow` refuses an `i` outside `1..N` outright.
+    # ⭐ THE COUNT IS WRITTEN ONCE, IN THE MATRIX. The step's divisor is
+    # `strategy.job-total`, and `check-shards` refuses a matrix that is not 1..N
+    # and a step that spells its own divisor.
+    #
+    # ⭐ TWELVE, AND THE COUNT IS CHOSEN, NOT GROWN. Under `mod 12` each of the five
+    # units that refuse through the gate shares a shard only with a static unit,
+    # so the longest shard is two gate runs: its control and its plant. The two
+    # units that plant a tree the gate must accept need no clean control, and
+    # the harness unit lands beside `rust-fmt`. `TODO/ci.md` `CI-13` carries the
+    # measurements and the arrangements before this one.
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
-    # ⛔ FIVE SINCE 2026-10-15. Shard 2 of four took 19 minutes 5 seconds on run
-    # 218 and was cancelled at the 20-minute bound on run 219, once `CI-09` and
-    # `CLIENT-06` had added cases. The bound stays where it is, for the reason
-    # below, and the work is spread over one more runner instead.
-    # ⛔ SIX SINCE 2026-10-21, for the same reason. Shard 4 of five took 19
-    # minutes on runs 39590370498 and 39616063664 and was cancelled at the bound
-    # on 39620079519 and 39623688612, once `CLIENT-05`'s and `CLIENT-07`'s cases
-    # had joined it. `check-shards` proves every N from 1 to 7.
-    # ⛔ SEVEN SINCE LATER THE SAME DAY, AND THE COUNT IS CHOSEN, NOT GROWN.
-    # Seven units run the whole repository gate, at shardable positions 13 to
-    # 19. Under `mod 6` shard 1 held two of them beside `rust-clippy` and was
-    # cancelled at 1216 seconds on CI run 39672223612, while the other five took
-    # 15 to 18 minutes. Under `mod 7` each shard holds exactly one.
-    # ⛔ EIGHT ON 2026-10-22, AND THE HARNESS MOVED. Under seven, shard 1 also held
-    # `harness-weakened`, which runs the whole harness, and took 1187 seconds on
-    # CI run 39733930507. Under eight the gate-running units fill seven shards,
-    # and `harness-weakened`, moved to unit 20 of 22, lands in shard 4, the one left.
-    # ⛔ 20 RATHER THAN 45, AND LOWERING IT IS THE POINT. The bound was raised to
-    # 45 on 2026-09-10 to fit a job that had been cancelled at 30 minutes three
-    # times, which this repository calls masking everywhere else. A shard is about
-    # a quarter of the plants plus the controls every shard pays, so the bound
-    # comes back down rather than staying where the growth put it.
-    # ⚠ IT IS NOT 32.6/4. The controls are not sharded, so a shard is the control
-    # floor plus its own quarter, and the margin here is over the measured floor
-    # rather than over a division.
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    # ⛔ THE BOUND WAS NOT RAISED TO FIT THE JOB, and lowering it is the point: it
+    # came down from 45 to 20 on 2026-09-10 and is not raised to accommodate
+    # growth. `CI-13` measures the shards against it.
     timeout-minutes: 20
     permissions:
       contents: read
@@ -226,11 +213,15 @@ jobs:
             ~/.cargo/git/db
           key: ${{ runner.os }}-crates-${{ hashFiles('Cargo.lock') }}
           restore-keys: ${{ runner.os }}-crates-
-      - name: Cache build artifacts
+      # ⚠ NO `target` CACHE HERE. `check-workflow` builds into a target directory
+      # of its own beside its scratch tree, so a restored `target/` was read by
+      # nothing: 9 to 22 seconds per shard on CI run 40155464260.
+      - name: Cache Go builds
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: target
-          key: ${{ runner.os }}-target-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+          path: ~/.cache/go-build
+          key: ${{ runner.os }}-gobuild-${{ hashFiles('tools/check/go.mod', 'tools/check/**/*.go') }}
+          restore-keys: ${{ runner.os }}-gobuild-
       # ⛔ THE SAME PINNED shfmt THE OTHER LANE INSTALLS. Several of the cases
       # below run the gate, and the gate runs shell checks; a lane without it
       # would report a skip where the Linux lane reports a pass.
@@ -249,7 +240,7 @@ jobs:
       - name: Shard partition
         run: sh scripts/ci/check-shards.sh
       - name: Workflow acceptance
-        run: sh scripts/ci/check-workflow.sh --shard ${{ matrix.shard }}/8
+        run: sh scripts/ci/check-workflow.sh --shard ${{ matrix.shard }}/${{ strategy.job-total }}
 
   windows:
     name: Windows gate

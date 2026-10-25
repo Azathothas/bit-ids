@@ -6647,3 +6647,88 @@ so a slow host moves the case's duration and not its verdict.
 Prove: the gate under twelve CPU spinners passes `check-step-bodies` on every
 run of a twenty-run loop, and the case still refuses its planted defect.
 
+
+## CI-13: CI as parallel and as fast as its guarantees allow
+
+Source: operator request, 2026-10-25
+Priority: P1 | Effort: M | Status: IN_PROGRESS
+
+Problem: *Workflow acceptance* is the CI wall clock. On the first CI run on
+this remote, run 40155464260 on `2fd0d80`, its eight shards took 958 to 1066
+seconds against a 1200-second bound, while the Linux gate took 443 and the
+Windows gate 136. ⛔ Every shard ran every control: four cargo controls, the
+shell and Go controls, a full gate run, the full harness run, and a second full
+gate run as the last control. That floor was most of each shard, and a shard
+holding one gate-refusing unit paid about four gate runs where its plant needs
+two.
+
+Premise: measured on 2026-10-25 on a four-processor session host, the size of a
+hosted runner for this public repository:
+
+| what | seconds |
+| --- | ---: |
+| one warm gate run | 246 |
+| the harness step, `go build` included | 154 |
+| a cold workspace build in a scratch tree | 21 to 27 |
+| a cold `bit-check` build, then a warm one | 13.6, then 0.5 |
+| `check-shards`, on CI | 6 to 10 |
+
+⚠ `check-shards` was slow for a reason outside its subject: every
+`check-workflow --units` call copied the whole tree and committed it before
+listing anything, and `check-shards` makes one call per shard of every N.
+
+Approach:
+
+- ⭐ **A plant's control runs where the plant runs.** Each unit that judges a
+  step opens with `controlled`, naming that step. The control runs once per
+  shard, the first time a unit asks, before that unit plants anything, and only
+  over a tree git reports as matching its commit.
+- ⭐ **The last control asks git.** Whether every plant restored what it
+  changed is what `git status` reports about the scratch repository; a full
+  gate run answered it indirectly.
+- **`--units` builds no scratch tree.**
+- **Twelve shards, written once.** The step's divisor is
+  `strategy.job-total`, and `check-shards` reads the matrix.
+- **Acceptance drops its `target` restore**, which nothing read, and both Linux
+  jobs keep Go's build cache.
+
+Decision: **the control travels with the plant rather than running in a job of
+its own.** A controls job that the shards depend on runs the control and then
+the plant, so its wall clock is the same two gate runs, and a shard would then
+be green over a plant whose control ran on another machine. The design
+`CI-10` stated, that no plant is judged without its control, holds per shard
+and is checked statically by `check-shards`.
+
+Decision: **twelve shards, not one per unit.** Under `mod 12` each of the five
+units that refuse through the gate shares a shard only with a static unit, so
+the longest shard is that unit's control and plant. Twenty-two shards have the
+same longest shard and ten more runner setups.
+
+Decision: **the module cache is not kept**, only Go's build cache. The build
+cache is content-addressed, so an entry is reused only for byte-identical
+inputs; `go install` still fetches shfmt and checks it against Go's checksum
+database, which is the route `FOUND-05` chose.
+
+Prove: `sh scripts/ci/check-shards.sh` exits 0 with its `matrix`, `opening` and
+`n=1` to `n=12` rows; copies of the tree with one control dropped, one control
+moved after its plant, a literal divisor and a gap in the matrix each make it
+exit 1, and a subject whose judges it cannot read makes it exit 2;
+`sh scripts/ci/check-workflow.sh` exits 0 unsharded; and a CI run on this
+remote is green on every job with its longest acceptance shard measured against
+the run before.
+
+Driven on 2026-10-25, on the session host, before the push:
+
+- `sh scripts/ci/check-shards.sh` exited 0 in 1.2 seconds, 23 cases, with
+  `n=1` to `n=12`, both `matrix` rows and `opening  all 15 judged plants open
+  with the control of the step they judge`.
+- In disposable copies of the tree: one control dropped, from
+  `pwsh-write-error`, exited 1 on `opening`; `rust-fmt`'s control moved after
+  its plant exited 1 on `opening`; a literal `/12` divisor exited 1 and a
+  matrix of `[1, 2, 3, 5]` exited 1, each on `matrix`; and judges renamed past
+  the reader exited 2, *the subject spells 0 judge(s)*. The unmodified copy
+  exited 0.
+- `sh scripts/ci/check-workflow.sh`, unsharded, exited 0 in 2414 seconds:
+  154 cases, every control run once, on demand, and
+  `control  every plant restored what it changed: the scratch tree matches its
+  commit` last.

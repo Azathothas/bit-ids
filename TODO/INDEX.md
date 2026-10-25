@@ -1,17 +1,17 @@
 # Work index
 
-Total: 69
+Total: 70
 Open: 12
-In progress: 0
+In progress: 1
 Blocked: 0
 Done: 57
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 25 | 25 |
-| P1 | 10 | 0 | 0 | 31 | 41 |
+| P1 | 10 | 1 | 0 | 31 | 42 |
 | P2 | 2 | 0 | 0 | 1 | 3 |
-| Total | 12 | 0 | 0 | 57 | 69 |
+| Total | 12 | 1 | 0 | 57 | 70 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -82,6 +82,7 @@ Done: 57
 | CI-10 | P1 | XL | DONE | Every checking script in Go, and CI across multiple runners |
 | CI-11 | P1 | XL | DONE | The capture path in Go, so a client capture runs on Windows |
 | CI-12 | P2 | M | OPEN | `check-step-bodies` is independent of host load |
+| CI-13 | P1 | M | IN_PROGRESS | CI as parallel and as fast as its guarantees allow |
 | DOC-01 | P1 | M | DONE | Public data and library documentation |
 | DOC-02 | P2 | M | DONE | Contributor capture-run handbook |
 

@@ -5,6 +5,24 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-25T03:24:46Z
+
+- ⭐ **A plant's control runs where the plant runs.** *Workflow acceptance*
+  used to run every control in every shard, two full gate runs and the harness
+  run among them, before its own units. Each unit that judges a step now opens
+  with that step's control, so a shard pays for its own plants' controls.
+  `check-shards` refuses a unit that judges a step without opening with it.
+- The last control asks git whether every plant was restored, instead of
+  running the gate a further time in every shard.
+- Twelve shards, the count written once in the matrix; the step's divisor is
+  `strategy.job-total`. `check-shards` lists in about a second, because
+  `--units` no longer copies the tree.
+- Acceptance stops restoring a `target/` nothing read, and both Linux jobs
+  keep Go's build cache.
+- Before: CI run 40155464260, shards of 958 to 1066 seconds. `CI-13` stays in
+  progress until a run on this remote measures the change.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-13`. No version bump and no deploy.
+
 ### 2026-10-25T02:37:46Z
 
 - ⭐ **`provision.sh` installs `ip` when a host has none.** A session host's
