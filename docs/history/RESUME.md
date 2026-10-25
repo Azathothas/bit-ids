@@ -7,10 +7,10 @@ and why it is not the record. The work order is
 
 | | |
 | --- | --- |
-| the task | The transfer to `Azathothas/bit-ids`, done on 2026-10-25. ⛔ **The work order stays paused for the refactor** the operator settled on 2026-10-22. A session resuming after it takes the work order in `TODO/PROGRESS.md` in sequence. |
+| the task | The transfer to `Azathothas/bit-ids`, then `CI-13`, a faster CI, both done on 2026-10-25. ⛔ **The work order stays paused for the refactor** the operator settled on 2026-10-22. A session resuming after it takes the work order in `TODO/PROGRESS.md` in sequence. |
 | the resume point | `ENGINE-01`: dispatch libtorrent's Linux capture on `main` (inputs in `TODO/PROGRESS.md`'s work order), then assemble and publish. It is the first dispatch on this remote. |
 | in flight | nothing. Every commit is pushed, no dispatch is running, and no worktree carries unpushed work. |
-| the state of the tree | `main` and `data` pushed to the new remote; `data` holds 36 records; 12 of 69 entries open. The gate was green locally before the push; CI on this remote starts with that push, so read its result before calling `main` green. |
+| the state of the tree | `main` and `data` on the new remote; `data` holds 36 records; 12 of 70 entries open. CI run 40160780796 on `253ee85` was green on every job; `CI-12`'s flake turned CI run 40155464260 red once that day. Read the latest run before calling `main` green. |
 
 ## Where things are
 

@@ -522,10 +522,14 @@ gate_control() { # label [subject]
   fi
   if ! grep -q -E '^[0-9]+ checks: .*, 0 failed,' "$LOG"; then
     fail "control  $1: $_what failed a check"
-    # ⛔ AND IT SAYS WHICH. CI run 188 reported this row and nothing else, so a
-    # red shard could not be read from its own log. The gate's failed rows and
-    # the lines under them are what a reader needs.
-    [ "$JSON" = "1" ] || grep -A12 -F 'FAIL ' "$LOG" | head -40 | sed 's/^/          /'
+    # ⛔ AND IT SAYS WHICH, DOWN TO THE CASE. CI run 188 reported this row and
+    # nothing else, so a red shard could not be read from its own log. ⚠ Then
+    # it printed the twelve lines after the FAIL row, which are the gate's other
+    # rows: the gate prints a failing check's own tail as it harvests, BEFORE
+    # its row list. CI run 40155464260 went red on `check-step-bodies` that way
+    # and its log never named the case. Every `❌` line is the failing case, the
+    # failing row and the verdict, wherever the gate printed them.
+    [ "$JSON" = "1" ] || grep -F -e '❌' "$LOG" | head -40 | sed 's/^/          /'
     return
   fi
   if [ "$_rc" = 0 ]; then

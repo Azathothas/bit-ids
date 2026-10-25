@@ -6647,11 +6647,26 @@ so a slow host moves the case's duration and not its verdict.
 Prove: the gate under twelve CPU spinners passes `check-step-bodies` on every
 run of a twenty-run loop, and the case still refuses its planted defect.
 
+⚠ **Red again on 2026-10-25, unnamed.** CI run 40155464260 on `2fd0d80`, a
+documentation and provisioning change, failed shard 8's clean-tree gate control
+on `FAIL check-step-bodies (exit 1)`; every other shard, and the next run over
+a superset, was green. Its log did not name the case, because the excerpt
+printed the gate's row list rather than the failing check's tail. `CI-13` fixed
+the excerpt, so the next red names its case.
+
+⚠ **Twelve CPU spinners alone do not reproduce it.** On the session host the
+same day, `sh scripts/ci/check-step-bodies.sh` under twelve busy loops passed
+10 runs of 10, each 107 to 126 seconds. The red on CI came inside a full gate,
+beside about thirty concurrent checks. Three timings in the harness can move
+under that: the three seconds a closing pipe is given, the window a planted
+leak must outlast, and the install barrier's four-second deadline, which a
+passing case must not reach.
+
 
 ## CI-13: CI as parallel and as fast as its guarantees allow
 
 Source: operator request, 2026-10-25
-Priority: P1 | Effort: M | Status: IN_PROGRESS
+Priority: P1 | Effort: M | Status: DONE
 
 Problem: *Workflow acceptance* is the CI wall clock. On the first CI run on
 this remote, run 40155464260 on `2fd0d80`, its eight shards took 958 to 1066
@@ -6732,3 +6747,41 @@ Driven on 2026-10-25, on the session host, before the push:
   154 cases, every control run once, on demand, and
   `control  every plant restored what it changed: the scratch tree matches its
   commit` last.
+
+Closure evidence: CI run 40160780796 on `253ee85`, 2026-10-25, green on every
+job, against CI run 40155464260 on `2fd0d80` the same day:
+
+| | before | after |
+| --- | ---: | ---: |
+| the whole run, created to last update | about 1080 s | 605 s |
+| longest acceptance shard | 1066 s, eight shards | 602 s, twelve shards |
+| shortest acceptance shard | 958 s | 46 s |
+| Linux gate | 443 s | 530 s |
+| Windows gate | 136 s | 158 s |
+
+⭐ **The longest shard is the design's floor.** Shard 4's *Workflow acceptance*
+step took 570 of its 602 seconds: `pwsh-write-error`'s gate control and its
+gate plant, about 285 seconds each. The five gate-refusing shards took 552 to
+602 seconds; the harness shard 339; the two shards whose gate unit needs no
+clean control 348 and 319; the rest 46 to 102.
+
+⚠ **The Linux gate did not change and still moved by 87 seconds**, and its
+*Checking harnesses* step went from 91 to 142. The shared runners vary that
+much between runs on one day, which is the margin the acceptance bound now
+carries: 15 minutes over a 602-second shard.
+
+⭐ **A red gate control now names its case.** The excerpt printed the twelve
+lines after the FAIL row, which are the gate's other rows, so CI run
+40155464260's red shard never said which `check-step-bodies` case failed. It
+prints every `❌` line now. Driven by planting a dead link into a copy of the
+tree: `--shard 1/12` exited 1 and its log listed each failing `check-docs`
+case above the summary.
+
+⚠ **Residual, measured and left for the operator: `check-capture-client` is
+most of a gate run.** Alone on the session host it takes 157 seconds, beside 71
+for `check-step-bodies`, 59 for `check-bitcheck`, 51 for `check-capture` and
+under 10 for every other member. The gate runs the two capture harnesses after
+its concurrent batch, alone, so a gate run is about 75 seconds of batch and
+157 of that harness, and acceptance's floor is two gate runs. Running its cases
+in parallel is the next lever, and `CI-01` records why that harness runs alone:
+load changed its answers. It is a design decision rather than a tuning step.

@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-25T04:44:52Z
+
+- ⭐ **`CI-13` closed on a measured run.** CI run 40160780796 on `253ee85` was
+  green on every job and took 605 seconds, against about 1080 for CI run
+  40155464260 the same day. The longest acceptance shard went from 1066 seconds
+  to 602, which is one gate-refusing unit's control and plant.
+- The acceptance bound comes down from 20 minutes to 15.
+- A red gate control prints every failing case, wherever the gate printed it.
+  `CI-12` went red on CI run 40155464260 without its log naming the case.
+- Residual: `check-capture-client` is about two thirds of a gate run, 157
+  seconds alone; parallelising its cases is left for the operator.
+- Record: [`TODO/ci.md`](TODO/ci.md) `CI-13` and `CI-12`. No version bump and
+  no deploy.
+
 ### 2026-10-25T03:24:46Z
 
 - ⭐ **A plant's control runs where the plant runs.** *Workflow acceptance*

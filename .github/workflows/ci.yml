@@ -191,10 +191,12 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    # ⛔ THE BOUND WAS NOT RAISED TO FIT THE JOB, and lowering it is the point: it
-    # came down from 45 to 20 on 2026-09-10 and is not raised to accommodate
-    # growth. `CI-13` measures the shards against it.
-    timeout-minutes: 20
+    # ⛔ THE BOUND COMES DOWN WITH THE JOB, AND IS NEVER RAISED TO FIT IT. It was
+    # 45 until 2026-09-10 and 20 until 2026-10-25. The longest shard took 602
+    # seconds on CI run 40160780796, and the shared runners moved one unchanged
+    # job by 20 per cent between two runs that day, so 15 minutes is half again
+    # over the measured shard.
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
