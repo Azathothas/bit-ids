@@ -7,13 +7,16 @@ and why it is not the record. The work order is
 
 | | |
 | --- | --- |
-| the task | ⛔ **Paused for a transfer and refactor of the repository**, settled by the operator on 2026-10-22. A session resuming here takes the work order in `TODO/PROGRESS.md` in sequence. |
-| the resume point | `ENGINE-01`: dispatch libtorrent's Linux capture on `main` (inputs in `TODO/PROGRESS.md`'s work order), then assemble and publish. |
+| the task | The transfer to `Azathothas/bit-ids`, done on 2026-10-25. ⛔ **The work order stays paused for the refactor** the operator settled on 2026-10-22. A session resuming after it takes the work order in `TODO/PROGRESS.md` in sequence. |
+| the resume point | `ENGINE-01`: dispatch libtorrent's Linux capture on `main` (inputs in `TODO/PROGRESS.md`'s work order), then assemble and publish. It is the first dispatch on this remote. |
 | in flight | nothing. Every commit is pushed, no dispatch is running, and no worktree carries unpushed work. |
-| the state of the tree | `main` green in CI; `data` holds 36 records; 12 of 69 entries open. |
+| the state of the tree | `main` and `data` pushed to the new remote; `data` holds 36 records; 12 of 69 entries open. The gate was green locally before the push; CI on this remote starts with that push, so read its result before calling `main` green. |
 
 ## Where things are
 
+- ⚠ **A run number from before 2026-10-25 does not resolve here.** Runs,
+  check runs, artifacts and pull requests stayed with the previous home.
+  `TODO/PROGRESS.md` *Where the repository lives*.
 - ⭐ **Published data** is the `data` branch, appended by `publish-data.yml`
   from an `assemble-bundle.yml` run, which reads a `capture-client.yml` run.
   Assemble against the current `data`: a bundle assembled before the last
@@ -45,6 +48,9 @@ and why it is not the record. The work order is
   `git log --format='%an <%ae>' | sort -u`, and `git fetch --unshallow`.
 - ⭐ `sh scripts/doctor/provision.sh` installs `pwsh`, `shellcheck` and `shfmt`.
   `go` is a gate dependency.
+- ⚠ The host image may have no `ip`, and provisioning does not add it:
+  `check-step-bodies` then fails nine namespace cases with `ip is not on this
+  host`. `apt-get install -y iproute2` cleared all nine on 2026-10-25.
 - ⭐ What to run before a push, by what changed, is the table at the top of
   [`../../scripts/README.md`](../../scripts/README.md).
 - ⭐ A capture dispatch is debugged from off the host: the flight recorder's

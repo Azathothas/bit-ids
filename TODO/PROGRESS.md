@@ -1,6 +1,6 @@
 # Current progress
 
-State instant: 2026-10-22
+State instant: 2026-10-25
 Total: 69
 Open: 12
 In progress: 0
@@ -18,6 +18,20 @@ was rewritten is
 [`../docs/history/PROGRESS-2026-09-29.md`](../docs/history/PROGRESS-2026-09-29.md).
 
 ## Current state
+
+### Where the repository lives
+
+`Azathothas/bit-ids`, since 2026-10-25. `main` and `data` were pushed there
+with their whole history, so every commit hash this record cites still
+resolves. Beyond this record, the changelog and the handoff, no tracked file
+names the repository: workflows and scripts read it from `github.repository`
+or the clone's `origin`.
+
+⚠ **GitHub's own state stayed with the previous home.** Actions runs, check
+runs, artifacts and pull requests are not part of the git history. A run
+number recorded before 2026-10-25 is a citation and cannot be fetched here:
+`repos/Azathothas/bit-ids/actions/runs/38663060205` answered 404 through rule
+8's route on 2026-10-25.
 
 ### What exists
 
@@ -65,7 +79,7 @@ two transcripts copied unmodified from a published capture's raw evidence for
 | whose identity does `aria2-next` present? | qBittorrent 5.2.3's: user agent `qBittorrent/5.2.3`, peer ID prefix `-qB5230-`, corroborated by the `cpython-stdlib` connector. `CLIENT-14`. |
 | does a client install finish on a runner? | ⭐ **yes, and it always did.** The "hang" of runs 3 to 34 was *Cut the route* severing the runner agent from GitHub, measured on 2026-10-11 by a flight recorder posting off the host. The capture now runs in a network namespace; both `aria2-next` routes then completed, release in 1.5 minutes and source in 12.5, and 3.0.2's source build installed in 694 seconds on 2026-10-14. `CI-08`, `CI-09`. |
 | how many connectors does the capture path declare? | two: the Rust observer and `scripts/capture/connectors/cpython-stdlib.py`. ⚠ The second is two readings of one capture's bytes, not a second observation of the wire. ⭐ Every sample of a field is corroborated, not the first, since 2026-10-14. `OBS-07`, `CI-09`. |
-| has the publisher run against this repository's remote? | ⭐ yes: `publish-data` run 38663060205 appended `assemble-bundle` run 38574255232 to `data` on 2026-10-15, 30 objects read back and verified, and a fresh clone passes `sha256sum -c` and `validate-corpus`. `CI-09`. |
+| has the publisher run against this repository's remote? | not since the move to `Azathothas/bit-ids`, whose `data` arrived by push. ⭐ On the previous home, yes: `publish-data` run 38663060205 appended `assemble-bundle` run 38574255232 to `data` on 2026-10-15, 30 objects read back and verified, and a fresh clone passes `sha256sum -c` and `validate-corpus`. `CI-09`. |
 | has an engine target been acquired? | ⭐ yes, rqbit 9.0.1 on 2026-10-21: the vendor's release binary and crates.io's crate, built with the release's default features and profile, both installed rootless on the session host and answered 9.0.1. ⛔ Neither can run there: the host boots with IPv6 disabled and the build always binds an IPv6 socket. A runner dispatch is next. `ENGINE-03`. ⭐ And anacrolix/torrent v1.61.0 on 2026-10-22, through a harness this tree pins: the module proxy and the tag from GitHub, every module from its own origin, built the same executable byte for byte, captured `-GT0003-` and `anacrolix-torrent/v1.61.0` on this host, and assembled `build_equivalent`. A runner dispatch is next. `ENGINE-02`. ⭐ And libtorrent 2.0.15 on 2026-10-22, through a Python harness this tree commits: PyPI's wheel and the tag built by its own `setup.py` reported one feature set and the same 258 default settings, captured `-LT20F0-` and `libtorrent/2.0.15.0` on this host, and assembled `build_equivalent`. Linux only; Windows has no half yet. ⚠ The first runner capture, run 39783974176, assembled the same, and assemble-bundle run 39784872974 refused it with `E-VIW-02`: the scheme read the series as a prefix. The scheme now pins the series instead, and a new dispatch is next. `ENGINE-01`. |
 | has a published URL been fetched? | no. `docs/publishing.md` carries the forms and says they are unexercised. |
 | does anything schedule the staleness monitor? | no. `CI-02` built the comparison; no capture request has been opened. |
@@ -112,8 +126,8 @@ still open is a host that never reached it.
 ## Work order
 
 ⚠ **Paused on 2026-10-22 for a transfer and refactor of the repository**, settled by
-the operator. 12 entries are open. In the order a resuming session would take
-them:
+the operator. The transfer landed on 2026-10-25; the refactor has not started.
+12 entries are open. In the order a resuming session would take them:
 
 1. **`ENGINE-01`**, libtorrent 2.0.15. The Linux pair is built and was captured
    on runner run 39783974176, and its view refusal is fixed by the release

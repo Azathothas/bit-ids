@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-25T02:20:24Z
+
+- ⭐ **The repository moved to `Azathothas/bit-ids`.** `main` and `data` were
+  pushed with their whole history and unchanged hashes.
+- No file had an owner left to replace. `afe265d` removed the last hardcoded
+  one on 2026-09-08, the issue template's security link is
+  repository-relative, and workflows read `github.repository`.
+- ⚠ Actions runs, check runs, artifacts and pull requests did not move, so a
+  run number cited before the move answers 404 on the new remote.
+- The work order stays paused for the refactor.
+- Record: [`TODO/PROGRESS.md`](TODO/PROGRESS.md) *Where the repository lives*
+  and [`docs/history/RESUME.md`](docs/history/RESUME.md). No version bump and
+  no deploy.
+
 ### 2026-10-22T14:45:00Z
 
 - ⭐ **The operator settled the open questions, and five entries closed**:
