@@ -6654,13 +6654,15 @@ a superset, was green. Its log did not name the case, because the excerpt
 printed the gate's row list rather than the failing check's tail. `CI-13` fixed
 the excerpt, so the next red names its case.
 
-⚠ **Twelve CPU spinners alone do not reproduce it.** On the session host the
-same day, `sh scripts/ci/check-step-bodies.sh` under twelve busy loops passed
-10 runs of 10, each 107 to 126 seconds. The red on CI came inside a full gate,
-beside about thirty concurrent checks. Three timings in the harness can move
-under that: the three seconds a closing pipe is given, the window a planted
-leak must outlast, and the install barrier's four-second deadline, which a
-passing case must not reach.
+⚠ **Neither twelve CPU spinners nor six full gates reproduce it.** On the
+session host the same day, `sh scripts/ci/check-step-bodies.sh` under twelve
+busy loops passed 10 runs of 10, each 107 to 126 seconds, and six consecutive
+`sh scripts/common/check-gate.sh` runs, 244 to 250 seconds each, were green on
+every row. The red on CI came inside a full gate on a runner. Two timings in
+the harness can move under load: the three seconds a closing pipe is given, and
+the window a planted leak must outlast, which is the case CI named on
+2026-10-21. ⭐ The install barrier's four-second deadline is not one: the wait
+polls before it reads the clock, so a passing case passes on its first poll.
 
 
 ## CI-13: CI as parallel and as fast as its guarantees allow
