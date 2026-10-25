@@ -32,7 +32,8 @@ sh scripts/doctor/provision.sh
 ⭐ `--check` reports what the host has against what this project pins, installing
 nothing, which is the read-only half and is the part the doctor's answer already
 overlaps. Every download is verified against a pinned digest by `sha256sum -c`
-before anything is executed.
+before anything is executed. ⚠ `ip` is not a download: it comes from
+`apt-get`, unpinned, and the script's header says why.
 
 ## Why it exists
 

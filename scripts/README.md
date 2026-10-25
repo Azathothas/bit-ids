@@ -29,9 +29,9 @@ Any other skip is a missing tool, and `--strict` makes it a failure on CI.
 
 - [`doctor/`](doctor/README.md) reports host capabilities without changing the
   host. ⛔ One file there is the exception and says so:
-  [`doctor/provision.sh`](doctor/provision.sh) installs the three tools the gate
-  needs, verifying each download against a pinned digest first. The doctor does
-  not call it.
+  [`doctor/provision.sh`](doctor/provision.sh) installs the four tools the gate
+  needs: three pinned downloads, each verified against its digest first, and
+  `ip` from the host's package index. The doctor does not call it.
 - `bit-check fetch-releases`, in
   [`../tools/check/fetchreleases.go`](../tools/check/fetchreleases.go),
   retrieves a release listing and keeps the exact bytes. It does not parse,

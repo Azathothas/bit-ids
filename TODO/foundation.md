@@ -508,3 +508,15 @@ ones.
 The Linux lane pins `shfmt` and takes `shellcheck` and `pwsh` from the runner
 image, so the session host now runs a *more* pinned set than CI does. That is a
 runner-default question and `CI-08` owns it.
+
+⭐ **A fourth row, `ip`, from 2026-10-25.** A session host's image carried no
+iproute2, and `check-step-bodies` failed 9 of 58 cases with `ip is not on this
+host`, because `bit-check contained` brings loopback up with it. The row is
+unpinned, installed through `apt-get` and read back from `ip -V`. Driven on
+2026-10-25 with iproute2 removed: `--check` printed `absent  ip` and exited 1;
+the install printed `installed ip 6.1.0 (unpinned, iproute2)` in 4.4 seconds
+and exited 0; `check-step-bodies` then passed 58 of 58. The same install as an
+unprivileged user with passwordless `sudo` printed the same row. A package
+`apt-get` cannot locate printed `failed  ip` and exit 1, and one that installs
+with no `ip` in it printed `wrong   ip does not answer` and exit 1. Neither left
+`ip` behind.

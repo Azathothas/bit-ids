@@ -1,6 +1,7 @@
 #!/bin/sh
 # provision.sh - give this host the tools the gate needs, at the versions this
-# project pins, by running something rather than by reading a document.
+# project pins where it pins one, by running something rather than by reading a
+# document.
 #
 # ⛔ THE GAP THIS CLOSES IS A GATE THAT IS QUIETLY SMALLER THAN CI's. `pwsh`,
 # `shellcheck` and `shfmt` are absent on a fresh container. Without `pwsh` every
@@ -36,13 +37,26 @@
 # same build rather than two builds of one version. The pinned binary is the
 # fallback for a host with no Go.
 #
+# -- ⚠ AND ONE TOOL THAT IS NOT PINNED, `ip` -----------------------------------
+#
+# `bit-check contained` brings loopback up inside the capture namespace with
+# `ip link set lo up`, and `check-step-bodies` drives it. Measured on 2026-10-25:
+# a session host whose image carried no iproute2 failed nine of that check's
+# cases with `ip is not on this host`, and installing the package cleared all
+# nine.
+#
+# It comes from the host's package index through `apt-get`, which verifies it
+# by the distribution's own signatures. Its version is whatever that release
+# ships, so this file pins none: the row reports what `ip -V` answered, and the
+# gate needs only that it runs.
+#
 # Usage:
 #   sh scripts/doctor/provision.sh            install whatever is missing or wrong
 #   sh scripts/doctor/provision.sh --check    report only; install nothing
 #   sh scripts/doctor/provision.sh --json
 #
-# Exit codes: 0 every tool is present at its pinned version, 1 one is not and
-# could not be made so, 2 could not run.
+# Exit codes: 0 every tool is present, at its pinned version where it has one,
+# 1 one is not and could not be made so, 2 could not run.
 #
 # ⛔ Read the exit code from this process, unpiped.
 
@@ -101,6 +115,9 @@ SHFMT_URL="https://github.com/mvdan/sh/releases/download/v$SHFMT_VERSION/shfmt_v
 SHFMT_PINNED_SHA256=fe42021c7272ef2d67ea36cbc3031683c625d0badec733ef3a57b567246a0b66
 SHFMT_MODULE="mvdan.cc/sh/v3/cmd/shfmt@v$SHFMT_VERSION"
 
+# ⚠ Not a pin: the package that carries `ip` on a host `apt-get` serves.
+IP_PACKAGE=iproute2
+
 ROWS=0
 BAD=0
 row() {
@@ -132,6 +149,15 @@ installed_version() { # tool
       command -v shfmt >/dev/null 2>&1 || return 1
       _out=$(shfmt --version 2>/dev/null </dev/null) || return 1
       printf '%s' "$_out" | awk '{ sub(/^v/, "", $1); print $1; exit }'
+      ;;
+    ip)
+      command -v ip >/dev/null 2>&1 || return 1
+      _out=$(ip -V 2>/dev/null </dev/null) || return 1
+      printf '%s\n' "$_out" | awk '{
+        for (i = 1; i <= NF; i++) if ($i ~ /^iproute2-/) {
+          v = $i; sub(/^iproute2-/, "", v); sub(/,$/, "", v); print v; exit
+        }
+      }'
       ;;
     *) return 1 ;;
   esac
@@ -250,6 +276,67 @@ provide() { # tool  wanted-version
   fi
 }
 
+# apt-get needs root. A session host is root; anywhere else `sudo -n` says no
+# rather than waiting for a password.
+as_root() {
+  if [ "$(id -u)" = 0 ]; then
+    "$@"
+  else
+    sudo -n "$@"
+  fi
+}
+
+# The repository's apt idiom, the one `adapterkit.go`'s package route uses: the
+# index is refreshed first, because an image's lists can be empty or stale;
+# NEEDRESTART_MODE=l reports services rather than restarting them; and every
+# call reads /dev/null, so nothing can wait on a prompt.
+# ⛔ BOUNDED BY APT'S OWN TIMEOUT, as the fetches above are bounded by curl's. A
+# stall here costs a session's start.
+apt_run() { # apt-get-arguments...
+  as_root env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l \
+    apt-get -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60 \
+    "$@" >"$WORK/apt.log" 2>&1 </dev/null && return 0
+  printf '%s: apt-get %s failed:\n' "$ME" "$*" >&2
+  tail -n 5 "$WORK/apt.log" >&2
+  return 1
+}
+
+install_package() { # package
+  command -v apt-get >/dev/null 2>&1 || {
+    printf '%s: %s comes from apt-get, and apt-get is not on this host\n' "$ME" "$1" >&2
+    return 1
+  }
+  apt_run update || return 1
+  apt_run install -y --no-install-recommends "$1"
+}
+
+# ⚠ A ROW WITH NO PIN HAS TWO STATES, NOT THREE: present or absent. There is no
+# wrong version to report, and the one printed is what the tool answered, or a
+# dash when it answered none this file can read.
+provide_unpinned() { # tool  package
+  _pu_tool="$1"
+  _pu_pkg="$2"
+  if _pu_have=$(installed_version "$_pu_tool"); then
+    row "ok      $_pu_tool ${_pu_have:--} (unpinned, $_pu_pkg)"
+    return 0
+  fi
+  if [ "$CHECK" = 1 ]; then
+    bad "absent  $_pu_tool (unpinned, $_pu_pkg)"
+    return 0
+  fi
+  if ! install_package "$_pu_pkg"; then
+    bad "failed  $_pu_tool ($_pu_pkg)"
+    return 0
+  fi
+  # ⛔ READ BACK, as `provide` does. The package manager's exit code is not the
+  # tool answering.
+  if _pu_now=$(installed_version "$_pu_tool"); then
+    row "installed $_pu_tool ${_pu_now:--} (unpinned, $_pu_pkg)"
+  else
+    bad "wrong   $_pu_tool does not answer after installing $_pu_pkg"
+  fi
+}
+
 if [ "$JSON" != 1 ]; then
   if [ "$CHECK" = 1 ]; then
     printf '%s: checking\n' "$ME"
@@ -261,13 +348,14 @@ fi
 provide pwsh "$PWSH_VERSION"
 provide shellcheck "$SHELLCHECK_VERSION"
 provide shfmt "$SHFMT_VERSION"
+provide_unpinned ip "$IP_PACKAGE"
 
 if [ "$JSON" = 1 ]; then
   printf '{"schema":"provision/1","tools":%s,"wrong":%s}\n' "$ROWS" "$BAD"
 elif [ "$BAD" = 0 ]; then
-  printf '%s: every pinned tool is present.\n' "$ME"
+  printf '%s: every tool is present.\n' "$ME"
 else
-  printf '%s: %s of %s tools are not at their pinned version.\n' "$ME" "$BAD" "$ROWS" >&2
+  printf '%s: %s of %s tools are absent or not at their pinned version.\n' "$ME" "$BAD" "$ROWS" >&2
 fi
 [ "$BAD" = 0 ] || exit 1
 exit 0

@@ -5,6 +5,17 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-10-25T02:37:46Z
+
+- ⭐ **`provision.sh` installs `ip` when a host has none.** A session host's
+  image had no iproute2, which turned `check-step-bodies` red for a reason
+  outside the tree. It is the script's first unpinned row: `apt-get` installs
+  it, and the row reports what `ip -V` answers.
+- `8b1ee01`'s handoff recorded the gap as a manual step; that step is gone.
+- Record: [`TODO/foundation.md`](TODO/foundation.md) `FOUND-05`, and the header
+  of [`scripts/doctor/provision.sh`](scripts/doctor/provision.sh). No version
+  bump and no deploy.
+
 ### 2026-10-25T02:20:24Z
 
 - ⭐ **The repository moved to `Azathothas/bit-ids`.** `main` and `data` were

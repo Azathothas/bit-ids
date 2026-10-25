@@ -46,11 +46,8 @@ and why it is not the record. The work order is
   agent, and a shallow clone. Correct all three before editing: `main` per rule
   7, the operator's identity per rule 11 read from
   `git log --format='%an <%ae>' | sort -u`, and `git fetch --unshallow`.
-- ⭐ `sh scripts/doctor/provision.sh` installs `pwsh`, `shellcheck` and `shfmt`.
-  `go` is a gate dependency.
-- ⚠ The host image may have no `ip`, and provisioning does not add it:
-  `check-step-bodies` then fails nine namespace cases with `ip is not on this
-  host`. `apt-get install -y iproute2` cleared all nine on 2026-10-25.
+- ⭐ `sh scripts/doctor/provision.sh` installs `pwsh`, `shellcheck`, `shfmt`,
+  and `ip` when the image has none. `go` is a gate dependency.
 - ⭐ What to run before a push, by what changed, is the table at the top of
   [`../../scripts/README.md`](../../scripts/README.md).
 - ⭐ A capture dispatch is debugged from off the host: the flight recorder's
